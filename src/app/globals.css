@@ -1,0 +1,60 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Cabinet Grotesk — download from https://fonts.google.com/specimen/Cabinet+Grotesk */
+/* Or use @font-face with the downloaded files */
+
+:root {
+  --midnight: #06112B;
+  --midnight-light: #0E2244;
+  --midnight-muted: #1A3560;
+  --teal: #00C896;
+  --teal-light: #33D9AA;
+  --teal-pale: #E0FAF3;
+  --white: #FFFFFF;
+  --off-white: #F6F8FC;
+  --gray-100: #EEF1F6;
+  --gray-300: #B8C0CF;
+  --gray-500: #7A8599;
+  --gray-700: #3D4657;
+  --text-primary: #06112B;
+  --text-secondary: #3D4657;
+  --text-muted: #7A8599;
+  --success: #00C896;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --border: rgba(6, 17, 43, 0.10);
+  --shadow-sm: 0 1px 3px rgba(6, 17, 43, 0.08);
+  --shadow-md: 0 4px 16px rgba(6, 17, 43, 0.10);
+  --shadow-lg: 0 8px 32px rgba(6, 17, 43, 0.14);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: "Plus Jakarta Sans", sans-serif;
+  color: var(--text-primary);
+  background: var(--white);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Cabinet Grotesk", "Plus Jakarta Sans", sans-serif;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Utility classes */
+.font-heading { font-family: "Cabinet Grotesk", "Plus Jakarta Sans", sans-serif; }
+.font-body { font-family: "Plus Jakarta Sans", sans-serif; }
