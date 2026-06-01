@@ -3,6 +3,7 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
+
       users: {
         Row: {
           id: string
@@ -20,6 +21,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['users']['Row'], 'created_at' | 'mobility_score' | 'alumni_status'>
         Update: Partial<Database['public']['Tables']['users']['Insert']>
+        Relationships: []
       }
       wallets: {
         Row: {
@@ -38,6 +40,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['wallets']['Row'], 'id' | 'created_at'>
         Update: Partial<Database['public']['Tables']['wallets']['Insert']>
+        Relationships: []
       }
       currencies: {
         Row: {
@@ -52,6 +55,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['currencies']['Row'], 'id' | 'last_updated_at'>
         Update: Partial<Database['public']['Tables']['currencies']['Insert']>
+        Relationships: []
       }
       savings_goals: {
         Row: {
@@ -78,6 +82,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['savings_goals']['Row'], 'id' | 'created_at' | 'current_balance' | 'milestone_25_unlocked' | 'milestone_50_unlocked' | 'milestone_75_unlocked' | 'milestone_100_unlocked'>
         Update: Partial<Database['public']['Tables']['savings_goals']['Insert']>
+        Relationships: []
       }
       deposits: {
         Row: {
@@ -97,6 +102,7 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['deposits']['Row'], 'id' | 'created_at' | 'status' | 'user_confirmed_at' | 'admin_confirmed_at' | 'confirmed_by'>
         Update: Partial<Database['public']['Tables']['deposits']['Insert']>
+        Relationships: []
       }
       notifications: {
         Row: {
@@ -112,7 +118,27 @@ export interface Database {
         }
         Insert: Omit<Database['public']['Tables']['notifications']['Row'], 'id' | 'created_at' | 'is_read'>
         Update: Partial<Database['public']['Tables']['notifications']['Insert']>
+        Relationships: []
+      }
+      email_subscribers: {
+        Row: {
+          id: string
+          email: string
+          source: string | null
+          created_at: string
+        }
+        Insert: {
+          email: string
+          source: string | null
+        }
+        Update: Partial<{
+          email: string
+          source: string | null
+        }>
+        Relationships: []
       }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
   }
 }
