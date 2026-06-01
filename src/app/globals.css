@@ -34,6 +34,7 @@
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 24px;
+  --font-heading: "Plus Jakarta Sans", sans-serif;
 }
 
 * {
@@ -50,11 +51,42 @@ html {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Cabinet Grotesk", "Plus Jakarta Sans", sans-serif;
-  font-weight: 700;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  font-weight: 800;
   color: var(--text-primary);
 }
 
 /* Utility classes */
-.font-heading { font-family: "Cabinet Grotesk", "Plus Jakarta Sans", sans-serif; }
+.font-heading { font-family: "Plus Jakarta Sans", sans-serif; font-weight: 800; }
 .font-body { font-family: "Plus Jakarta Sans", sans-serif; }
+
+/* Animations */
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.float-card-1 { animation: floatUp 0.6s ease forwards 0.2s; opacity: 0; }
+.float-card-2 { animation: floatUp 0.6s ease forwards 0.5s; opacity: 0; }
+.float-card-3 { animation: floatUp 0.6s ease forwards 0.8s; opacity: 0; }
+
+/* Hide scrollbar for holiday packages */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Card hover effects */
+.product-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+.destination-card {
+  transition: transform 0.2s ease;
+}
+.destination-card:hover {
+  transform: translateY(-4px);
+}
+.destination-card:hover .destination-overlay {
+  opacity: 0.96;
+}
