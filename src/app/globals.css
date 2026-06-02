@@ -90,3 +90,15 @@ h1, h2, h3, h4, h5, h6 {
 .destination-card:hover .destination-overlay {
   opacity: 0.96;
 }
+
+/* Flight widget — edge-to-edge on mobile */
+@media (max-width: 640px) {
+  .flight-widget {
+    border-radius: 0 !important;
+    margin-left: -1rem !important;
+    margin-right: -1rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    box-shadow: 0 -2px 12px rgba(6, 17, 43, 0.08) !important;
+  }
+}
