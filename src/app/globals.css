@@ -93,9 +93,12 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Flight card — full width on mobile, rounded corners preserved */
 @media (max-width: 640px) {
+  html {
+    overflow-x: hidden;
+  }
   .flight-card {
     margin-left: -1.5rem !important;
-    margin-right: -1.25rem !important;
+    margin-right: -1.5rem !important;
     border-radius: var(--radius-xl) !important;
   }
 }
