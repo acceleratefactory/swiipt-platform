@@ -90,3 +90,28 @@ h1, h2, h3, h4, h5, h6 {
 .destination-card:hover .destination-overlay {
   opacity: 0.96;
 }
+
+/* Flight card — full width on mobile, rounded corners preserved */
+@media (max-width: 640px) {
+  .flight-card {
+    margin-left: -1.5rem !important;
+    margin-right: -1.5rem !important;
+    border-radius: var(--radius-xl) !important;
+  }
+}
+
+/* Date fields — hide native picker on mobile, show mm/dd/yyyy text */
+@media (max-width: 640px) {
+  .date-input {
+    display: none !important;
+  }
+  .date-placeholder {
+    display: block !important;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+}
+.date-placeholder {
+  display: none;
+}

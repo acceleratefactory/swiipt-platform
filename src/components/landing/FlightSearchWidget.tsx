@@ -23,6 +23,7 @@ export default function FlightSearchWidget() {
 
   return (
     <div
+      className="flight-card"
       style={{
         background: "white",
         borderRadius: "var(--radius-xl)",
@@ -182,6 +183,7 @@ export default function FlightSearchWidget() {
           >
             {/* Depart */}
             <div
+              className="date-field"
               style={{
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
@@ -200,6 +202,7 @@ export default function FlightSearchWidget() {
               </div>
               <input
                 type="date"
+                className="date-input"
                 style={{
                   border: "none",
                   outline: "none",
@@ -209,11 +212,13 @@ export default function FlightSearchWidget() {
                   color: "var(--text-primary)",
                 }}
               />
+              <span className="date-placeholder">mm/dd/yyyy</span>
             </div>
 
             {/* Return (hidden when One Way) */}
             {tripType !== "oneway" && (
               <div
+                className="date-field"
                 style={{
                   border: "1px solid var(--border)",
                   borderRadius: "var(--radius-md)",
@@ -232,6 +237,7 @@ export default function FlightSearchWidget() {
                 </div>
                 <input
                   type="date"
+                  className="date-input"
                   style={{
                     border: "none",
                     outline: "none",
@@ -241,6 +247,7 @@ export default function FlightSearchWidget() {
                     color: "var(--text-primary)",
                   }}
                 />
+                <span className="date-placeholder">mm/dd/yyyy</span>
               </div>
             )}
 
@@ -344,6 +351,7 @@ export default function FlightSearchWidget() {
             }}
           >
             <div
+              className="date-field"
               style={{
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
@@ -362,6 +370,7 @@ export default function FlightSearchWidget() {
               </div>
               <input
                 type="date"
+                className="date-input"
                 style={{
                   border: "none",
                   outline: "none",
@@ -370,6 +379,7 @@ export default function FlightSearchWidget() {
                   width: "100%",
                 }}
               />
+              <span className="date-placeholder">mm/dd/yyyy</span>
             </div>
             <div
               style={{
