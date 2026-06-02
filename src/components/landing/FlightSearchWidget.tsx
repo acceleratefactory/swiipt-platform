@@ -23,7 +23,6 @@ export default function FlightSearchWidget() {
 
   return (
     <div
-      className="flight-widget"
       style={{
         background: "white",
         borderRadius: "var(--radius-xl)",
@@ -78,46 +77,49 @@ export default function FlightSearchWidget() {
             ))}
           </div>
 
-          {/* FROM */}
+          {/* FROM / TO — desktop: side by side | mobile: stacked */}
           <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "0.875rem 1rem",
-              marginBottom: "0.5rem",
-            }}
+            className="flex flex-col gap-2 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-2"
+            style={{ marginBottom: "0.75rem" }}
           >
+            {/* FROM */}
             <div
               style={{
-                fontSize: "10px",
-                color: "var(--text-muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.875rem 1rem",
               }}
             >
-              From
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "var(--text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                From
+              </div>
+              <input
+                type="text"
+                placeholder="City or airport"
+                defaultValue="Lagos, Nigeria (LOS)"
+                style={{
+                  border: "none",
+                  outline: "none",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  width: "100%",
+                  color: "var(--text-primary)",
+                }}
+              />
             </div>
-            <input
-              type="text"
-              placeholder="City or airport"
-              defaultValue="Lagos, Nigeria (LOS)"
-              style={{
-                border: "none",
-                outline: "none",
-                fontSize: "14px",
-                fontWeight: 500,
-                width: "100%",
-                color: "var(--text-primary)",
-              }}
-            />
-          </div>
 
-          {/* Swap button */}
-          <div style={{ display: "flex", justifyContent: "center", margin: "0.25rem 0" }}>
+            {/* Swap button */}
             <button
               style={{
-                width: 36,
-                height: 36,
+                width: 40,
+                height: 40,
                 borderRadius: "50%",
                 border: "1px solid var(--border)",
                 background: "white",
@@ -125,58 +127,59 @@ export default function FlightSearchWidget() {
                 alignItems: "center",
                 justifyContent: "center",
                 cursor: "pointer",
+                flexShrink: 0,
+                alignSelf: "center",
               }}
             >
               ⇄
             </button>
-          </div>
 
-          {/* TO */}
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "0.875rem 1rem",
-              marginBottom: "0.5rem",
-            }}
-          >
+            {/* TO */}
             <div
               style={{
-                fontSize: "10px",
-                color: "var(--text-muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.875rem 1rem",
               }}
             >
-              To
+              <div
+                style={{
+                  fontSize: "10px",
+                  color: "var(--text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                To
+              </div>
+              <input
+                type="text"
+                placeholder="City or airport"
+                style={{
+                  border: "none",
+                  outline: "none",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                  width: "100%",
+                  color: "var(--text-primary)",
+                }}
+              />
             </div>
-            <input
-              type="text"
-              placeholder="City or airport"
-              style={{
-                border: "none",
-                outline: "none",
-                fontSize: "14px",
-                fontWeight: 500,
-                width: "100%",
-                color: "var(--text-primary)",
-              }}
-            />
           </div>
 
-          {/* Depart */}
+          {/* Depart / Return / Travellers — desktop: 3-col row | mobile: stacked */}
           <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "0.875rem 1rem",
-              marginBottom: "0.5rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
+            className="flex flex-col gap-2 sm:grid sm:grid-cols-2 md:grid-cols-3 md:gap-2"
+            style={{ marginBottom: "1rem" }}
           >
-            <div style={{ flex: 1 }}>
+            {/* Depart */}
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.875rem 1rem",
+              }}
+            >
               <div
                 style={{
                   fontSize: "10px",
@@ -187,35 +190,29 @@ export default function FlightSearchWidget() {
               >
                 Depart
               </div>
-              <div
+              <input
+                type="date"
                 style={{
+                  border: "none",
+                  outline: "none",
                   fontSize: "14px",
                   fontWeight: 500,
-                  color: "var(--text-secondary)",
+                  width: "100%",
+                  color: "var(--text-primary)",
+                  background: "transparent",
+                }}
+              />
+            </div>
+
+            {/* Return (hidden when One Way) */}
+            {tripType !== "oneway" && (
+              <div
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--radius-md)",
+                  padding: "0.875rem 1rem",
                 }}
               >
-                mm/dd/yyyy
-              </div>
-            </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
-
-          {/* Return (hidden when One Way) */}
-          {tripType !== "oneway" && (
-            <div
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: "var(--radius-md)",
-                padding: "0.875rem 1rem",
-                marginBottom: "0.5rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-            >
-              <div style={{ flex: 1 }}>
                 <div
                   style={{
                     fontSize: "10px",
@@ -226,36 +223,30 @@ export default function FlightSearchWidget() {
                 >
                   Return
                 </div>
-                <div
+                <input
+                  type="date"
                   style={{
+                    border: "none",
+                    outline: "none",
                     fontSize: "14px",
                     fontWeight: 500,
-                    color: "var(--text-secondary)",
+                    width: "100%",
+                    color: "var(--text-primary)",
+                    background: "transparent",
                   }}
-                >
-                  mm/dd/yyyy
-                </div>
+                />
               </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
-          )}
+            )}
 
-          {/* Travellers & class */}
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "0.875rem 1rem",
-              marginBottom: "1rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              cursor: "pointer",
-            }}
-          >
-            <div style={{ flex: 1 }}>
+            {/* Travellers & class */}
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.875rem 1rem",
+                cursor: "pointer",
+              }}
+            >
               <div
                 style={{
                   fontSize: "10px",
@@ -271,21 +262,11 @@ export default function FlightSearchWidget() {
                   fontSize: "14px",
                   fontWeight: 500,
                   color: "var(--text-primary)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
                 1 Adult · Economy
               </div>
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
           </div>
 
           {/* Search button */}
@@ -296,19 +277,15 @@ export default function FlightSearchWidget() {
             style={{
               width: "100%",
               padding: "1rem",
-              minHeight: "52px",
+              minHeight: "48px",
               background: "var(--teal)",
               color: "var(--midnight)",
               fontWeight: 700,
-              fontSize: "16px",
+              fontSize: "15px",
               borderRadius: "var(--radius-md)",
               border: "none",
               cursor: "pointer",
               transition: "background 0.15s ease",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
             }}
             onMouseEnter={(e) =>
               (e.currentTarget.style.background = "var(--teal-light)")
@@ -324,7 +301,7 @@ export default function FlightSearchWidget() {
 
       {/* HOLIDAYS TAB */}
       {activeTab === "holidays" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <div
             style={{
               border: "1px solid var(--border)",
@@ -354,17 +331,14 @@ export default function FlightSearchWidget() {
               }}
             />
           </div>
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "0.875rem 1rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ flex: 1 }}>
+          <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-2">
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.875rem 1rem",
+              }}
+            >
               <div
                 style={{
                   fontSize: "10px",
@@ -375,31 +349,25 @@ export default function FlightSearchWidget() {
               >
                 Travel dates
               </div>
-              <div
+              <input
+                type="date"
                 style={{
+                  border: "none",
+                  outline: "none",
                   fontSize: "14px",
                   fontWeight: 500,
-                  color: "var(--text-secondary)",
+                  width: "100%",
+                  background: "transparent",
                 }}
-              >
-                mm/dd/yyyy
-              </div>
+              />
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
-          </div>
-          <div
-            style={{
-              border: "1px solid var(--border)",
-              borderRadius: "var(--radius-md)",
-              padding: "0.875rem 1rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div style={{ flex: 1 }}>
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)",
+                padding: "0.875rem 1rem",
+              }}
+            >
               <div
                 style={{
                   fontSize: "10px",
@@ -414,21 +382,11 @@ export default function FlightSearchWidget() {
                 style={{
                   fontSize: "14px",
                   fontWeight: 500,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
                 }}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-primary)" strokeWidth="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                  <circle cx="12" cy="7" r="4" />
-                </svg>
                 2 Adults
               </div>
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
           </div>
           <button
             onClick={() => {
@@ -437,18 +395,14 @@ export default function FlightSearchWidget() {
             style={{
               width: "100%",
               padding: "1rem",
-              minHeight: "52px",
+              minHeight: "48px",
               background: "var(--teal)",
               color: "var(--midnight)",
               fontWeight: 700,
-              fontSize: "16px",
+              fontSize: "15px",
               borderRadius: "var(--radius-md)",
               border: "none",
               cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
             }}
           >
             Browse Holiday Packages →
@@ -458,41 +412,42 @@ export default function FlightSearchWidget() {
 
       {/* SERVICES TAB */}
       {activeTab === "services" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
           <div
             style={{
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-md)",
               padding: "0.875rem 1rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
             }}
           >
-            <div style={{ flex: 1 }}>
-              <div
-                style={{
-                  fontSize: "10px",
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                What do you need?
-              </div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  fontWeight: 500,
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Select a service
-              </div>
+            <div
+              style={{
+                fontSize: "10px",
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              What do you need?
             </div>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2">
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
+            <select
+              style={{
+                border: "none",
+                outline: "none",
+                fontSize: "14px",
+                fontWeight: 500,
+                width: "100%",
+                background: "transparent",
+                color: "var(--text-primary)",
+              }}
+            >
+              <option value="">Select a service</option>
+              <option value="visa">Visa Processing</option>
+              <option value="residency">Residency Permit</option>
+              <option value="citizenship">2nd Citizenship</option>
+              <option value="company">Company Registration</option>
+              <option value="relocation">Relocation Concierge</option>
+            </select>
           </div>
           <div
             style={{
@@ -530,18 +485,14 @@ export default function FlightSearchWidget() {
             style={{
               width: "100%",
               padding: "1rem",
-              minHeight: "52px",
+              minHeight: "48px",
               background: "var(--teal)",
               color: "var(--midnight)",
               fontWeight: 700,
-              fontSize: "16px",
+              fontSize: "15px",
               borderRadius: "var(--radius-md)",
               border: "none",
               cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "0.5rem",
             }}
           >
             Check My Eligibility →
