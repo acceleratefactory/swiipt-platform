@@ -95,7 +95,7 @@ h1, h2, h3, h4, h5, h6 {
 @media (max-width: 640px) {
   .flight-card {
     margin-left: -1.5rem !important;
-    margin-right: -1.5rem !important;
+    margin-right: -1.25rem !important;
     border-radius: var(--radius-xl) !important;
   }
 }
