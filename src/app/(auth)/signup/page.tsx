@@ -11,5 +11,5 @@ export default async function SignupPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (user) redirect(searchParams.return || "/dashboard");
 
-  return <SignupForm returnUrl={searchParams.return} referralCode={searchParams.ref} />;
+  return <SignupForm referralCode={searchParams.ref} />;
 }

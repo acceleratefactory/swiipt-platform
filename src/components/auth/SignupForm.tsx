@@ -24,10 +24,8 @@ const labelStyle: React.CSSProperties = {
 };
 
 export default function SignupForm({
-  returnUrl,
   referralCode: referralCodeProp,
 }: {
-  returnUrl?: string;
   referralCode?: string;
 }) {
   const router = useRouter();
