@@ -86,7 +86,7 @@ export default function ProductCards() {
         </div>
 
         {/* Card grid: 3 columns desktop, 2 columns mobile */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+        <div className="product-grid grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
           {cards.map((card) => (
             <a
               key={card.title}

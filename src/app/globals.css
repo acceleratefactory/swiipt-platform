@@ -129,11 +129,16 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Product cards — compact on mobile */
 @media (max-width: 640px) {
+  .product-grid {
+    margin-left: -2rem;
+    margin-right: -2rem;
+    width: calc(100% + 4rem);
+  }
   .product-card {
-    padding: 1.25rem !important;
+    padding: 1rem !important;
   }
   .product-card h3 {
-    font-size: 1rem !important;
+    font-size: 0.9375rem !important;
   }
   .product-card p {
     font-size: 0.8125rem !important;
@@ -141,14 +146,19 @@ h1, h2, h3, h4, h5, h6 {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    margin-bottom: 0.5rem !important;
   }
   .product-card > div:first-child {
-    width: 40px !important;
-    height: 40px !important;
-    margin-bottom: 0.75rem !important;
+    width: 32px !important;
+    height: 32px !important;
+    margin-bottom: 0.5rem !important;
   }
   .product-card > div:first-child svg {
-    width: 20px !important;
-    height: 20px !important;
+    width: 16px !important;
+    height: 16px !important;
+  }
+  .product-card span {
+    font-size: 0.6875rem !important;
+    padding: 2px 8px !important;
   }
 }
