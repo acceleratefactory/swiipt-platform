@@ -86,14 +86,7 @@ export default function ProductCards() {
         </div>
 
         {/* Card grid: 3 columns desktop, 1 column mobile */}
-        <div
-          style={{
-            display: "grid",
-            gap: "1.5rem",
-            gridTemplateColumns: "1fr",
-          }}
-          className="md:grid-cols-3"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {cards.map((card) => (
             <a
               key={card.title}

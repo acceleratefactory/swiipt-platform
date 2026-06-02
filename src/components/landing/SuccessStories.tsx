@@ -59,14 +59,7 @@ export default function SuccessStories() {
         </div>
 
         {/* Cards grid */}
-        <div
-          style={{
-            display: "grid",
-            gap: "1.5rem",
-            gridTemplateColumns: "1fr",
-          }}
-          className="md:grid-cols-3"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {stories.map((story) => (
             <div
               key={story.name}
