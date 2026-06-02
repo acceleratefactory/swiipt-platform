@@ -23,6 +23,7 @@ export default function FlightSearchWidget() {
 
   return (
     <div
+      className="flight-card"
       style={{
         background: "white",
         borderRadius: "var(--radius-xl)",
