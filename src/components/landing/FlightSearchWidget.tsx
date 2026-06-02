@@ -80,8 +80,13 @@ export default function FlightSearchWidget() {
 
           {/* FROM / TO */}
           <div
-            className="flex flex-col gap-2 md:!grid md:!grid-cols-[1fr_auto_1fr] md:items-center md:gap-2"
-            style={{ marginBottom: "0.75rem" }}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr",
+              gap: "0.5rem",
+              alignItems: "center",
+              marginBottom: "0.75rem",
+            }}
           >
             {/* FROM */}
             <div
@@ -169,8 +174,12 @@ export default function FlightSearchWidget() {
 
           {/* Depart / Return / Travellers */}
           <div
-            className="flex flex-col gap-2 sm:!grid sm:!grid-cols-2 md:!grid-cols-3 md:gap-2"
-            style={{ marginBottom: "1rem" }}
+            style={{
+              display: "grid",
+              gridTemplateColumns: tripType === "oneway" ? "1fr 1fr" : "1fr 1fr 1fr",
+              gap: "0.5rem",
+              marginBottom: "1rem",
+            }}
           >
             {/* Depart */}
             <div
@@ -335,7 +344,11 @@ export default function FlightSearchWidget() {
             />
           </div>
           <div
-            className="flex flex-col gap-2 sm:!grid sm:!grid-cols-2 sm:gap-2"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "0.5rem",
+            }}
           >
             <div
               className="date-field"
