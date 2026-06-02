@@ -90,12 +90,3 @@ h1, h2, h3, h4, h5, h6 {
 .destination-card:hover .destination-overlay {
   opacity: 0.96;
 }
-
-/* Flight card — full width on mobile */
-@media (max-width: 640px) {
-  .flight-card {
-    border-radius: 0 !important;
-    margin-left: calc(-1 * clamp(1.25rem, 3vw, 1.5rem)) !important;
-    margin-right: calc(-1 * clamp(1.25rem, 3vw, 1.5rem)) !important;
-  }
-}

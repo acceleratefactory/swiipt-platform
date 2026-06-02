@@ -23,7 +23,6 @@ export default function FlightSearchWidget() {
 
   return (
     <div
-      className="flight-card"
       style={{
         background: "white",
         borderRadius: "var(--radius-xl)",
@@ -78,7 +77,7 @@ export default function FlightSearchWidget() {
             ))}
           </div>
 
-          {/* FROM / TO — desktop: side by side | mobile: stacked */}
+          {/* FROM / TO */}
           <div
             className="flex flex-col gap-2 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-2"
             style={{ marginBottom: "0.75rem" }}
@@ -168,7 +167,7 @@ export default function FlightSearchWidget() {
             </div>
           </div>
 
-          {/* Depart / Return / Travellers — desktop: 3-col row | mobile: stacked */}
+          {/* Depart / Return / Travellers */}
           <div
             className="flex flex-col gap-2 sm:grid sm:grid-cols-2 md:grid-cols-3 md:gap-2"
             style={{ marginBottom: "1rem" }}
@@ -200,7 +199,6 @@ export default function FlightSearchWidget() {
                   fontWeight: 500,
                   width: "100%",
                   color: "var(--text-primary)",
-                  background: "transparent",
                 }}
               />
             </div>
@@ -233,7 +231,6 @@ export default function FlightSearchWidget() {
                     fontWeight: 500,
                     width: "100%",
                     color: "var(--text-primary)",
-                    background: "transparent",
                   }}
                 />
               </div>
@@ -332,7 +329,9 @@ export default function FlightSearchWidget() {
               }}
             />
           </div>
-          <div className="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-2">
+          <div
+            className="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-2"
+          >
             <div
               style={{
                 border: "1px solid var(--border)",
@@ -358,7 +357,6 @@ export default function FlightSearchWidget() {
                   fontSize: "14px",
                   fontWeight: 500,
                   width: "100%",
-                  background: "transparent",
                 }}
               />
             </div>
