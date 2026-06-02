@@ -116,3 +116,13 @@ h1, h2, h3, h4, h5, h6 {
 .date-placeholder {
   display: none;
 }
+
+/* Eligibility card — full width on mobile */
+@media (max-width: 640px) {
+  .eligibility-card {
+    margin-left: -2rem !important;
+    margin-right: -2rem !important;
+    border-radius: var(--radius-xl) !important;
+    max-width: none !important;
+  }
+}

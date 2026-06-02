@@ -177,6 +177,7 @@ export default function EligibilityChecker() {
 
         {/* Centered card */}
         <div
+          className="eligibility-card"
           style={{
             maxWidth: "600px",
             margin: "0 auto",
