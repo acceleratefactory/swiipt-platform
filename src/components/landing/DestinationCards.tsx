@@ -55,7 +55,10 @@ export default function DestinationCards() {
                 style={{
                   width: "100%",
                   height: "100%",
-                  background: `${dest.gradient}, url(${dest.image}) center/cover no-repeat`,
+                  backgroundImage: `url(${dest.image})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundColor: "#0d3d5c",
                 }}
               />
 

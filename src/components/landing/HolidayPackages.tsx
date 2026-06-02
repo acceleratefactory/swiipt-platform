@@ -137,7 +137,10 @@ export default function HolidayPackages() {
               <div
                 style={{
                   height: "160px",
-                  background: `${pkg.gradient}, url(${pkg.image}) center/cover no-repeat`,
+                  backgroundImage: `url(${pkg.image})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundColor: "#0d3d5c",
                   position: "relative",
                 }}
               >
