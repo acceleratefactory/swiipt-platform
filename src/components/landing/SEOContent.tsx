@@ -45,14 +45,7 @@ export default function SEOContent() {
           Everything you need to know about relocating
         </h2>
 
-        <div
-          style={{
-            display: "grid",
-            gap: "2rem",
-            gridTemplateColumns: "1fr",
-          }}
-          className="md:grid-cols-3"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {seoLinks.map((col) => (
             <div key={col.heading}>
               <h3

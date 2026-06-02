@@ -29,12 +29,7 @@ export default function Footer() {
       <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 2rem" }}>
         {/* Four-column grid */}
         <div
-          style={{
-            display: "grid",
-            gap: "2rem",
-            gridTemplateColumns: "1fr",
-          }}
-          className="md:grid-cols-4"
+          className="grid grid-cols-1 md:grid-cols-4 gap-8"
         >
           {/* Column 1 — Brand */}
           <div>
