@@ -58,7 +58,7 @@ const packages = [
     duration: "3 nights \u00B7 4 days",
     slots: 15,
     gradient: "linear-gradient(135deg, #8B4513, #D4A017)",
-    image: "https://images.unsplash.com/photo-1549927338-852005a24f69?w=400&h=200&fit=crop",
+    image: "https://images.unsplash.com/photo-1578895101408-1a36b834405b?w=400&h=200&fit=crop",
     badge: null,
   },
 ];
