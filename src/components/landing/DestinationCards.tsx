@@ -1,13 +1,13 @@
 const destinations = [
-  { name: "Dubai", country: "UAE", flag: "🇦🇪", savers: "2,400", topGoal: "Residency", gradient: "linear-gradient(135deg, #1a6b9e, #0d3d5c)" },
-  { name: "London", country: "UK", flag: "🇬🇧", savers: "1,890", topGoal: "Work Visa", gradient: "linear-gradient(135deg, #2c3e50, #3498db)" },
-  { name: "Toronto", country: "Canada", flag: "🇨🇦", savers: "1,650", topGoal: "PR Pathway", gradient: "linear-gradient(135deg, #c0392b, #8e44ad)" },
-  { name: "Maldives", country: "Maldives", flag: "🇲🇻", savers: "980", topGoal: "Holiday", gradient: "linear-gradient(135deg, #00b4d8, #0077b6)" },
-  { name: "Doha", country: "Qatar", flag: "🇶🇦", savers: "870", topGoal: "Work Visa", gradient: "linear-gradient(135deg, #8B4513, #D4A017)" },
-  { name: "Lisbon", country: "Portugal", flag: "🇵🇹", savers: "720", topGoal: "Remote Work Visa", gradient: "linear-gradient(135deg, #e74c3c, #f39c12)" },
-  { name: "Cape Town", country: "South Africa", flag: "🇿🇦", savers: "540", topGoal: "Holiday", gradient: "linear-gradient(135deg, #27ae60, #2980b9)" },
-  { name: "Tbilisi", country: "Georgia", flag: "🇬🇪", savers: "430", topGoal: "Remote Work Visa", gradient: "linear-gradient(135deg, #e67e22, #d35400)" },
-  { name: "St Kitts", country: "Caribbean", flag: "🇰🇳", savers: "210", topGoal: "2nd Citizenship", gradient: "linear-gradient(135deg, #1abc9c, #16a085)" },
+  { name: "Dubai", country: "UAE", flag: "🇦🇪", savers: "2,400", topGoal: "Residency", gradient: "linear-gradient(135deg, #1a6b9e, #0d3d5c)", image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&h=220&fit=crop" },
+  { name: "London", country: "UK", flag: "🇬🇧", savers: "1,890", topGoal: "Work Visa", gradient: "linear-gradient(135deg, #2c3e50, #3498db)", image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&h=220&fit=crop" },
+  { name: "Toronto", country: "Canada", flag: "🇨🇦", savers: "1,650", topGoal: "PR Pathway", gradient: "linear-gradient(135deg, #c0392b, #8e44ad)", image: "https://images.unsplash.com/photo-1517090504332-94f1c2e7de81?w=400&h=220&fit=crop" },
+  { name: "Maldives", country: "Maldives", flag: "🇲🇻", savers: "980", topGoal: "Holiday", gradient: "linear-gradient(135deg, #00b4d8, #0077b6)", image: "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=400&h=220&fit=crop" },
+  { name: "Doha", country: "Qatar", flag: "🇶🇦", savers: "870", topGoal: "Work Visa", gradient: "linear-gradient(135deg, #8B4513, #D4A017)", image: "https://images.unsplash.com/photo-1549927338-852005a24f69?w=400&h=220&fit=crop" },
+  { name: "Lisbon", country: "Portugal", flag: "🇵🇹", savers: "720", topGoal: "Remote Work Visa", gradient: "linear-gradient(135deg, #e74c3c, #f39c12)", image: "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=400&h=220&fit=crop" },
+  { name: "Cape Town", country: "South Africa", flag: "🇿🇦", savers: "540", topGoal: "Holiday", gradient: "linear-gradient(135deg, #27ae60, #2980b9)", image: "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=400&h=220&fit=crop" },
+  { name: "Tbilisi", country: "Georgia", flag: "🇬🇪", savers: "430", topGoal: "Remote Work Visa", gradient: "linear-gradient(135deg, #e67e22, #d35400)", image: "https://images.unsplash.com/photo-1565008576550-0c6603b1e5aa?w=400&h=220&fit=crop" },
+  { name: "St Kitts", country: "Caribbean", flag: "🇰🇳", savers: "210", topGoal: "2nd Citizenship", gradient: "linear-gradient(135deg, #1abc9c, #16a085)", image: "https://images.unsplash.com/photo-1548574505-5e239809ee19?w=400&h=220&fit=crop" },
 ];
 
 export default function DestinationCards() {
@@ -50,12 +50,12 @@ export default function DestinationCards() {
                 cursor: "pointer",
               }}
             >
-              {/* Gradient background */}
+              {/* Photo with gradient overlay */}
               <div
                 style={{
                   width: "100%",
                   height: "100%",
-                  background: dest.gradient,
+                  background: `${dest.gradient}, url(${dest.image}) center/cover no-repeat`,
                 }}
               />
 

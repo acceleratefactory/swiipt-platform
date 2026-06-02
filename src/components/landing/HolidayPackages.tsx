@@ -10,6 +10,7 @@ const packages = [
     duration: "5 nights \u00B7 6 days",
     slots: 8,
     gradient: "linear-gradient(135deg, #00b4d8, #0077b6)",
+    image: "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?w=400&h=200&fit=crop",
     badge: "Best Seller",
   },
   {
@@ -21,6 +22,7 @@ const packages = [
     duration: "4 nights \u00B7 5 days",
     slots: 12,
     gradient: "linear-gradient(135deg, #f7971e, #ffd200)",
+    image: "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&h=200&fit=crop",
     badge: null,
   },
   {
@@ -32,6 +34,7 @@ const packages = [
     duration: "6 nights \u00B7 7 days",
     slots: 6,
     gradient: "linear-gradient(135deg, #56ab2f, #a8e063)",
+    image: "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=400&h=200&fit=crop",
     badge: "6 spots left",
   },
   {
@@ -43,6 +46,7 @@ const packages = [
     duration: "7 nights \u00B7 8 days",
     slots: 4,
     gradient: "linear-gradient(135deg, #2c3e50, #4ca1af)",
+    image: "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=400&h=200&fit=crop",
     badge: "4 spots left",
   },
   {
@@ -54,6 +58,7 @@ const packages = [
     duration: "3 nights \u00B7 4 days",
     slots: 15,
     gradient: "linear-gradient(135deg, #8B4513, #D4A017)",
+    image: "https://images.unsplash.com/photo-1549927338-852005a24f69?w=400&h=200&fit=crop",
     badge: null,
   },
 ];
@@ -132,7 +137,7 @@ export default function HolidayPackages() {
               <div
                 style={{
                   height: "160px",
-                  background: pkg.gradient,
+                  background: `${pkg.gradient}, url(${pkg.image}) center/cover no-repeat`,
                   position: "relative",
                 }}
               >
