@@ -10,11 +10,11 @@ export default function FlightSearchWidget() {
 
   const tabStyle = (tab: Tab): React.CSSProperties => ({
     flex: 1,
-    padding: "0.75rem 0.5rem",
+    padding: "0.75rem 1rem",
     border: "none",
     background: "none",
     cursor: "pointer",
-    fontSize: "clamp(13px, 2.5vw, 14px)",
+    fontSize: "14px",
     fontWeight: activeTab === tab ? 600 : 400,
     color: activeTab === tab ? "var(--teal)" : "var(--text-muted)",
     borderBottom: activeTab === tab ? "2px solid var(--teal)" : "2px solid transparent",
@@ -27,7 +27,7 @@ export default function FlightSearchWidget() {
         background: "white",
         borderRadius: "var(--radius-xl)",
         boxShadow: "var(--shadow-lg)",
-        padding: "clamp(1.25rem, 3vw, 1.5rem)",
+        padding: "1.5rem",
         marginBottom: "-40px",
         position: "relative",
         zIndex: 10,
@@ -79,15 +79,20 @@ export default function FlightSearchWidget() {
 
           {/* FROM / TO */}
           <div
-            className="flex flex-col gap-2 md:grid md:grid-cols-[1fr_auto_1fr] md:items-center md:gap-2"
-            style={{ marginBottom: "0.75rem" }}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto 1fr",
+              gap: "0.5rem",
+              alignItems: "center",
+              marginBottom: "0.75rem",
+            }}
           >
             {/* FROM */}
             <div
               style={{
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
-                padding: "0.875rem 1rem",
+                padding: "0.75rem 1rem",
               }}
             >
               <div
@@ -118,8 +123,8 @@ export default function FlightSearchWidget() {
             {/* Swap button */}
             <button
               style={{
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 borderRadius: "50%",
                 border: "1px solid var(--border)",
                 background: "white",
@@ -128,7 +133,6 @@ export default function FlightSearchWidget() {
                 justifyContent: "center",
                 cursor: "pointer",
                 flexShrink: 0,
-                alignSelf: "center",
               }}
             >
               ⇄
@@ -139,7 +143,7 @@ export default function FlightSearchWidget() {
               style={{
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
-                padding: "0.875rem 1rem",
+                padding: "0.75rem 1rem",
               }}
             >
               <div
@@ -169,15 +173,19 @@ export default function FlightSearchWidget() {
 
           {/* Depart / Return / Travellers */}
           <div
-            className="flex flex-col gap-2 sm:grid sm:grid-cols-2 md:grid-cols-3 md:gap-2"
-            style={{ marginBottom: "1rem" }}
+            style={{
+              display: "grid",
+              gridTemplateColumns: tripType === "oneway" ? "1fr 1fr" : "1fr 1fr 1fr",
+              gap: "0.5rem",
+              marginBottom: "1rem",
+            }}
           >
             {/* Depart */}
             <div
               style={{
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
-                padding: "0.875rem 1rem",
+                padding: "0.75rem 1rem",
               }}
             >
               <div
@@ -209,7 +217,7 @@ export default function FlightSearchWidget() {
                 style={{
                   border: "1px solid var(--border)",
                   borderRadius: "var(--radius-md)",
-                  padding: "0.875rem 1rem",
+                  padding: "0.75rem 1rem",
                 }}
               >
                 <div
@@ -241,7 +249,7 @@ export default function FlightSearchWidget() {
               style={{
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
-                padding: "0.875rem 1rem",
+                padding: "0.75rem 1rem",
                 cursor: "pointer",
               }}
             >
@@ -274,8 +282,7 @@ export default function FlightSearchWidget() {
             }}
             style={{
               width: "100%",
-              padding: "1rem",
-              minHeight: "48px",
+              padding: "0.875rem",
               background: "var(--teal)",
               color: "var(--midnight)",
               fontWeight: 700,
@@ -304,7 +311,7 @@ export default function FlightSearchWidget() {
             style={{
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-md)",
-              padding: "0.875rem 1rem",
+              padding: "0.75rem 1rem",
             }}
           >
             <div
@@ -330,13 +337,17 @@ export default function FlightSearchWidget() {
             />
           </div>
           <div
-            className="flex flex-col gap-2 sm:grid sm:grid-cols-2 sm:gap-2"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "0.5rem",
+            }}
           >
             <div
               style={{
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
-                padding: "0.875rem 1rem",
+                padding: "0.75rem 1rem",
               }}
             >
               <div
@@ -364,7 +375,7 @@ export default function FlightSearchWidget() {
               style={{
                 border: "1px solid var(--border)",
                 borderRadius: "var(--radius-md)",
-                padding: "0.875rem 1rem",
+                padding: "0.75rem 1rem",
               }}
             >
               <div
@@ -393,8 +404,7 @@ export default function FlightSearchWidget() {
             }}
             style={{
               width: "100%",
-              padding: "1rem",
-              minHeight: "48px",
+              padding: "0.875rem",
               background: "var(--teal)",
               color: "var(--midnight)",
               fontWeight: 700,
@@ -416,7 +426,7 @@ export default function FlightSearchWidget() {
             style={{
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-md)",
-              padding: "0.875rem 1rem",
+              padding: "0.75rem 1rem",
             }}
           >
             <div
@@ -452,7 +462,7 @@ export default function FlightSearchWidget() {
             style={{
               border: "1px solid var(--border)",
               borderRadius: "var(--radius-md)",
-              padding: "0.875rem 1rem",
+              padding: "0.75rem 1rem",
             }}
           >
             <div
@@ -483,8 +493,7 @@ export default function FlightSearchWidget() {
             }}
             style={{
               width: "100%",
-              padding: "1rem",
-              minHeight: "48px",
+              padding: "0.875rem",
               background: "var(--teal)",
               color: "var(--midnight)",
               fontWeight: 700,
