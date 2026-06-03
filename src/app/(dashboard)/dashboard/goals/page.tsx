@@ -1,19 +1,17 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import GoalsList from "@/components/dashboard/goals/GoalsList";
 
 export default async function GoalsPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  return (
-    <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "2rem" }}>
-      <h2 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", color: "var(--midnight)", marginBottom: "0.5rem" }}>
-        My Goals — Sprint 5
-      </h2>
-      <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
-        This section builds in Sprint 5.
-      </p>
-    </div>
-  );
+  const { data: goals } = await supabase
+    .from("savings_goals")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  return <GoalsList initialGoals={goals || []} userId={user.id} />;
 }
