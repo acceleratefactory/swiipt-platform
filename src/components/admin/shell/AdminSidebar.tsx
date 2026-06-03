@@ -1,0 +1,146 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+import {
+  LayoutDashboard,
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Users,
+  Package,
+  FileText,
+  Globe,
+  Umbrella,
+  DollarSign,
+  Trophy,
+  Tag,
+  Bell,
+  Building2,
+  TrendingUp,
+  Settings,
+  BarChart2,
+} from "lucide-react";
+
+const navItems: Array<{
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  badge?: number;
+}> = [
+  { href: "/admin", label: "Overview", icon: <LayoutDashboard size={16} /> },
+  { href: "/admin/deposits", label: "Deposits", icon: <ArrowDownCircle size={16} />, badge: 0 },
+  { href: "/admin/withdrawals", label: "Withdrawals", icon: <ArrowUpCircle size={16} />, badge: 0 },
+  { href: "/admin/users", label: "Users", icon: <Users size={16} /> },
+  { href: "/admin/orders", label: "Orders", icon: <Package size={16} /> },
+  { href: "/admin/documents", label: "Documents", icon: <FileText size={16} /> },
+  { href: "/admin/services", label: "Services", icon: <Globe size={16} /> },
+  { href: "/admin/holidays", label: "Holidays", icon: <Umbrella size={16} /> },
+  { href: "/admin/currencies", label: "Currencies", icon: <DollarSign size={16} /> },
+  { href: "/admin/leaderboard", label: "Leaderboard", icon: <Trophy size={16} /> },
+  { href: "/admin/promotions", label: "Promotions", icon: <Tag size={16} /> },
+  { href: "/admin/notifications", label: "Notifications", icon: <Bell size={16} /> },
+  { href: "/admin/corporate", label: "Corporate", icon: <Building2 size={16} /> },
+  { href: "/admin/float", label: "Float Ledger", icon: <TrendingUp size={16} /> },
+  { href: "/admin/settings", label: "Settings", icon: <Settings size={16} /> },
+  { href: "/admin/analytics", label: "Analytics", icon: <BarChart2 size={16} /> },
+];
+
+export default function AdminSidebar({
+  pendingDeposits,
+  pendingWithdrawals,
+}: {
+  pendingDeposits: number;
+  pendingWithdrawals: number;
+}) {
+  const pathname = usePathname();
+
+  const items = navItems.map((item) => {
+    let badge = item.badge;
+    if (item.href === "/admin/deposits") badge = pendingDeposits;
+    if (item.href === "/admin/withdrawals") badge = pendingWithdrawals;
+    const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+
+    return (
+      <a
+        key={item.href}
+        href={item.href}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0.5rem 0.75rem",
+          borderRadius: "var(--radius-sm)",
+          textDecoration: "none",
+          color: isActive ? "var(--midnight)" : "var(--text-secondary)",
+          background: isActive ? "var(--gray-100)" : "transparent",
+          fontWeight: isActive ? 600 : 400,
+          marginBottom: "0.125rem",
+          fontSize: "0.8125rem",
+        }}
+      >
+        <span style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          {item.icon}
+          {item.label}
+        </span>
+        {(badge ?? 0) > 0 && (
+          <span
+            style={{
+              background: "var(--danger)",
+              color: "white",
+              borderRadius: "20px",
+              fontSize: "0.65rem",
+              fontWeight: 700,
+              padding: "1px 6px",
+              minWidth: 18,
+              textAlign: "center",
+            }}
+          >
+            {badge}
+          </span>
+        )}
+      </a>
+    );
+  });
+
+  return (
+    <div
+      style={{
+        width: 220,
+        minWidth: 220,
+        background: "white",
+        borderRight: "1px solid var(--border)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        overflowY: "auto",
+      }}
+    >
+      <div
+        style={{
+          padding: "1rem",
+          borderBottom: "1px solid var(--border)",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif",
+            fontWeight: 800,
+            fontSize: "1.125rem",
+            color: "var(--midnight)",
+          }}
+        >
+          Swiipt
+        </div>
+        <div
+          style={{
+            fontSize: "0.7rem",
+            color: "var(--text-muted)",
+            marginTop: "0.125rem",
+          }}
+        >
+          Admin Panel
+        </div>
+      </div>
+      <nav style={{ padding: "0.5rem", flex: 1 }}>{items}</nav>
+    </div>
+  );
+}
