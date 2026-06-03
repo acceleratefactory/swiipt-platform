@@ -1,43 +1,50 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import WelcomeBanner from "@/components/dashboard/home/WelcomeBanner";
+import WalletCard from "@/components/dashboard/home/WalletCard";
+import GoalsGrid from "@/components/dashboard/home/GoalsGrid";
+import ActiveOrders from "@/components/dashboard/home/ActiveOrders";
+import ExploreSection from "@/components/dashboard/home/ExploreSection";
 
-export default async function DashboardPage() {
+export default async function DashboardHomePage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("full_name, referral_code, mobility_score")
-    .eq("id", user.id)
-    .single();
+  const [profileRes, walletRes, goalsRes, ordersRes, welcomeRewardRes] = await Promise.all([
+    supabase.from("users").select("*").eq("id", user.id).single(),
+    supabase.from("wallets").select("*").eq("user_id", user.id).single(),
+    supabase.from("savings_goals").select("*").eq("user_id", user.id).eq("status", "active").order("created_at", { ascending: false }),
+    supabase.from("service_orders" as any).select("*, service_packages(name, category, destination)").eq("user_id", user.id).not("status", "in", '("completed","cancelled")').order("created_at", { ascending: false }).limit(3),
+    supabase.from("milestone_rewards" as any).select("*").eq("user_id", user.id).eq("milestone_type", "welcome_gift").eq("redeemed", false).single(),
+  ]);
 
-  const { data: goals } = await supabase
-    .from("savings_goals")
-    .select("*")
-    .eq("user_id", user.id)
-    .eq("status", "active");
+  if (!profileRes.data) redirect("/onboarding");
+  const profile = profileRes.data;
+  const wallet = walletRes.data as unknown as { balance_ngn: number; total_locked_ngn: number; total_credits_ngn: number } | null;
+  const goals = goalsRes.data || [];
+  const activeOrders = (ordersRes.data || []) as unknown as Array<{ id: string; status: string; service_packages: { name: string; category: string; destination: string } | null }>;
+  const welcomeReward = welcomeRewardRes.data as unknown as { id: string } | null;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--off-white)", fontFamily: "Plus Jakarta Sans, sans-serif" }}>
-      <div style={{ background: "var(--midnight)", padding: "1rem 2rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontWeight: 800, fontSize: "1.25rem", color: "white" }}>Swiipt</span>
-        <span style={{ color: "var(--gray-300)", fontSize: "0.875rem" }}>Welcome, {profile?.full_name?.split(" ")[0]} 👋</span>
-      </div>
+    <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+      {welcomeReward && (
+        <WelcomeBanner reward={welcomeReward} userId={user.id} />
+      )}
 
-      <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "2rem" }}>
-        <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "2rem", marginBottom: "1rem" }}>
-          <h2 style={{ fontFamily: "Cabinet Grotesk, sans-serif", color: "var(--midnight)", marginBottom: "0.5rem" }}>
-            Dashboard — Sprint 4
-          </h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
-            Full dashboard UI builds in Sprint 4. Auth and onboarding are complete.
-          </p>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginTop: "0.5rem" }}>
-            Mobility score: {profile?.mobility_score} · Goals active: {goals?.length || 0}
-          </p>
-        </div>
-      </div>
+      <WalletCard
+        wallet={wallet}
+        profile={profile}
+        goalCount={goals.length}
+      />
+
+      <GoalsGrid goals={goals} userId={user.id} />
+
+      {activeOrders.length > 0 && (
+        <ActiveOrders orders={activeOrders} />
+      )}
+
+      <ExploreSection goals={goals} />
     </div>
   );
 }
