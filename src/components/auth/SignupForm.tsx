@@ -101,7 +101,6 @@ export default function SignupForm({
         style={{
           background: "var(--midnight)",
           padding: "3rem",
-          display: "flex",
           flexDirection: "column",
           justifyContent: "center",
           width: "50%",
@@ -225,6 +224,12 @@ export default function SignupForm({
             <button
               type="button"
               onClick={handleGoogleSignup}
+              onMouseEnter={(e) => {
+                (e.target as HTMLElement).style.borderColor = "var(--teal)";
+              }}
+              onMouseLeave={(e) => {
+                (e.target as HTMLElement).style.borderColor = "var(--border)";
+              }}
               style={{
                 width: "100%",
                 padding: "0.75rem",
@@ -240,6 +245,7 @@ export default function SignupForm({
                 color: "var(--text-primary)",
                 cursor: "pointer",
                 marginBottom: "1rem",
+                transition: "all 0.15s",
               }}
             >
               <svg width="18" height="18" viewBox="0 0 18 18">
@@ -386,6 +392,12 @@ export default function SignupForm({
               <button
                 type="submit"
                 disabled={loading}
+                onMouseEnter={(e) => {
+                  if (!loading) (e.target as HTMLElement).style.background = "var(--teal-light)";
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) (e.target as HTMLElement).style.background = "var(--teal)";
+                }}
                 style={{
                   width: "100%",
                   padding: "0.875rem",
@@ -396,6 +408,7 @@ export default function SignupForm({
                   borderRadius: "var(--radius-md)",
                   border: "none",
                   cursor: loading ? "not-allowed" : "pointer",
+                  transition: "all 0.15s",
                 }}
               >
                 {loading ? "Creating account..." : "Create free account"}
