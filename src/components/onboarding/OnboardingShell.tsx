@@ -18,17 +18,16 @@ type GoalFormData = {
 };
 
 export default function OnboardingShell({
-  user: _user,
+  user,
 }: {
   user: { id: string; full_name?: string; referral_code?: string };
 }) {
-  const [step, _setStep] = useState(1);
-  const [_goalData, _setGoalData] = useState<Partial<GoalFormData>>({});
+  const [step, setStep] = useState(1);
+  const [goalData, setGoalData] = useState<Partial<GoalFormData>>({});
   const totalSteps = 4;
 
   return (
     <div style={{ minHeight: "100vh", background: "white" }}>
-      {/* Top bar */}
       <div
         style={{
           padding: "1.5rem 2rem",
@@ -50,14 +49,11 @@ export default function OnboardingShell({
         >
           Swiipt
         </a>
-        <span
-          style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}
-        >
+        <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
           Step {step} of {totalSteps}
         </span>
       </div>
 
-      {/* Progress bar */}
       <div style={{ height: "3px", background: "var(--gray-100)" }}>
         <div
           style={{
@@ -69,7 +65,6 @@ export default function OnboardingShell({
         />
       </div>
 
-      {/* Step content */}
       <div
         style={{
           maxWidth: "560px",
@@ -77,10 +72,32 @@ export default function OnboardingShell({
           padding: "3rem 1.5rem",
         }}
       >
-        {step === 1 && <StepDestination />}
-        {step === 2 && <StepGoalSetup />}
-        {step === 3 && <StepReferral />}
-        {step === 4 && <StepWelcome />}
+        {step === 1 && (
+          <StepDestination
+            onNext={(data) => {
+              setGoalData({ ...goalData, ...data });
+              setStep(2);
+            }}
+          />
+        )}
+        {step === 2 && (
+          <StepGoalSetup
+            goalData={goalData}
+            onNext={(data) => {
+              setGoalData({ ...goalData, ...data });
+              setStep(3);
+            }}
+            onBack={() => setStep(1)}
+          />
+        )}
+        {step === 3 && (
+          <StepReferral
+            user={user}
+            onNext={() => setStep(4)}
+            onBack={() => setStep(2)}
+          />
+        )}
+        {step === 4 && <StepWelcome goalData={goalData} user={user} />}
       </div>
     </div>
   );

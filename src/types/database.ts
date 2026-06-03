@@ -137,8 +137,25 @@ export interface Database {
         }>
         Relationships: []
       }
+      activity_log: {
+        Row: {
+          id: string
+          user_id: string
+          event_type: string
+          event_data: Json | null
+          created_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['activity_log']['Row'], 'id' | 'created_at'>
+        Update: Partial<Database['public']['Tables']['activity_log']['Insert']>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      increment_mobility_score: {
+        Args: { user_id_input: string; points: number }
+        Returns: void
+      }
+    }
   }
 }
