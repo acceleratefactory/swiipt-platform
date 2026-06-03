@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import OrdersTable from "@/components/admin/orders/OrdersTable";
 
 export default async function AdminOrdersPage() {
   const supabase = createClient();
@@ -9,10 +10,23 @@ export default async function AdminOrdersPage() {
   const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) redirect("/dashboard");
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: orders } = await (supabase as any)
+    .from("service_orders")
+    .select(`
+      *,
+      users(full_name, email),
+      service_packages(name, category, destination)
+    `)
+    .not("status", "in", '("cancelled")')
+    .order("created_at", { ascending: false });
+
   return (
-    <div style={{ background: 'white', borderRadius: 'var(--radius-md)', padding: '2rem', border: '1px solid var(--border)' }}>
-      <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', color: 'var(--midnight)', marginBottom: '0.5rem' }}>Orders — Sprint 7</h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Full order management builds in Sprint 7.</p>
+    <div>
+      <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1.375rem', fontWeight: 800, color: 'var(--midnight)', marginBottom: '1.5rem' }}>
+        Service Orders
+      </h1>
+      <OrdersTable orders={orders || []} />
     </div>
   );
 }

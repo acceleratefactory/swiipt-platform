@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import DocumentVerificationQueue from "@/components/admin/documents/DocumentVerificationQueue";
+import { notFound } from "next/navigation";
+import OrderDetailView from "@/components/admin/orders/OrderDetailView";
 
-export default async function AdminDocumentsPage() {
+export default async function AdminOrderDetailPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -11,25 +12,30 @@ export default async function AdminDocumentsPage() {
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) redirect("/dashboard");
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pendingDocs } = await (supabase as any)
-    .from("document_requests")
+  const { data: order } = await (supabase as any)
+    .from("service_orders")
     .select(`
       *,
-      users(full_name, email),
-      service_orders(service_packages(name))
+      users(full_name, email, mobility_score),
+      service_packages(*)
     `)
-    .eq("status", "uploaded")
-    .order("uploaded_at", { ascending: true });
+    .eq("id", params.id)
+    .single();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: documents } = await (supabase as any)
+    .from("document_requests")
+    .select("*")
+    .eq("order_id", params.id);
+
+  if (!order) notFound();
 
   return (
     <div>
       <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1.375rem', fontWeight: 800, color: 'var(--midnight)', marginBottom: '1.5rem' }}>
-        Document verification
+        Order details
       </h1>
-      <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-        {pendingDocs?.length || 0} document(s) pending review
-      </p>
-      <DocumentVerificationQueue initialDocs={pendingDocs || []} />
+      <OrderDetailView order={order} documents={documents || []} adminId={user.id} />
     </div>
   );
 }
