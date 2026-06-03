@@ -13,7 +13,7 @@ function getGreeting() {
 export default function WalletCard({
   wallet,
   profile,
-  goalCount,
+  goalCount: _goalCount,
 }: {
   wallet: { balance_ngn: number; total_locked_ngn: number; total_credits_ngn: number } | null;
   profile: { full_name: string };

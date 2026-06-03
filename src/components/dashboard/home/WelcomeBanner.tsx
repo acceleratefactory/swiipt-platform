@@ -4,8 +4,8 @@ import { useState } from "react";
 import { X } from "lucide-react";
 
 export default function WelcomeBanner({
-  reward,
-  userId,
+  reward: _reward,
+  userId: _userId,
 }: {
   reward: { id: string };
   userId: string;

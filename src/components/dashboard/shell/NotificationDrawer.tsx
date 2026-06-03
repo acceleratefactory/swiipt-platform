@@ -60,6 +60,7 @@ export default function NotificationDrawer({
   async function markAllRead() {
     await supabase
       .from("notifications")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .update({ is_read: true } as any)
       .eq("user_id", userId)
       .eq("is_read", false);

@@ -15,8 +15,10 @@ export default async function DashboardHomePage() {
     supabase.from("users").select("*").eq("id", user.id).single(),
     supabase.from("wallets").select("*").eq("user_id", user.id).single(),
     supabase.from("savings_goals").select("*").eq("user_id", user.id).eq("status", "active").order("created_at", { ascending: false }),
-    supabase.from("service_orders" as any).select("*, service_packages(name, category, destination)").eq("user_id", user.id).not("status", "in", '("completed","cancelled")').order("created_at", { ascending: false }).limit(3),
-    supabase.from("milestone_rewards" as any).select("*").eq("user_id", user.id).eq("milestone_type", "welcome_gift").eq("redeemed", false).single(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("service_orders").select("*, service_packages(name, category, destination)").eq("user_id", user.id).not("status", "in", '("completed","cancelled")').order("created_at", { ascending: false }).limit(3),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("milestone_rewards").select("*").eq("user_id", user.id).eq("milestone_type", "welcome_gift").eq("redeemed", false).single(),
   ]);
 
   if (!profileRes.data) redirect("/onboarding");
