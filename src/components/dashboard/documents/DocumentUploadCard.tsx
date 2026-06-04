@@ -2,8 +2,8 @@
 import { useState } from "react";
 
 const statusConfig: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-  pending: { label: 'Upload required', color: '#B45309', bg: '#FEF3C7', icon: '' },
-  uploaded: { label: 'Uploaded — pending review', color: '#1D4ED8', bg: '#DBEAFE', icon: '' },
+  pending: { label: 'Upload required', color: '#B45309', bg: '#FEF3C7', icon: '📄' },
+  uploaded: { label: 'Uploaded — pending review', color: '#1D4ED8', bg: '#DBEAFE', icon: '⏳' },
   verified: { label: 'Verified ✓', color: 'var(--teal)', bg: 'var(--teal-pale)', icon: '✓' },
   rejected: { label: 'Re-upload required', color: 'var(--danger)', bg: '#FEF2F2', icon: '⚠️' },
 };
@@ -74,7 +74,7 @@ export default function DocumentUploadCard({ doc, userId: _userId, onUploaded }:
               flexShrink: 0,
             }}
           >
-            {uploading ? "Uploading..." : "Upload file"}
+            {uploading ? "Uploading..." : "📎 Upload file"}
             <input
               type="file"
               accept=".pdf,.jpg,.jpeg,.png,.webp"
