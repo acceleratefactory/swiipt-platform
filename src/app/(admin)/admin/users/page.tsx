@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import UserListTable from "@/components/admin/users/UserListTable";
 
 export default async function AdminUsersPage() {
   const supabase = createClient();
@@ -9,10 +10,24 @@ export default async function AdminUsersPage() {
   const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) redirect("/dashboard");
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: users, count } = await (supabase as any)
+    .from("users")
+    .select(`
+      id, full_name, email, phone, country_of_residence,
+      mobility_score, alumni_status, referral_code, created_at,
+      wallets(total_locked_ngn, balance_ngn),
+      user_roles(role)
+    `, { count: "exact" })
+    .order("created_at", { ascending: false })
+    .range(0, 49);
+
   return (
-    <div style={{ background: 'white', borderRadius: 'var(--radius-md)', padding: '2rem', border: '1px solid var(--border)' }}>
-      <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', color: 'var(--midnight)', marginBottom: '0.5rem' }}>Users — Sprint 7</h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Full user management builds in Sprint 7.</p>
+    <div>
+      <h1 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.5rem", fontWeight: 800, color: "var(--midnight)", marginBottom: "1.5rem" }}>
+        User Management
+      </h1>
+      <UserListTable users={users || []} totalCount={count || 0} />
     </div>
   );
 }
