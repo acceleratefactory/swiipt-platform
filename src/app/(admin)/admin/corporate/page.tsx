@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import CorporateClientsList from "@/components/admin/corporate/CorporateClientsList";
 
 export default async function AdminCorporatePage() {
   const supabase = createClient();
@@ -9,10 +10,18 @@ export default async function AdminCorporatePage() {
   const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) redirect("/dashboard");
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: clients } = await (supabase as any)
+    .from("corporate_clients")
+    .select("*")
+    .order("created_at", { ascending: false });
+
   return (
-    <div style={{ background: 'white', borderRadius: 'var(--radius-md)', padding: '2rem', border: '1px solid var(--border)' }}>
-      <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', color: 'var(--midnight)', marginBottom: '0.5rem' }}>Corporate — Sprint 10</h1>
-      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Full corporate management builds in Sprint 10.</p>
+    <div>
+      <h1 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.5rem", fontWeight: 800, color: "var(--midnight)", marginBottom: "1.5rem" }}>
+        Corporate Clients
+      </h1>
+      <CorporateClientsList clients={clients || []} />
     </div>
   );
 }
