@@ -28,11 +28,27 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
 
   // Protect dashboard routes
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("return", request.nextUrl.pathname);
-    return NextResponse.redirect(url);
+  if (request.nextUrl.pathname.startsWith("/dashboard")) {
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("return", request.nextUrl.pathname);
+      return NextResponse.redirect(url);
+    }
+    // Check for suspended users
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: roleData } = await (supabase as any)
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", user.id)
+      .single();
+
+    if (roleData?.role === "suspended") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("error", "account_suspended");
+      return NextResponse.redirect(url);
+    }
   }
 
   // Protect admin routes

@@ -36,7 +36,11 @@ export default function LoginForm({
   const [useMagicLink, setUsemagicLink] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(
-    authError === "auth_failed" ? "Sign-in failed. Please try again." : ""
+    authError === "auth_failed"
+      ? "Sign-in failed. Please try again."
+      : authError === "account_suspended"
+        ? "Your account has been suspended. Please contact support@swiipt.com."
+        : ""
   );
   const [showCheckEmail, setShowCheckEmail] = useState(false);
 
