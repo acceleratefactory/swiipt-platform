@@ -1,9 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import BroadcastForm from "@/components/admin/notifications/BroadcastForm";
-import NotificationHistory from "@/components/admin/notifications/NotificationHistory";
+import CreatePromotionForm from "@/components/admin/promotions/CreatePromotionForm";
 
-export default async function NotificationsPage() {
+export default async function NewPromotionPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -11,24 +10,15 @@ export default async function NotificationsPage() {
   const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") redirect("/dashboard");
 
-  const { data: broadcasts } = await supabase
-    .from("activity_log")
-    .select("id, created_at, event_data")
-    .eq("user_id", user.id)
-    .eq("event_type", "notification_broadcast")
-    .order("created_at", { ascending: false })
-    .limit(20);
-
   return (
     <div>
+      <a href="/admin/promotions" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '1.5rem' }}>
+        ← Back to promotions
+      </a>
       <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1.375rem', fontWeight: 800, color: 'var(--midnight)', marginBottom: '1.5rem' }}>
-        Broadcast Notifications
+        Create New Promotion
       </h1>
-
-      <div style={{ display: 'grid', gap: '1.5rem' }}>
-        <BroadcastForm />
-        <NotificationHistory broadcasts={broadcasts || []} />
-      </div>
+      <CreatePromotionForm />
     </div>
   );
 }

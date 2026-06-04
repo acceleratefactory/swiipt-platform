@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import AdminLeaderboardView from "./AdminLeaderboardView";
+import LeaderboardAdmin from "@/components/admin/leaderboard/LeaderboardAdmin";
 
 export default async function AdminLeaderboardPage() {
   const supabase = createClient();
@@ -14,9 +14,10 @@ export default async function AdminLeaderboardPage() {
   const periodKey = await (supabase as any).rpc("get_current_period_key");
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const [entriesRes, prizesRes] = await Promise.all([
+  const [entriesRes, prizesRes, allTimePrizesRes] = await Promise.all([
     (supabase as any).from("leaderboard_entries").select("*, users(full_name, email)").eq("period_key", periodKey.data).order("rank").limit(20),
     (supabase as any).from("leaderboard_prizes").select("*").eq("is_active", true).eq("period_type", "monthly").order("rank_position"),
+    (supabase as any).from("leaderboard_prizes").select("*").eq("period_type", "all_time").order("rank_position"),
   ]);
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -28,7 +29,12 @@ export default async function AdminLeaderboardPage() {
       <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
         Period: {periodKey.data} · {entriesRes.data?.length || 0} entries
       </p>
-      <AdminLeaderboardView entries={entriesRes.data || []} prizes={prizesRes.data || []} periodKey={periodKey.data} />
+      <LeaderboardAdmin
+        entries={entriesRes.data || []}
+        prizes={prizesRes.data || []}
+        allTimePrizes={allTimePrizesRes.data || []}
+        periodKey={periodKey.data}
+      />
     </div>
   );
 }
