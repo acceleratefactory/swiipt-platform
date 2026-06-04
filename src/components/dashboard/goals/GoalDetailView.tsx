@@ -7,6 +7,7 @@ import MilestoneTrack from "./MilestoneTrack";
 import TransactionHistory from "./TransactionHistory";
 import GoalDepositFlow from "./GoalDepositFlow";
 import GoalWithdrawFlow from "./GoalWithdrawFlow";
+import GiftToFriendFlow from "./GiftToFriendFlow";
 
 interface Goal {
   id: string;
@@ -308,32 +309,10 @@ export default function GoalDetailView({
         />
       )}
       {activeSection === "gift" && (
-        <div
-          style={{
-            background: "white",
-            borderRadius: "var(--radius-lg)",
-            padding: "2rem",
-            border: "1px solid var(--border)",
-            marginBottom: "1rem",
-            textAlign: "center",
-          }}
-        >
-          <p style={{ color: "var(--text-muted)", marginBottom: "1rem" }}>
-            Gift to a friend — Sprint 9
-          </p>
-          <button
-            onClick={() => setActiveSection("overview")}
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--teal)",
-              cursor: "pointer",
-              fontSize: "0.875rem",
-            }}
-          >
-            Cancel
-          </button>
-        </div>
+        <GiftToFriendFlow
+          goal={goal}
+          onClose={() => setActiveSection("overview")}
+        />
       )}
 
       <TransactionHistory
