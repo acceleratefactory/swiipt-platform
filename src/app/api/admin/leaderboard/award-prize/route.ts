@@ -33,6 +33,9 @@ export async function POST(request: NextRequest) {
   if (!prize) return NextResponse.json({ error: "No prize configured for this rank" }, { status: 404 });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("leaderboard_entries").update({ prize_awarded: true }).eq("id", leaderboardEntryId);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("milestone_rewards").insert({
     goal_id: null,
     user_id: entry.user_id,
