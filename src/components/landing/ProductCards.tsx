@@ -2,8 +2,8 @@ const cards = [
   {
     icon: "Target",
     title: "Save toward any goal",
-    body: "Set a savings goal for any destination. Lock funds for milestone rewards. Flexible or fixed terms — you choose.",
-    tag: "Flexible or locked savings",
+    body: "Set a goal toward any destination. Flexible or fixed terms — you choose.",
+    tag: "Flexible or locked",
     href: "/signup",
   },
   {
@@ -30,7 +30,7 @@ const cards = [
   {
     icon: "Globe",
     title: "2nd Citizenship & Company Setup",
-    body: "Citizenship by investment programs and company registration in UK, UAE, USA. Receive international payments legally.",
+    body: "Citizenship programs and company registration in UK, UAE, USA. Receive international payments legally.",
     tag: "Premium services",
     href: "/signup",
   },
