@@ -101,6 +101,7 @@ export default function ServiceMarketplace({
               cursor: 'pointer',
               whiteSpace: 'nowrap',
               flexShrink: 0,
+              transition: 'all 0.15s',
             }}
           >
             {cat.label}
