@@ -193,3 +193,10 @@ h1, h2, h3, h4, h5, h6 {
     position: sticky !important;
   }
 }
+
+.desktop-only { display: none; }
+.mobile-only { display: block; }
+@media (min-width: 641px) {
+  .desktop-only { display: block; }
+  .mobile-only { display: none; }
+}
