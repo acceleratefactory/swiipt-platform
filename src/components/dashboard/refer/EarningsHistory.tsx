@@ -19,7 +19,8 @@ export default function EarningsHistory({ referrals }: { referrals: any[] }) {
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
         <h3 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1rem', fontWeight: 700, color: 'var(--midnight)' }}>Referral history</h3>
       </div>
-      {referrals.map((r: any) => {
+      {// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        referrals.map((r: any) => {
         const status = statusConfig[r.commission_status] || statusConfig.pending;
         return (
           <div key={r.id} style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--gray-100)', display: 'flex', alignItems: 'center', gap: '1rem' }}>

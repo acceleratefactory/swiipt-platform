@@ -16,31 +16,6 @@ export default function GiftToFriendFlow({ goal, onClose }: { goal: any; onClose
 
   const max30Pct = Math.floor(goal.current_balance * 0.3);
 
-  async function handleSearchRecipient() {
-    setError("");
-    try {
-      const res = await fetch("/api/gifts/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          giverGoalId: goal.id,
-          recipientEmail,
-          recipientGoalId: "placeholder",
-          amount: 0,
-          message: "",
-          _validateOnly: true,
-        }),
-      });
-      if (res.ok) {
-        // If it succeeds (which it won't since validation will fail on amount > 0 check)
-        // This means the user exists - but the API doesn't have a lookup endpoint
-        // Fall back to just moving to step 2 for now
-      }
-    } catch {}
-    // For now, move to amount step after entering email
-    setStep(2);
-  }
-
   async function handleFindGoals() {
     setError("");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -82,6 +57,7 @@ export default function GiftToFriendFlow({ goal, onClose }: { goal: any; onClose
 
   if (success) {
     const referralUrl = typeof window !== 'undefined'
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       ? `${window.location.origin}/signup?ref=${(goal as any).referral_code || ''}`
       : 'https://swiipt.com/signup';
     return (
@@ -212,7 +188,7 @@ export default function GiftToFriendFlow({ goal, onClose }: { goal: any; onClose
             <p style={{ fontSize: '0.875rem', color: 'var(--midnight)', marginBottom: '0.5rem' }}>
               <strong>Goal:</strong> {recipientGoalName}
             </p>
-            {message && <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>"{message}"</p>}
+            {message && <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>&ldquo;{message}&rdquo;</p>}
           </div>
           {error && (
             <p style={{ fontSize: '0.8125rem', color: 'var(--danger)', marginBottom: '1rem', padding: '0.5rem 0.75rem', background: '#FEF2F2', borderRadius: 'var(--radius-sm)' }}>{error}</p>

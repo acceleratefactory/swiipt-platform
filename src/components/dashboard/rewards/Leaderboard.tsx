@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export default function Leaderboard({ entries: initialEntries, prizes, userEntry, userId }: { entries: any[]; prizes: any[]; userEntry: any; userId: string }) {
   const [entries, setEntries] = useState(initialEntries);
   const supabase = createClient();
@@ -102,3 +102,4 @@ export default function Leaderboard({ entries: initialEntries, prizes, userEntry
     </div>
   );
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */

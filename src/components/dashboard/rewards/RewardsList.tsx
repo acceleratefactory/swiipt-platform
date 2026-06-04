@@ -2,7 +2,7 @@
 import { useState } from "react";
 import PrizeConvertModal from "./PrizeConvertModal";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 export default function RewardsList({ rewards, userId, activeGoals }: { rewards: any[]; userId: string; activeGoals: any[] }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [convertModal, setConvertModal] = useState<any>(null);
@@ -28,7 +28,8 @@ export default function RewardsList({ rewards, userId, activeGoals }: { rewards:
         Your rewards
       </h2>
 
-      {unredeemedRewards.map((reward: any) => (
+      {// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        unredeemedRewards.map((reward: any) => (
         <div key={reward.id} style={{ background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', padding: '1.25rem', marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.625rem' }}>
             <div>
@@ -78,7 +79,8 @@ export default function RewardsList({ rewards, userId, activeGoals }: { rewards:
           <summary style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.5rem 0' }}>
             {redeemedRewards.length} redeemed reward{redeemedRewards.length > 1 ? 's' : ''}
           </summary>
-          {redeemedRewards.map((r: any) => (
+          {// eslint-disable-next-line @typescript-eslint/no-explicit-any
+            redeemedRewards.map((r: any) => (
             <div key={r.id} style={{ padding: '0.75rem', background: 'var(--gray-100)', borderRadius: 'var(--radius-md)', marginTop: '0.375rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>{r.reward_label}</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Redeemed {new Date(r.redeemed_at).toLocaleDateString('en-NG')}</span>
@@ -101,3 +103,4 @@ export default function RewardsList({ rewards, userId, activeGoals }: { rewards:
     </div>
   );
 }
+/* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */

@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
     .eq("giver_goal_id", giverGoalId)
     .gte("created_at", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const totalGiftedLast30 = recentGifts?.reduce((sum: number, g: any) => sum + g.amount, 0) || 0;
   const maxAllowed = giverGoal.current_balance * maxPct;
 

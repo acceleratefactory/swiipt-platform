@@ -13,11 +13,12 @@ export default async function AdminLeaderboardPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const periodKey = await (supabase as any).rpc("get_current_period_key");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   const [entriesRes, prizesRes] = await Promise.all([
     (supabase as any).from("leaderboard_entries").select("*, users(full_name, email)").eq("period_key", periodKey.data).order("rank").limit(20),
     (supabase as any).from("leaderboard_prizes").select("*").eq("is_active", true).eq("period_type", "monthly").order("rank_position"),
   ]);
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return (
     <div>

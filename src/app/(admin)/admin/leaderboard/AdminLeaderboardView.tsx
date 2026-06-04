@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export default function AdminLeaderboardView({ entries, prizes, periodKey }: { entries: any[]; prizes: any[]; periodKey: string }) {
   const [awardingId, setAwardingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -94,3 +94,4 @@ export default function AdminLeaderboardView({ entries, prizes, periodKey }: { e
     </div>
   );
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */

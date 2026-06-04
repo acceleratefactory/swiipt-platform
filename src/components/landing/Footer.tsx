@@ -18,6 +18,7 @@ const companyLinks = [
 
 const socialIcons: Record<string, React.ReactNode> = {
   Twitter: <MessageCircle size={18} />,
+  // eslint-disable-next-line jsx-a11y/alt-text
   Instagram: <Image size={18} />,
   Linkedin: <Briefcase size={18} />,
   Youtube: <Play size={18} />,

@@ -8,7 +8,7 @@ export default function WinWithSwiipt({ prizes }: { prizes: any[] }) {
       <div style={{ position: 'absolute', bottom: -30, right: 40, width: 80, height: 80, borderRadius: '50%', background: 'rgba(0,200,150,0.08)' }} />
 
       <p style={{ fontSize: '0.75rem', color: 'var(--teal)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '0.5rem' }}>
-        This month's top prize
+        This month&apos;s top prize
       </p>
       <h2 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1.5rem', fontWeight: 800, color: 'white', marginBottom: '0.5rem', lineHeight: 1.2 }}>
         🏆 {topPrize?.prize_label || "Free Qatar Residence Permit"}

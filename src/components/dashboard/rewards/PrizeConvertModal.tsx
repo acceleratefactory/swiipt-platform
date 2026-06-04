@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export default function PrizeConvertModal({ reward, activeGoals, onClose, onConverted }: { reward: any; activeGoals: any[]; onClose: () => void; onConverted: () => void }) {
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [createNew, setCreateNew] = useState(true);
@@ -84,3 +84,4 @@ export default function PrizeConvertModal({ reward, activeGoals, onClose, onConv
     </>
   );
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */

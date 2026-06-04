@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export default function MilestoneProgress({ goals }: { goals: any[] }) {
   if (goals.length === 0) {
     return (
@@ -57,3 +57,4 @@ export default function MilestoneProgress({ goals }: { goals: any[] }) {
     </div>
   );
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
