@@ -15,5 +15,11 @@ export async function POST(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  await supabase.from("activity_log").insert({
+    user_id: user.id,
+    event_type: "profile_updated",
+    event_data: { full_name: fullName, phone, country_of_residence: country },
+  });
+
   return NextResponse.json({ success: true });
 }

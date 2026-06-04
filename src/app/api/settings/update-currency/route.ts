@@ -8,6 +8,20 @@ export async function POST(request: Request) {
 
   const { currency } = await request.json();
 
+  // Validate currency exists and is active
+  const { data: validCurrency } = await supabase
+    .from("currencies")
+    .select("code, is_active")
+    .eq("code", currency)
+    .single();
+
+  if (!validCurrency) {
+    return NextResponse.json({ error: "Currency code not found" }, { status: 400 });
+  }
+  if (!validCurrency.is_active) {
+    return NextResponse.json({ error: "Currency is not active" }, { status: 400 });
+  }
+
   const { error } = await supabase
     .from("users")
     .update({ preferred_currency: currency })

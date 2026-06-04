@@ -12,17 +12,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden. Only admins can suspend accounts." }, { status: 403 });
   }
 
-  const { targetUserId, note } = await request.json();
+  const { action, targetUserId, note } = await request.json();
 
-  if (!targetUserId) {
-    return NextResponse.json({ error: "targetUserId is required" }, { status: 400 });
+  if (!action || !targetUserId) {
+    return NextResponse.json({ error: "action and targetUserId are required" }, { status: 400 });
+  }
+
+  if (action !== "suspend" && action !== "unsuspend") {
+    return NextResponse.json({ error: "action must be 'suspend' or 'unsuspend'" }, { status: 400 });
   }
 
   if (!note || !note.trim()) {
     return NextResponse.json({ error: "Mandatory note is required" }, { status: 400 });
   }
 
-  // Check if user_roles row exists, upsert
+  const newRole = action === "suspend" ? "suspended" : "user";
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existing } = await (supabase as any)
     .from("user_roles")
@@ -34,25 +39,25 @@ export async function POST(request: Request) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from("user_roles")
-      .update({ role: "suspended" })
+      .update({ role: newRole })
       .eq("user_id", targetUserId);
   } else {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from("user_roles")
-      .insert({ user_id: targetUserId, role: "suspended" });
+      .insert({ user_id: targetUserId, role: newRole });
   }
 
   // Audit log
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("admin_audit_log").insert({
     admin_id: user.id,
-    action: "suspend_user",
+    action: `${action}_user`,
     target_table: "user_roles",
     target_record_id: targetUserId,
     target_user_id: targetUserId,
     previous_value: existing ? JSON.stringify({ role: existing.role }) : null,
-    new_value: JSON.stringify({ role: "suspended" }),
+    new_value: JSON.stringify({ role: newRole }),
     notes: note,
   });
 
