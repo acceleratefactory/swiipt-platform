@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
-
 /* Cabinet Grotesk — served via Fontshare CDN */
 @font-face {
   font-family: 'Cabinet Grotesk';
@@ -79,7 +77,7 @@
 }
 
 html {
-  font-family: "Plus Jakarta Sans", sans-serif;
+  font-family: var(--font-body, "Plus Jakarta Sans", sans-serif);
   color: var(--text-primary);
   background: var(--white);
   -webkit-font-smoothing: antialiased;
@@ -96,6 +94,10 @@ h1, h2, h3, h4, h5, h6 {
 .font-body { font-family: "Plus Jakarta Sans", sans-serif; }
 
 /* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
 @keyframes floatUp {
   0% { opacity: 0; transform: translateY(20px); }
   100% { opacity: 1; transform: translateY(0); }
@@ -234,4 +236,42 @@ h1, h2, h3, h4, h5, h6 {
 @media (min-width: 641px) {
   .desktop-only { display: block; }
   .mobile-only { display: none; }
+}
+
+/* Admin responsive sidebar */
+@media (max-width: 768px) {
+  .admin-sidebar-desktop {
+    display: none !important;
+  }
+  .admin-hamburger {
+    display: block !important;
+  }
+  .admin-sidebar-close {
+    display: block !important;
+  }
+  .admin-sidebar-overlay {
+    display: block !important;
+  }
+}
+@media (min-width: 769px) {
+  .admin-sidebar-mobile {
+    display: none !important;
+  }
+  .admin-sidebar-overlay {
+    display: none !important;
+  }
+}
+
+/* Responsive table utilities */
+@media (max-width: 640px) {
+  .hide-mobile {
+    display: none !important;
+  }
+  .table-toggle-btn {
+    min-width: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }

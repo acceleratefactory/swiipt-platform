@@ -24,6 +24,7 @@ export default function BottomTabs() {
         left: 0,
         right: 0,
         height: "60px",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
         background: "white",
         borderTop: "1px solid var(--border)",
         display: "flex",

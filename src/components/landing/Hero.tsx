@@ -1,4 +1,6 @@
-import FlightSearchWidget from "./FlightSearchWidget";
+import dynamic from "next/dynamic";
+
+const FlightSearchWidget = dynamic(() => import("./FlightSearchWidget"), { ssr: false });
 
 const stats = [
   { value: "500K+", label: "Users" },

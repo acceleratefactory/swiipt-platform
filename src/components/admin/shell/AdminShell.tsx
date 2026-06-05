@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Menu } from "lucide-react";
 import AdminSidebar from "./AdminSidebar";
 
 export default function AdminShell({
@@ -15,6 +17,8 @@ export default function AdminShell({
   pendingWithdrawals: number;
   children: React.ReactNode;
 }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div
       style={{
@@ -28,7 +32,22 @@ export default function AdminShell({
       <AdminSidebar
         pendingDeposits={pendingDeposits}
         pendingWithdrawals={pendingWithdrawals}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
+      {sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            zIndex: 25,
+            display: "block",
+          }}
+          className="admin-sidebar-overlay"
+        />
+      )}
       <div
         style={{
           flex: 1,
@@ -47,24 +66,41 @@ export default function AdminShell({
             alignItems: "center",
           }}
         >
-          <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-            Signed in as{" "}
-            <strong style={{ color: "var(--midnight)" }}>{adminEmail}</strong>
-            <span
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="admin-hamburger"
               style={{
-                marginLeft: "0.5rem",
-                padding: "2px 8px",
-                background: "var(--teal-pale)",
-                color: "var(--teal)",
-                borderRadius: "20px",
-                fontSize: "0.7rem",
-                fontWeight: 700,
-                textTransform: "uppercase",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "4px",
+                color: "var(--midnight)",
+                display: "none",
               }}
+              aria-label="Open menu"
             >
-              {adminRole}
+              <Menu size={20} />
+            </button>
+            <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+              Signed in as{" "}
+              <strong style={{ color: "var(--midnight)" }}>{adminEmail}</strong>
+              <span
+                style={{
+                  marginLeft: "0.5rem",
+                  padding: "2px 8px",
+                  background: "var(--teal-pale)",
+                  color: "var(--teal)",
+                  borderRadius: "20px",
+                  fontSize: "0.7rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                }}
+              >
+                {adminRole}
+              </span>
             </span>
-          </span>
+          </div>
           <a
             href="/dashboard"
             style={{

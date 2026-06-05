@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, ReactNode } from "react";
+import dynamic from "next/dynamic";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
-import BottomTabs from "./BottomTabs";
 import NotificationDrawer from "./NotificationDrawer";
+
+const BottomTabs = dynamic(() => import("./BottomTabs"), { ssr: false });
 
 export default function DashboardShell({
   profile,

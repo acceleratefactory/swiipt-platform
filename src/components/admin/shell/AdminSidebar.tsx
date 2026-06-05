@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { X } from "lucide-react";
 import {
   LayoutDashboard,
   ArrowDownCircle,
@@ -47,9 +48,13 @@ const navItems: Array<{
 export default function AdminSidebar({
   pendingDeposits,
   pendingWithdrawals,
+  open,
+  onClose,
 }: {
   pendingDeposits: number;
   pendingWithdrawals: number;
+  open: boolean;
+  onClose: () => void;
 }) {
   const pathname = usePathname();
 
@@ -63,6 +68,7 @@ export default function AdminSidebar({
       <a
         key={item.href}
         href={item.href}
+        onClick={onClose}
         style={{
           display: "flex",
           alignItems: "center",
@@ -102,45 +108,121 @@ export default function AdminSidebar({
   });
 
   return (
-    <div
-      style={{
-        width: 220,
-        minWidth: 220,
-        background: "white",
-        borderRight: "1px solid var(--border)",
-        display: "flex",
-        flexDirection: "column",
-        height: "100vh",
-        overflowY: "auto",
-      }}
-    >
+    <>
       <div
+        className="admin-sidebar-desktop"
         style={{
-          padding: "1rem",
-          borderBottom: "1px solid var(--border)",
+          width: 220,
+          minWidth: 220,
+          background: "white",
+          borderRight: "1px solid var(--border)",
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+          overflowY: "auto",
         }}
       >
         <div
           style={{
-            fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif",
-            fontWeight: 800,
-            fontSize: "1.125rem",
-            color: "var(--midnight)",
+            padding: "1rem",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
-          Swiipt
+          <div>
+            <div
+              style={{
+                fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif",
+                fontWeight: 800,
+                fontSize: "1.125rem",
+                color: "var(--midnight)",
+              }}
+            >
+              Swiipt
+            </div>
+            <div
+              style={{
+                fontSize: "0.7rem",
+                color: "var(--text-muted)",
+                marginTop: "0.125rem",
+              }}
+            >
+              Admin Panel
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="admin-sidebar-close"
+            style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", color: "var(--text-muted)", display: "none" }}
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
         </div>
+        <nav style={{ padding: "0.5rem", flex: 1 }}>{items}</nav>
+      </div>
+
+      <div
+        className="admin-sidebar-mobile"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          bottom: 0,
+          width: 260,
+          maxWidth: "80vw",
+          background: "white",
+          borderRight: "1px solid var(--border)",
+          display: "flex",
+          flexDirection: "column",
+          overflowY: "auto",
+          zIndex: 30,
+          transform: open ? "translateX(0)" : "translateX(-100%)",
+          transition: "transform 0.2s ease",
+        }}
+      >
         <div
           style={{
-            fontSize: "0.7rem",
-            color: "var(--text-muted)",
-            marginTop: "0.125rem",
+            padding: "1rem",
+            borderBottom: "1px solid var(--border)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
-          Admin Panel
+          <div>
+            <div
+              style={{
+                fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif",
+                fontWeight: 800,
+                fontSize: "1.125rem",
+                color: "var(--midnight)",
+              }}
+            >
+              Swiipt
+            </div>
+            <div
+              style={{
+                fontSize: "0.7rem",
+                color: "var(--text-muted)",
+                marginTop: "0.125rem",
+              }}
+            >
+              Admin Panel
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: "4px", color: "var(--text-muted)" }}
+            aria-label="Close menu"
+          >
+            <X size={18} />
+          </button>
         </div>
+        <nav style={{ padding: "0.5rem", flex: 1 }}>{items}</nav>
       </div>
-      <nav style={{ padding: "0.5rem", flex: 1 }}>{items}</nav>
-    </div>
+    </>
   );
 }

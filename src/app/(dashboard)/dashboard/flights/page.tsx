@@ -1,19 +1,46 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import FlightSearchForm from "@/components/dashboard/flights/FlightSearchForm";
 
 export default async function FlightsPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: profile } = await supabase
+    .from("users")
+    .select("country_of_residence, preferred_currency")
+    .eq("id", user.id)
+    .single();
+
+  const { data: recentSearches } = await supabase
+    .from("activity_log")
+    .select("event_data, created_at")
+    .eq("user_id", user.id)
+    .eq("event_type", "flight_searched")
+    .order("created_at", { ascending: false })
+    .limit(5);
+
+  const { data: goals } = await supabase
+    .from("savings_goals")
+    .select("destination, goal_name")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .not("destination", "is", null);
+
   return (
-    <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "2rem" }}>
-      <h2 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", color: "var(--midnight)", marginBottom: "0.5rem" }}>
-        Flights — Sprint 12
-      </h2>
-      <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
-        This section builds in Sprint 12.
+    <div>
+      <h1 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.5rem", fontWeight: 800, color: "var(--midnight)", marginBottom: "0.5rem" }}>
+        Book Flights
+      </h1>
+      <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "1.5rem" }}>
+        Search 500+ airlines. Best prices, direct booking.
       </p>
+      <FlightSearchForm
+        defaultOrigin={profile?.country_of_residence === "Nigeria" ? "LOS" : ""}
+        recentSearches={recentSearches || []}
+        goalDestinations={goals || []}
+      />
     </div>
   );
 }

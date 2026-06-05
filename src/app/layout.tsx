@@ -8,9 +8,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-// Cabinet Grotesk is not yet on Google Fonts standard import
-// Use local font or CSS @import in globals.css
-// Fallback: use Plus Jakarta Sans for headings too until Cabinet Grotesk is configured
+// Cabinet Grotesk loaded via @font-face from Fontshare CDN in globals.css
 
 export const metadata: Metadata = {
   title: "Swiipt — Save. Move. Arrive.",
@@ -30,6 +28,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={plusJakartaSans.variable}>
+      <head>
+        <link rel="preconnect" href="https://cdn.fontshare.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://cdn.fontshare.com" />
+      </head>
       <body className="font-body antialiased">{children}</body>
     </html>
   );
