@@ -14,11 +14,11 @@ export default function Navbar() {
   }, []);
 
   const navLinks = [
-    "Destinations",
-    "Services ▾",
-    "Flights",
-    "Holidays",
-    "Resources",
+    { label: "Destinations", href: "#destinations" },
+    { label: "Services", href: "#services" },
+    { label: "Flights", href: "#flights" },
+    { label: "Holidays", href: "#holidays" },
+    { label: "Resources", href: "/resources" },
   ];
 
   const linkColor = scrolled ? "var(--text-secondary)" : "white";
@@ -73,8 +73,8 @@ export default function Navbar() {
           >
             {navLinks.map((link) => (
               <a
-                key={link}
-                href="#"
+                key={link.label}
+                href={link.href}
                 style={{
                   fontSize: "14px",
                   color: linkColor,
@@ -88,7 +88,7 @@ export default function Navbar() {
                   (e.currentTarget.style.color = linkColor)
                 }
               >
-                {link}
+                {link.label}
               </a>
             ))}
           </div>
@@ -193,8 +193,8 @@ export default function Navbar() {
           >
             {navLinks.map((link) => (
               <a
-                key={link}
-                href="#"
+                key={link.label}
+                href={link.href}
                 style={{
                   fontSize: "24px",
                   color: "white",
@@ -203,7 +203,7 @@ export default function Navbar() {
                 }}
                 onClick={() => setMobileOpen(false)}
               >
-                {link}
+                {link.label}
               </a>
             ))}
           </div>

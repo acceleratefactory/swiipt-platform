@@ -3,17 +3,29 @@
 import { MessageCircle, Image, Briefcase, Play } from "lucide-react"
 
 const serviceLinks = [
-  "Visa Processing", "Residency Permits", "2nd Citizenship",
-  "Company Registration", "Relocation Concierge", "Corporate Mobility", "Flight Booking",
+  { label: "Visa Processing", href: "#services" },
+  { label: "Residency Permits", href: "#services" },
+  { label: "2nd Citizenship", href: "#services" },
+  { label: "Company Registration", href: "#services" },
+  { label: "Relocation Concierge", href: "#services" },
+  { label: "Corporate Mobility", href: "#services" },
+  { label: "Flight Booking", href: "#flights" },
 ]
 
 const resourceLinks = [
-  "Visa Intelligence", "Cost Calculator", "Eligibility Checker",
-  "Destination Guides", "Success Stories",
+  { label: "Visa Intelligence", href: "#visa-intelligence" },
+  { label: "Cost Calculator", href: "#calculator" },
+  { label: "Eligibility Checker", href: "#eligibility" },
+  { label: "Destination Guides", href: "/resources" },
+  { label: "Success Stories", href: "#success-stories" },
 ]
 
 const companyLinks = [
-  "About Us", "Contact", "Privacy Policy", "Terms of Service", "Careers",
+  { label: "About Us", href: "/about" },
+  { label: "Contact", href: "mailto:support@swiipt.com" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms of Service", href: "/terms" },
+  { label: "Careers", href: "mailto:careers@swiipt.com" },
 ]
 
 const socialIcons: Record<string, React.ReactNode> = {
@@ -62,13 +74,13 @@ export default function Footer() {
             </h3>
             {serviceLinks.map((link) => (
               <a
-                key={link}
-                href={link === "Privacy Policy" || link === "Terms of Service" ? "/signup" : "#"}
+                key={link.label}
+                href={link.href}
                 style={{ display: "block", fontSize: "0.875rem", color: "var(--gray-500)", marginBottom: "0.625rem", textDecoration: "none", transition: "color 0.15s" }}
                 onMouseEnter={(e) => { (e.target as HTMLElement).style.color = "white" }}
                 onMouseLeave={(e) => { (e.target as HTMLElement).style.color = "var(--gray-500)" }}
               >
-                {link}
+                {link.label}
               </a>
             ))}
           </div>
@@ -80,13 +92,13 @@ export default function Footer() {
             </h3>
             {resourceLinks.map((link) => (
               <a
-                key={link}
-                href="#"
+                key={link.label}
+                href={link.href}
                 style={{ display: "block", fontSize: "0.875rem", color: "var(--gray-500)", marginBottom: "0.625rem", textDecoration: "none", transition: "color 0.15s" }}
                 onMouseEnter={(e) => { (e.target as HTMLElement).style.color = "white" }}
                 onMouseLeave={(e) => { (e.target as HTMLElement).style.color = "var(--gray-500)" }}
               >
-                {link}
+                {link.label}
               </a>
             ))}
           </div>
@@ -98,13 +110,13 @@ export default function Footer() {
             </h3>
             {companyLinks.map((link) => (
               <a
-                key={link}
-                href={link === "Privacy Policy" || link === "Terms of Service" ? "/signup" : "#"}
+                key={link.label}
+                href={link.href}
                 style={{ display: "block", fontSize: "0.875rem", color: "var(--gray-500)", marginBottom: "0.625rem", textDecoration: "none", transition: "color 0.15s" }}
                 onMouseEnter={(e) => { (e.target as HTMLElement).style.color = "white" }}
                 onMouseLeave={(e) => { (e.target as HTMLElement).style.color = "var(--gray-500)" }}
               >
-                {link}
+                {link.label}
               </a>
             ))}
           </div>

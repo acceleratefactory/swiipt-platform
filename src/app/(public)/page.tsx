@@ -10,7 +10,7 @@ import EligibilityChecker from "@/components/landing/EligibilityChecker";
 import SuccessStories from "@/components/landing/SuccessStories";
 import EmailCapture from "@/components/landing/EmailCapture";
 import CorporateSection from "@/components/landing/CorporateSection";
-import SEOContent from "@/components/landing/SEOContent";
+import ResourcesSection from "@/components/landing/ResourcesSection";
 import Footer from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
@@ -37,17 +37,17 @@ export default function LandingPage() {
   return (
     <>
       <Navbar />
-      <Hero />
+      <div id="flights"><Hero /></div>
       <StatsBar />
-      <ProductCards />
-      <DestinationCards />
-      <HolidayPackages />
-      <CostCalculator />
-      <EligibilityChecker />
-      <SuccessStories />
-      <EmailCapture />
+      <div id="services"><ProductCards /></div>
+      <div id="destinations"><DestinationCards /></div>
+      <div id="holidays"><HolidayPackages /></div>
+      <div id="calculator"><CostCalculator /></div>
+      <div id="eligibility"><EligibilityChecker /></div>
+      <div id="success-stories"><SuccessStories /></div>
+      <div id="visa-intelligence"><EmailCapture /></div>
       <CorporateSection />
-      <SEOContent />
+      <ResourcesSection />
       <Footer />
     </>
   );

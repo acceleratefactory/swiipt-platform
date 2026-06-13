@@ -149,6 +149,73 @@ export interface Database {
         Update: Partial<Database['public']['Tables']['activity_log']['Insert']>
         Relationships: []
       }
+      calculator_configs: {
+        Row: {
+          id: string
+          destination: string
+          service_type: string
+          family_size: string
+          service_fee_ngn: number
+          government_fee_ngn: number
+          document_prep_ngn: number
+          travel_estimate_ngn: number
+          first_month_setup_ngn: number
+          processing_weeks_min: number
+          processing_weeks_max: number
+          success_rate: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['calculator_configs']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['calculator_configs']['Insert']>
+        Relationships: []
+      }
+      eligibility_pathways: {
+        Row: {
+          id: string
+          pathway_name: string
+          destination: string
+          match_type: "HIGH" | "GOOD" | "POSSIBLE"
+          processing_weeks: string
+          starting_price_ngn: number
+          description: string
+          requires_destination: string[]
+          requires_employment: string[]
+          requires_passport: string[]
+          requires_income: string[]
+          excludes_timeline: string[]
+          priority_order: number
+          is_active: boolean
+          updated_by: string | null
+          updated_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['eligibility_pathways']['Row'], 'id' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['eligibility_pathways']['Insert']>
+        Relationships: []
+      }
+      resource_guides: {
+        Row: {
+          id: string
+          slug: string
+          title: string
+          subtitle: string | null
+          category: string
+          destination: string | null
+          content: string
+          meta_description: string | null
+          featured: boolean
+          published: boolean
+          view_count: number
+          reading_time_minutes: number
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database['public']['Tables']['resource_guides']['Row'], 'id' | 'created_at' | 'updated_at' | 'view_count'>
+        Update: Partial<Database['public']['Tables']['resource_guides']['Insert']>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
