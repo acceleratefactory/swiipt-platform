@@ -37,6 +37,7 @@ export default async function ResourcesSection() {
         borderTop: "1px solid var(--border)",
       }}
     >
+      <style>{`.resources-section-link:hover{color:var(--teal)!important}`}</style>
       <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 2rem" }}>
         <h2
           style={{
@@ -87,14 +88,9 @@ export default async function ResourcesSection() {
                         marginBottom: "0.625rem",
                         textDecoration: "none",
                         lineHeight: 1.4,
+                        transition: "color 0.15s",
                       }}
-                      onMouseEnter={(e) =>
-                        ((e.target as HTMLElement).style.color = "var(--teal)")
-                      }
-                      onMouseLeave={(e) =>
-                        ((e.target as HTMLElement).style.color =
-                          "var(--text-secondary)")
-                      }
+                      className="resources-section-link"
                     >
                       {guide.title}
                     </a>
