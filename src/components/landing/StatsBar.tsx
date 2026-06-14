@@ -3,8 +3,6 @@
 import AnimatedCounter from "@/components/shared/AnimatedCounter";
 
 const stats = [
-  { value: 500000, prefix: "", suffix: "+", label: "Active users" },
-  { value: 8, prefix: "₦", suffix: "B+", label: "Total saved" },
   { value: 40, prefix: "", suffix: "+", label: "Destinations" },
   { value: 98, prefix: "", suffix: "%", label: "Service success rate" },
 ];
