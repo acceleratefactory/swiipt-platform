@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 interface Pathway {
   id: string;
@@ -195,6 +196,7 @@ export default function EligibilityEditor({ pathways: initial }: { pathways: Pat
   const [form, setForm] = useState(defaultForm);
   const [saving, setSaving] = useState(false);
   const [testAnswers, setTestAnswers] = useState<Record<string, string>>({});
+  const supabase = createClient();
 
   function selectForm(field: string, value: string | number | boolean | string[]) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -234,31 +236,57 @@ export default function EligibilityEditor({ pathways: initial }: { pathways: Pat
 
   async function handleSave() {
     setSaving(true);
-    const res = await fetch("/api/admin/eligibility/upsert", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
-    });
-    if (res.ok) {
-      const result = await res.json();
-      if (form.id) {
-        setPathways((prev) => prev.map((p) => (p.id === form.id ? result.data : p)));
-      } else {
-        setPathways((prev) => [...prev, result.data]);
+    const payload = {
+      pathway_name: form.pathway_name,
+      destination: form.destination,
+      match_type: form.match_type,
+      processing_weeks: form.processing_weeks,
+      starting_price_ngn: Number(form.starting_price_ngn),
+      description: form.description,
+      requires_destination: form.requires_destination || [],
+      requires_employment: form.requires_employment || [],
+      requires_passport: form.requires_passport || [],
+      requires_income: form.requires_income || [],
+      excludes_timeline: form.excludes_timeline || [],
+      priority_order: Number(form.priority_order),
+      is_active: form.is_active,
+    };
+
+    if (form.id && form.id !== "new") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("eligibility_pathways")
+        .update({ ...payload, updated_at: new Date().toISOString() })
+        .eq("id", form.id)
+        .select()
+        .single();
+      if (!error && data) {
+        setPathways((prev) => prev.map((p) => (p.id === form.id ? data : p)));
+        resetForm();
       }
-      resetForm();
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("eligibility_pathways")
+        .insert(payload)
+        .select()
+        .single();
+      if (!error && data) {
+        setPathways((prev) => [...prev, data]);
+        resetForm();
+      }
     }
     setSaving(false);
   }
 
   async function handleDelete(id: string) {
     if (!confirm("Delete this pathway?")) return;
-    const res = await fetch("/api/admin/eligibility/delete", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (res.ok) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any)
+      .from("eligibility_pathways")
+      .delete()
+      .eq("id", id);
+    if (!error) {
       setPathways((prev) => prev.filter((p) => p.id !== id));
     }
   }
