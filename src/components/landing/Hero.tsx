@@ -3,8 +3,6 @@ import dynamic from "next/dynamic";
 const FlightSearchWidget = dynamic(() => import("./FlightSearchWidget"), { ssr: false });
 
 const stats = [
-  { value: "500K+", label: "Users" },
-  { value: "₦8B+", label: "Total saved" },
   { value: "40+", label: "Destinations" },
   { value: "98%", label: "Success rate" },
 ];

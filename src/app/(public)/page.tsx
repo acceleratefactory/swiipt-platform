@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Navbar from "@/components/landing/Navbar";
 import Hero from "@/components/landing/Hero";
 import StatsBar from "@/components/landing/StatsBar";
 import ProductCards from "@/components/landing/ProductCards";
@@ -11,7 +10,6 @@ import SuccessStories from "@/components/landing/SuccessStories";
 import EmailCapture from "@/components/landing/EmailCapture";
 import CorporateSection from "@/components/landing/CorporateSection";
 import ResourcesSection from "@/components/landing/ResourcesSection";
-import Footer from "@/components/landing/Footer";
 
 export const metadata: Metadata = {
   title: "Swiipt — Save. Move. Arrive.",
@@ -36,7 +34,6 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <>
-      <Navbar />
       <div id="flights"><Hero /></div>
       <StatsBar />
       <div id="services"><ProductCards /></div>
@@ -48,7 +45,6 @@ export default function LandingPage() {
       <div id="visa-intelligence"><EmailCapture /></div>
       <CorporateSection />
       <ResourcesSection />
-      <Footer />
     </>
   );
 }
