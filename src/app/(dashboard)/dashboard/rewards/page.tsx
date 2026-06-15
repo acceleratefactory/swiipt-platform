@@ -6,6 +6,7 @@ import StreakTracker from "@/components/dashboard/rewards/StreakTracker";
 import Leaderboard from "@/components/dashboard/rewards/Leaderboard";
 import MobilityScoreCard from "@/components/dashboard/rewards/MobilityScoreCard";
 import WinWithSwiipt from "@/components/dashboard/rewards/WinWithSwiipt";
+import SpinWheelSection from "@/components/dashboard/rewards/SpinWheelSection";
 
 function calculateStreakWeeks(depositDates: string[], targetWeeks: number): number {
   const weeks = new Set<string>();
@@ -26,6 +27,8 @@ export default async function RewardsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const periodKey = await (supabase as any).rpc("get_current_period_key");
 
+  const now = new Date().toISOString();
+
   const [
     profileRes,
     rewardsRes,
@@ -34,6 +37,8 @@ export default async function RewardsPage() {
     leaderboardRes,
     prizesRes,
     userEntryRes,
+    spinPromotionsRes,
+    usedPromotionsRes,
   ] = await Promise.all([
     supabase.from("users").select("full_name, mobility_score, alumni_status").eq("id", user.id).single(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,7 +51,14 @@ export default async function RewardsPage() {
     (supabase as any).from("leaderboard_prizes").select("*").eq("is_active", true).eq("period_type", "monthly").order("rank_position"),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("leaderboard_entries").select("rank, referral_count").eq("user_id", user.id).eq("period_key", periodKey.data).single(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("promotions").select("id, title, spin_config").eq("promotion_type", "spin_win").eq("is_active", true).lte("starts_at", now).gte("ends_at", now),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any).from("promotion_awards").select("promotion_id").eq("user_id", user.id).eq("award_type", "spin_win"),
   ]);
+
+  const usedIds = new Set((usedPromotionsRes.data || []).map((p: any) => p.promotion_id));
+  const availableSpins = (spinPromotionsRes.data || []).filter((p: any) => !usedIds.has(p.id));
 
   const depositDates = (depositsRes.data || []).map(d => d.admin_confirmed_at).filter(Boolean) as string[];
   const streak30 = calculateStreakWeeks(depositDates, 4);
@@ -58,6 +70,7 @@ export default async function RewardsPage() {
         Rewards
       </h1>
 
+      <SpinWheelSection spins={availableSpins} userId={user.id} />
       <MobilityScoreCard score={profileRes.data?.mobility_score || 0} />
       <WinWithSwiipt prizes={prizesRes.data || []} />
       <RewardsList rewards={rewardsRes.data || []} userId={user.id} activeGoals={goalsRes.data || []} />
