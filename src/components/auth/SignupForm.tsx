@@ -80,7 +80,13 @@ export default function SignupForm({
     });
 
     if (error) { setError(error.message); setLoading(false); return; }
-    router.push("/onboarding");
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      router.push("/onboarding");
+    } else {
+      setLoading(false);
+      setShowCheckEmail(true);
+    }
   }
 
   async function handleGoogleSignup() {
