@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { X, Layout, Crosshair, Search } from "lucide-react";
 import {
   LayoutDashboard,
   ArrowDownCircle,
@@ -45,6 +45,9 @@ const navItems: Array<{
   { href: "/admin/float", label: "Float Ledger", icon: <TrendingUp size={16} /> },
   { href: "/admin/settings", label: "Settings", icon: <Settings size={16} /> },
   { href: "/admin/analytics", label: "Analytics", icon: <BarChart2 size={16} /> },
+  { href: "/admin/pages", label: "Landing Pages", icon: <Layout size={16} /> },
+  { href: "/admin/goal-templates", label: "Goal Templates", icon: <Crosshair size={16} /> },
+  { href: "/admin/seo", label: "SEO Manager", icon: <Search size={16} /> },
 ];
 
 export default function AdminSidebar({

@@ -39,6 +39,7 @@ export default function CreateGoalForm({
   onSuccess,
   onBack,
   submitLabel = "Continue →",
+  prefilledData,
 }: {
   goalData?: { destination?: string; destinationLabel?: string; goalCategory?: string };
   onSuccess?: (goalId: string, formValues?: {
@@ -51,6 +52,15 @@ export default function CreateGoalForm({
   }) => void;
   onBack?: () => void;
   submitLabel?: string;
+  prefilledData?: {
+    goalName?: string;
+    goalCategory?: string;
+    destination?: string;
+    currency?: string;
+    targetAmount?: number;
+    lockType?: "locked" | "flexible";
+    lockMonths?: number;
+  };
 }) {
   const router = useRouter();
   const defaultCategory = (() => {
@@ -61,12 +71,12 @@ export default function CreateGoalForm({
     return "residency_permit";
   })();
 
-  const [category, setCategory] = useState(defaultCategory);
-  const [goalName, setGoalName] = useState("");
-  const [targetAmount, setTargetAmount] = useState("");
-  const [currency, setCurrency] = useState("NGN");
-  const [lockType, setLockType] = useState<"locked" | "flexible">("locked");
-  const [lockMonths, setLockMonths] = useState(12);
+  const [category, setCategory] = useState(prefilledData?.goalCategory ?? defaultCategory);
+  const [goalName, setGoalName] = useState(prefilledData?.goalName ?? "");
+  const [targetAmount, setTargetAmount] = useState(prefilledData?.targetAmount?.toString() ?? "");
+  const [currency, setCurrency] = useState(prefilledData?.currency ?? "NGN");
+  const [lockType, setLockType] = useState<"locked" | "flexible">(prefilledData?.lockType ?? "locked");
+  const [lockMonths, setLockMonths] = useState(prefilledData?.lockMonths ?? 12);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -90,7 +100,7 @@ export default function CreateGoalForm({
         user_id: user!.id,
         goal_name: goalName,
         goal_category: category,
-        destination: goalData?.destination ?? null,
+        destination: goalData?.destination ?? prefilledData?.destination ?? null,
         currency,
         target_amount: Number(targetAmount),
         is_locked: lockType === "locked",

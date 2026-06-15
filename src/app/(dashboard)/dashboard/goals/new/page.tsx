@@ -1,14 +1,27 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import CreateGoalForm from "@/components/dashboard/goals/CreateGoalForm";
+import GoalTemplateLibrary from "@/components/dashboard/goals/GoalTemplateLibrary";
 
-export default async function NewGoalPage() {
+export default async function NewGoalPage({
+  searchParams,
+}: {
+  searchParams: { template?: string };
+}) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: templates } = await (supabase as any)
+    .from("goal_templates")
+    .select("*")
+    .eq("is_active", true)
+    .order("sort_order");
+
+  const selectedTemplate =
+    (templates as any[])?.find((t: any) => t.id === searchParams.template) ?? null;
+
   return (
-    <div style={{ maxWidth: "640px", margin: "0 auto" }}>
+    <div style={{ maxWidth: "760px", margin: "0 auto" }}>
       <a
         href="/dashboard/goals"
         style={{
@@ -23,18 +36,10 @@ export default async function NewGoalPage() {
       >
         ← Back to goals
       </a>
-      <h1
-        style={{
-          fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif",
-          fontSize: "1.5rem",
-          fontWeight: 800,
-          color: "var(--midnight)",
-          marginBottom: "1.5rem",
-        }}
-      >
-        Create a new goal
-      </h1>
-      <CreateGoalForm submitLabel="Create Goal" />
+      <GoalTemplateLibrary
+        templates={templates ?? []}
+        preSelected={selectedTemplate}
+      />
     </div>
   );
 }
