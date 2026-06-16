@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
 import SEOManager from "@/components/admin/seo/SEOManager";
 
@@ -10,9 +11,10 @@ export default async function AdminSEOPage() {
   const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") redirect("/dashboard");
 
+  const serviceClient = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [nichePages, guides] = await Promise.all([
-    (supabase as any).from("niche_pages").select("id, url_prefix, slug, title, meta_title, meta_description, og_image_url").order("url_prefix").order("slug"),
+    (serviceClient as any).from("niche_pages").select("id, url_prefix, slug, title, meta_title, meta_description, og_image_url").order("url_prefix").order("slug"),
     (supabase as any).from("resource_guides").select("id, slug, title, meta_title, meta_description, og_image_url").order("slug"),
   ]);
 

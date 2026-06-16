@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { redirect, notFound } from "next/navigation";
 import NichePageEditor from "@/components/admin/pages/NichePageEditor";
 
@@ -10,8 +11,9 @@ export default async function EditNichePage({ params }: { params: { id: string }
   const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") redirect("/dashboard");
 
+  const serviceClient = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: page } = await (supabase as any)
+  const { data: page } = await (serviceClient as any)
     .from("niche_pages")
     .select("*")
     .eq("id", params.id)
