@@ -590,24 +590,23 @@ export async function POST(_request: NextRequest) {
     .from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const { count } = await supabase
-    .from("niche_pages")
-    .select("*", { count: "exact", head: true });
-
-  if (count && count > 0) {
-    return NextResponse.json({ error: `${count} pages already exist. Delete them first if you want to re-seed.` }, { status: 400 });
-  }
-
   const serviceClient = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inserted, error: insertError } = await (serviceClient as any)
     .from("niche_pages")
-    .insert(PAGES)
+    .insert(PAGES, { onConflict: "url_prefix,slug", ignoreDuplicates: true })
     .select("id");
 
   if (insertError) {
     return NextResponse.json({ error: "Seeding failed: " + insertError.message }, { status: 500 });
   }
 
-  return NextResponse.json({ count: inserted?.length || 0 });
+  const insertedCount = inserted?.length || 0;
+  const skippedCount = PAGES.length - insertedCount;
+
+  return NextResponse.json({
+    count: insertedCount,
+    skipped: skippedCount,
+    message: `${insertedCount} pages created, ${skippedCount} already existed (skipped).`,
+  });
 }
