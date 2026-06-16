@@ -293,7 +293,7 @@ export default function NichePageEditor({
 
       setAiPrompt("");
 
-    } catch (err) {
+    } catch {
       setAiError("Network error. Please check your connection.");
     } finally {
       setAiLoading(false);

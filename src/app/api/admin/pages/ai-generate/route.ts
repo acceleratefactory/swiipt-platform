@@ -265,7 +265,7 @@ export async function POST(request: NextRequest) {
     try {
       const cleaned = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
       pageData = JSON.parse(cleaned);
-    } catch (parseErr) {
+    } catch {
       console.error("Failed to parse AI response:", rawText);
       return NextResponse.json({ error: "AI returned invalid data. Please try again or fill the form manually." }, { status: 500 });
     }
