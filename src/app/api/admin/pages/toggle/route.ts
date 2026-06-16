@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
@@ -12,8 +13,9 @@ export async function POST(request: NextRequest) {
   const { id, published } = await request.json();
   if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
 
+  const serviceClient = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await (serviceClient as any)
     .from("niche_pages")
     .update({ published, updated_at: new Date().toISOString() })
     .eq("id", id);

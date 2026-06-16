@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 
 const URL_PREFIX_OPTIONS = [
   { value: "move", label: "Move / Relocate" },
@@ -203,11 +202,8 @@ export default function NichePageEditor({
     setSaving(true);
     setError("");
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setError("Not authenticated"); setSaving(false); return; }
-
     const payload: any = {
+      id: isEdit ? pkg.id : undefined,
       slug: form.slug.trim(),
       url_prefix: form.url_prefix,
       segment: form.segment.trim() || null,
@@ -237,28 +233,21 @@ export default function NichePageEditor({
       meta_description: form.meta_description.trim() || null,
       og_image_url: form.og_image_url.trim() || null,
       published: form.published,
-      updated_at: new Date().toISOString(),
     };
 
-    if (isEdit) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (supabase as any)
-        .from("niche_pages")
-        .update(payload)
-        .eq("id", pkg.id);
+    const res = await fetch("/api/admin/pages/upsert", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-      setSaving(false);
-      if (updateError) { setError("Failed to update: " + updateError.message); return; }
+    setSaving(false);
 
-    } else {
-      payload.created_by = user.id;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: insertError } = await (supabase as any)
-        .from("niche_pages")
-        .insert(payload);
+    const data = await res.json();
 
-      setSaving(false);
-      if (insertError) { setError("Failed to create: " + insertError.message); return; }
+    if (!res.ok) {
+      setError(data.error || "Failed to save.");
+      return;
     }
 
     router.push("/admin/pages");

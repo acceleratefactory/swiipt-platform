@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
@@ -21,14 +22,14 @@ export async function POST(request: NextRequest) {
     recommended_goal_template_id, published,
   } = body;
 
-  // Fix: convert empty string to null for UUID / nullable fields
+  const serviceClient = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const db = serviceClient as any;
+
   const safeRecommendedGoalTemplateId = recommended_goal_template_id || null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabaseAny = supabase as any;
-
   if (id) {
-    const { data, error } = await supabaseAny
+    const { data, error } = await db
       .from("niche_pages")
       .update({
         url_prefix, slug, title, subtitle, destination, category, segment,
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ data });
   } else {
-    const { data, error } = await supabaseAny
+    const { data, error } = await db
       .from("niche_pages")
       .insert({
         url_prefix, slug, title, subtitle, destination, category, segment,
