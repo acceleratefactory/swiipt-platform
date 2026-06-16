@@ -591,10 +591,33 @@ export async function POST(_request: NextRequest) {
   if (!role || role.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const serviceClient = createServiceClient();
+
+  // Get existing slugs to avoid duplicate key errors
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (serviceClient as any)
+    .from("niche_pages")
+    .select("slug, url_prefix");
+
+  const existingKeys = new Set(
+    (existing || []).map((p: { slug: string; url_prefix: string }) => `${p.url_prefix}/${p.slug}`)
+  );
+
+  const newPages = PAGES.filter(
+    (p) => !existingKeys.has(`${p.url_prefix}/${p.slug}`)
+  );
+
+  if (newPages.length === 0) {
+    return NextResponse.json({
+      count: 0,
+      skipped: PAGES.length,
+      message: "All 20 pages already exist. No new pages to create.",
+    });
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inserted, error: insertError } = await (serviceClient as any)
     .from("niche_pages")
-    .insert(PAGES, { onConflict: "url_prefix,slug", ignoreDuplicates: true })
+    .insert(newPages)
     .select("id");
 
   if (insertError) {

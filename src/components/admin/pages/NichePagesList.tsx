@@ -48,7 +48,7 @@ export default function NichePagesList({ pages: initial }: { pages: NichePage[] 
       setSeedError(data.error || "Seeding failed.");
       return;
     }
-    setSeedSuccess(`${data.count} pages created as drafts. Review and publish from this list.`);
+    setSeedSuccess(data.message || `${data.count} pages created as drafts. Review and publish from this list.`);
     window.location.reload();
   }
 
