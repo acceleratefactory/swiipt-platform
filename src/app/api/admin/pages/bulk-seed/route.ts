@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 const PAGES = [
   {
@@ -597,8 +598,9 @@ export async function POST(_request: NextRequest) {
     return NextResponse.json({ error: `${count} pages already exist. Delete them first if you want to re-seed.` }, { status: 400 });
   }
 
+  const serviceClient = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: inserted, error: insertError } = await (supabase as any)
+  const { data: inserted, error: insertError } = await (serviceClient as any)
     .from("niche_pages")
     .insert(PAGES)
     .select("id");
