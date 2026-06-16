@@ -30,6 +30,7 @@ interface NichePage {
 export default function NichePagesList({ pages: initial }: { pages: NichePage[] }) {
   const [pages, setPages] = useState(initial);
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedError, setSeedError] = useState("");
   const [seedSuccess, setSeedSuccess] = useState("");
@@ -61,6 +62,23 @@ export default function NichePagesList({ pages: initial }: { pages: NichePage[] 
     if (res.ok) {
       setPages((prev) => prev.map((p) => (p.id === id ? { ...p, published: !current } : p)));
     }
+  }
+
+  async function handleDelete(id: string, title: string) {
+    if (!confirm(`Delete "${title}"?\n\nThis cannot be undone.`)) return;
+    setDeletingId(id);
+    const res = await fetch("/api/admin/pages/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setDeletingId(null);
+    if (!res.ok) {
+      const data = await res.json();
+      alert("Failed to delete: " + (data.error || "Unknown error"));
+      return;
+    }
+    setPages((prev) => prev.filter((p) => p.id !== id));
   }
 
   const grouped: Record<string, NichePage[]> = {};
@@ -151,9 +169,26 @@ export default function NichePagesList({ pages: initial }: { pages: NichePage[] 
                       {page.updated_at ? new Date(page.updated_at).toLocaleDateString() : "—"}
                     </td>
                     <td style={{ padding: "0.75rem 1rem" }}>
-                      <Link href={`/admin/pages/${page.id}`} style={{ fontSize: "0.8125rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
-                        Edit
-                      </Link>
+                      <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                        <Link href={`/admin/pages/${page.id}`} style={{ fontSize: "0.8125rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(page.id, page.title)}
+                          disabled={deletingId === page.id}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: deletingId === page.id ? "var(--text-muted)" : "var(--danger)",
+                            cursor: deletingId === page.id ? "not-allowed" : "pointer",
+                            fontWeight: 600,
+                            fontSize: "0.8125rem",
+                            padding: 0,
+                          }}
+                        >
+                          {deletingId === page.id ? "Deleting..." : "Delete"}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
