@@ -49,6 +49,20 @@ export async function POST(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ data });
   } else {
+    // Check if slug already exists before inserting
+    const { data: existing } = await db
+      .from("niche_pages")
+      .select("id, title")
+      .eq("url_prefix", url_prefix)
+      .eq("slug", slug)
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json({
+        error: `A page with slug "/${url_prefix}/${slug}" already exists ("${existing.title}"). Choose a different slug.`,
+      }, { status: 409 });
+    }
+
     const { data, error } = await db
       .from("niche_pages")
       .insert({
