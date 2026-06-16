@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 const URL_PREFIX_OPTIONS = [
   { value: "move", label: "Move / Relocate" },
@@ -14,6 +15,17 @@ const URL_PREFIX_OPTIONS = [
   { value: "corporate", label: "Corporate" },
   { value: "student", label: "Student" },
   { value: "parents", label: "Parents / Family" },
+];
+
+const AI_PROVIDERS = [
+  { value: "anthropic", label: "Anthropic (Claude)" },
+  { value: "openai", label: "OpenAI (GPT)" },
+  { value: "gemini", label: "Google Gemini" },
+  { value: "openrouter", label: "OpenRouter" },
+  { value: "deepseek", label: "DeepSeek" },
+  { value: "groq", label: "Groq" },
+  { value: "together", label: "Together AI" },
+  { value: "custom", label: "Custom (OpenAI-compatible)" },
 ];
 
 const CATEGORY_OPTIONS = [
@@ -64,6 +76,11 @@ export default function NichePageEditor({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [previewUrl, setPreviewUrl] = useState("");
+
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
+  const [aiProvider, setAiProvider] = useState("anthropic");
 
   const [form, setForm] = useState({
     url_prefix: pkg?.url_prefix || "move",
@@ -186,31 +203,184 @@ export default function NichePageEditor({
     setSaving(true);
     setError("");
 
-    const body: any = { ...form };
-    body.related_page_slugs = form.related_page_slugs
-      .split(",")
-      .map((s: string) => s.trim())
-      .filter(Boolean);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setError("Not authenticated"); setSaving(false); return; }
 
-    body.process_steps = form.process_steps.filter((s: any) => s.title || s.body);
-    body.requirements = form.requirements.filter(Boolean);
-    body.faqs = form.faqs.filter((f: any) => f.q || f.a);
+    const payload: any = {
+      slug: form.slug.trim(),
+      url_prefix: form.url_prefix,
+      segment: form.segment.trim() || null,
+      title: form.title.trim(),
+      subtitle: form.subtitle.trim(),
+      hero_headline: form.hero_headline.trim(),
+      hero_subtext: form.hero_subtext.trim(),
+      hero_cta_label: form.hero_cta_label.trim() || "Get started free",
+      hero_cta_url: form.hero_cta_url.trim() || "/signup",
+      destination: form.destination.trim() || null,
+      category: form.category,
+      process_steps: form.process_steps.filter((s: any) => s.title || s.body),
+      requirements: form.requirements.filter(Boolean),
+      faqs: form.faqs.filter((f: any) => f.q || f.a),
+      cost_calculator_destination: form.cost_calculator_destination.trim() || null,
+      cost_calculator_service_type: form.cost_calculator_service_type.trim() || null,
+      success_story_name: form.success_story_name.trim() || null,
+      success_story_role: form.success_story_role.trim() || null,
+      success_story_quote: form.success_story_quote.trim() || null,
+      success_story_destination: form.success_story_destination.trim() || null,
+      related_page_slugs: form.related_page_slugs
+        .split(",")
+        .map((s: string) => s.trim())
+        .filter(Boolean),
+      recommended_goal_template_id: form.recommended_goal_template_id.trim() || null,
+      meta_title: form.meta_title.trim() || null,
+      meta_description: form.meta_description.trim() || null,
+      og_image_url: form.og_image_url.trim() || null,
+      published: form.published,
+      updated_at: new Date().toISOString(),
+    };
 
-    if (isEdit) body.id = pkg.id;
+    if (isEdit) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: updateError } = await (supabase as any)
+        .from("niche_pages")
+        .update(payload)
+        .eq("id", pkg.id);
 
-    const res = await fetch("/api/admin/pages/upsert", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+      setSaving(false);
+      if (updateError) { setError("Failed to update: " + updateError.message); return; }
 
-    const data = await res.json();
-    if (!res.ok) { setError(data.error || "Save failed"); setSaving(false); return; }
+    } else {
+      payload.created_by = user.id;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: insertError } = await (supabase as any)
+        .from("niche_pages")
+        .insert(payload);
+
+      setSaving(false);
+      if (insertError) { setError("Failed to create: " + insertError.message); return; }
+    }
+
     router.push("/admin/pages");
+    router.refresh();
+  }
+
+  async function handleAIGenerate() {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    setAiError("");
+
+    try {
+      const res = await fetch("/api/admin/pages/ai-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt, provider: aiProvider }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setAiError(data.error || "AI generation failed. Please try again.");
+        return;
+      }
+
+      setForm(prev => ({
+        ...prev,
+        ...data.page,
+        url_prefix: prev.url_prefix || data.page.url_prefix || "move",
+        published: false,
+      }));
+
+      setAiPrompt("");
+
+    } catch (err) {
+      setAiError("Network error. Please check your connection.");
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} style={{ maxWidth: "840px" }}>
+      {/* AI Auto-populate section — only shown when creating, not editing */}
+      {!isEdit && (
+        <div style={{
+          background: "linear-gradient(135deg, #06112B, #1A3560)",
+          borderRadius: "var(--radius-lg)",
+          padding: "1.5rem",
+          marginBottom: "1.5rem",
+          border: "1px solid rgba(0,200,150,0.3)",
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.375rem" }}>
+            <p style={{ color: "var(--teal)", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+              ✨ AI Auto-populate
+            </p>
+            <select
+              value={aiProvider}
+              onChange={e => setAiProvider(e.target.value)}
+              style={{
+                padding: "0.25rem 0.5rem",
+                borderRadius: "var(--radius-sm)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(255,255,255,0.1)",
+                color: "white",
+                fontSize: "0.75rem",
+                outline: "none",
+                cursor: "pointer",
+              }}
+            >
+              {AI_PROVIDERS.map(p => (
+                <option key={p.value} value={p.value} style={{ color: "var(--midnight)" }}>{p.label}</option>
+              ))}
+            </select>
+          </div>
+          <p style={{ color: "white", fontWeight: 700, fontSize: "0.9375rem", marginBottom: "0.375rem" }}>
+            Describe the page and AI fills everything in
+          </p>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.8125rem", marginBottom: "1rem" }}>
+            Describe the destination and service type. AI generates title, hero text, process steps, FAQs, requirements, success story, and SEO tags. You review and save.
+          </p>
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <input
+              value={aiPrompt}
+              onChange={e => setAiPrompt(e.target.value)}
+              placeholder='e.g. "UAE residence permit for Nigerian professionals" or "UK company registration for Stripe access"'
+              style={{
+                flex: 1,
+                padding: "0.625rem 0.875rem",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid rgba(255,255,255,0.2)",
+                background: "rgba(255,255,255,0.1)",
+                color: "white",
+                fontSize: "0.875rem",
+                outline: "none",
+              }}
+              onKeyDown={e => { if (e.key === "Enter" && aiPrompt.trim()) handleAIGenerate(); }}
+            />
+            <button
+              type="button"
+              onClick={handleAIGenerate}
+              disabled={aiLoading || !aiPrompt.trim()}
+              style={{
+                padding: "0.625rem 1.25rem",
+                background: aiLoading || !aiPrompt.trim() ? "rgba(255,255,255,0.1)" : "var(--teal)",
+                color: aiLoading || !aiPrompt.trim() ? "rgba(255,255,255,0.4)" : "var(--midnight)",
+                fontWeight: 700,
+                fontSize: "0.875rem",
+                borderRadius: "var(--radius-md)",
+                border: "none",
+                cursor: aiLoading || !aiPrompt.trim() ? "not-allowed" : "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {aiLoading ? "Generating..." : "Generate page"}
+            </button>
+          </div>
+          {aiError && (
+            <p style={{ color: "#FCA5A5", fontSize: "0.8125rem", marginTop: "0.5rem" }}>{aiError}</p>
+          )}
+        </div>
+      )}
       {/* 1. Basic info */}
       <div style={sectionS}>
         <h2 style={sectionTitleS}>Basic information</h2>

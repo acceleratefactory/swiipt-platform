@@ -30,6 +30,28 @@ interface NichePage {
 export default function NichePagesList({ pages: initial }: { pages: NichePage[] }) {
   const [pages, setPages] = useState(initial);
 
+  const [seeding, setSeeding] = useState(false);
+  const [seedError, setSeedError] = useState("");
+  const [seedSuccess, setSeedSuccess] = useState("");
+
+  async function handleBulkSeed() {
+    if (!confirm("This will create all 20 niche landing pages as drafts. You can review and publish them individually. Continue?")) return;
+    setSeeding(true);
+    setSeedError("");
+    const res = await fetch("/api/admin/pages/bulk-seed", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    setSeeding(false);
+    if (!res.ok) {
+      setSeedError(data.error || "Seeding failed.");
+      return;
+    }
+    setSeedSuccess(`${data.count} pages created as drafts. Review and publish from this list.`);
+    window.location.reload();
+  }
+
   async function togglePublished(id: string, current: boolean) {
     const res = await fetch("/api/admin/pages/toggle", {
       method: "POST",
@@ -149,8 +171,24 @@ export default function NichePagesList({ pages: initial }: { pages: NichePage[] 
       ))}
 
       {Object.keys(grouped).length === 0 && (
-        <div style={{ padding: "2rem", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
-          No landing pages yet. Create your first page.
+        <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "3rem", textAlign: "center", border: "2px dashed var(--border)" }}>
+          <p style={{ color: "var(--text-muted)", marginBottom: "1.5rem" }}>
+            No landing pages yet. Create them individually, use AI to generate, or seed all 20 template pages at once.
+          </p>
+          <div style={{ display: "flex", gap: "1rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="/admin/pages/new" style={{ padding: "0.75rem 1.5rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, fontSize: "0.875rem", borderRadius: "var(--radius-md)", textDecoration: "none" }}>
+              + Create page manually
+            </a>
+            <button
+              onClick={handleBulkSeed}
+              disabled={seeding}
+              style={{ padding: "0.75rem 1.5rem", background: "var(--midnight)", color: "white", fontWeight: 700, fontSize: "0.875rem", borderRadius: "var(--radius-md)", border: "none", cursor: seeding ? "not-allowed" : "pointer" }}
+            >
+              {seeding ? "Creating pages..." : "🚀 Seed all 20 template pages"}
+            </button>
+          </div>
+          {seedError && <p style={{ color: "var(--danger)", fontSize: "0.875rem", marginTop: "1rem" }}>{seedError}</p>}
+          {seedSuccess && <p style={{ color: "var(--teal)", fontSize: "0.875rem", marginTop: "1rem" }}>✓ {seedSuccess}</p>}
         </div>
       )}
     </div>

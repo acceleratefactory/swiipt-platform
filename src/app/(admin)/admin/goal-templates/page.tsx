@@ -18,7 +18,7 @@ export default async function AdminGoalTemplatesPage() {
 
   return (
     <div>
-      <GoalTemplatesList templates={templates || []} />
+      <GoalTemplatesList initialTemplates={templates || []} />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/client";
 
 interface GoalTemplate {
   id: string;
@@ -15,8 +16,26 @@ interface GoalTemplate {
   sort_order: number;
 }
 
-export default function GoalTemplatesList({ templates: initial }: { templates: GoalTemplate[] }) {
-  const [templates, setTemplates] = useState(initial);
+export default function GoalTemplatesList({ initialTemplates }: { initialTemplates: GoalTemplate[] }) {
+  const [templates, setTemplates] = useState(initialTemplates);
+
+  const supabase = createClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(id: string, name: string) {
+    if (!confirm(`Delete template "${name}"?\n\nThis cannot be undone. Any user goals created from this template are not affected.`)) return;
+    setDeletingId(id);
+    const { error } = await supabase
+      .from("goal_templates")
+      .delete()
+      .eq("id", id);
+    setDeletingId(null);
+    if (error) {
+      alert("Failed to delete: " + error.message);
+      return;
+    }
+    setTemplates(prev => prev.filter(t => t.id !== id));
+  }
 
   async function toggleActive(id: string, current: boolean) {
     const res = await fetch("/api/admin/goal-templates/toggle", {
@@ -85,10 +104,30 @@ export default function GoalTemplatesList({ templates: initial }: { templates: G
                   </button>
                 </td>
                 <td style={{ padding: "0.75rem 1rem", fontSize: "0.8125rem", color: "var(--text-muted)" }}>{t.sort_order}</td>
-                <td style={{ padding: "0.75rem 1rem" }}>
-                  <Link href={`/admin/goal-templates/${t.id}`} style={{ fontSize: "0.8125rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
-                    Edit
-                  </Link>
+                <td style={{ padding: "0.625rem 1rem" }}>
+                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                    <Link
+                      href={`/admin/goal-templates/${t.id}`}
+                      style={{ color: "var(--teal)", fontWeight: 600, fontSize: "0.8125rem", textDecoration: "none" }}
+                    >
+                      Edit
+                    </Link>
+                    <button
+                      onClick={() => handleDelete(t.id, t.name)}
+                      disabled={deletingId === t.id}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: deletingId === t.id ? "var(--text-muted)" : "var(--danger)",
+                        cursor: deletingId === t.id ? "not-allowed" : "pointer",
+                        fontWeight: 600,
+                        fontSize: "0.8125rem",
+                        padding: 0,
+                      }}
+                    >
+                      {deletingId === t.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

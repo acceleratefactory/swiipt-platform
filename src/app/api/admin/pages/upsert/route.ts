@@ -21,6 +21,9 @@ export async function POST(request: NextRequest) {
     recommended_goal_template_id, published,
   } = body;
 
+  // Fix: convert empty string to null for UUID / nullable fields
+  const safeRecommendedGoalTemplateId = recommended_goal_template_id || null;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const supabaseAny = supabase as any;
 
@@ -35,7 +38,7 @@ export async function POST(request: NextRequest) {
         success_story_name, success_story_role, success_story_quote, success_story_destination,
         related_page_slugs,
         meta_title, meta_description, meta_keywords, og_image_url,
-        recommended_goal_template_id, published,
+        recommended_goal_template_id: safeRecommendedGoalTemplateId, published,
         updated_at: new Date().toISOString(),
       })
       .eq("id", id)
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
         success_story_name, success_story_role, success_story_quote, success_story_destination,
         related_page_slugs,
         meta_title, meta_description, meta_keywords, og_image_url,
-        recommended_goal_template_id, published, created_by: user.id,
+        recommended_goal_template_id: safeRecommendedGoalTemplateId, published, created_by: user.id,
       })
       .select()
       .single();
