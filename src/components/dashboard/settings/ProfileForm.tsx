@@ -7,17 +7,38 @@ export default function ProfileForm({ profile, userId: _userId, userEmail }: { p
   const [country, setCountry] = useState(profile?.country_of_residence || "Nigeria");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   async function handleSave() {
+    if (!fullName.trim()) {
+      setError("Full name cannot be empty.");
+      return;
+    }
     setSaving(true);
-    await fetch("/api/settings/update-profile", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fullName, phone, country }),
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+    setError("");
+    setSaved(false);
+
+    try {
+      const res = await fetch("/api/settings/update-profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fullName: fullName.trim(), phone: phone.trim(), country }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Failed to save. Please try again.");
+        return;
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      setError("Network error. Please check your connection and try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function copyReferral() {
@@ -80,6 +101,12 @@ export default function ProfileForm({ profile, userId: _userId, userEmail }: { p
         >
           {saving ? "Saving…" : saved ? "Saved ✓" : "Save changes"}
         </button>
+
+        {error && (
+          <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: "var(--radius-md)", padding: "0.75rem 1rem", fontSize: "0.875rem", color: "var(--danger)", marginBottom: "1rem" }}>
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );

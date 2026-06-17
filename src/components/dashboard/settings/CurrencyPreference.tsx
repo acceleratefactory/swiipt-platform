@@ -3,14 +3,25 @@ import { useState } from "react";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function CurrencyPreference({ currentCurrency, currencies, userId: _userId }: { currentCurrency: string; currencies: any[]; userId: string }) {
   const [selected, setSelected] = useState(currentCurrency);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   async function handleChange(code: string) {
     setSelected(code);
-    await fetch("/api/settings/update-currency", {
+    setSaving(true);
+    setSaved(false);
+
+    const res = await fetch("/api/settings/update-currency", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ currency: code }),
     });
+
+    setSaving(false);
+    if (res.ok) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
   }
 
   return (
@@ -43,6 +54,9 @@ export default function CurrencyPreference({ currentCurrency, currencies, userId
           </button>
         ))}
       </div>
+
+      {saving && <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.5rem" }}>Saving...</p>}
+      {saved && <p style={{ fontSize: "0.75rem", color: "var(--teal)", marginTop: "0.5rem" }}>✓ Currency updated</p>}
 
       <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "1rem" }}>
         Exchange rates are indicative. All transactions are processed in the currency of your goal.
