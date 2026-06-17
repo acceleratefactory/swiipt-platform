@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/messaging/scheduled/expire-deposits",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

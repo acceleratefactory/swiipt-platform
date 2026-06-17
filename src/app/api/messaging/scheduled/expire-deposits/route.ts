@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
-  if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
+  // Only allow Vercel Cron Jobs or internal calls
+  if (request.headers.get("x-vercel-cron") !== "1") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
