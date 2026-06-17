@@ -46,8 +46,8 @@ export default function EditGoalForm({
 
     setSaving(true);
     const { error: updateError } = await supabase
-      .from("goals")
-      .update({ goal_name: trimmedName, target_amount: parsedTarget } as never)
+      .from("savings_goals")
+      .update({ goal_name: trimmedName, target_amount: parsedTarget })
       .eq("id", goal.id);
 
     if (updateError) {

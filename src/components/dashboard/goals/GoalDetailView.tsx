@@ -109,8 +109,8 @@ export default function GoalDetailView({
     if (!confirm("Are you sure you want to cancel this goal? This action cannot be undone.")) return;
     setDeleting(true);
     const { error } = await supabase
-      .from("goals")
-      .update({ status: "cancelled" } as never)
+      .from("savings_goals")
+      .update({ status: "cancelled" })
       .eq("id", goal.id);
     if (error) {
       console.error("Failed to cancel goal:", error);
