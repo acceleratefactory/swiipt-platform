@@ -8,6 +8,7 @@ import TransactionHistory from "./TransactionHistory";
 import GoalDepositFlow from "./GoalDepositFlow";
 import GoalWithdrawFlow from "./GoalWithdrawFlow";
 import GiftToFriendFlow from "./GiftToFriendFlow";
+import EditGoalForm from "./EditGoalForm";
 
 interface Goal {
   id: string;
@@ -75,6 +76,8 @@ export default function GoalDetailView({
   preferredCurrency: string;
 }) {
   const [activeSection, setActiveSection] = useState<"overview" | "deposit" | "withdraw" | "gift">("overview");
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -100,6 +103,22 @@ export default function GoalDetailView({
       supabase.removeChannel(channel);
     };
   }, [goal.id, supabase]);
+
+  async function handleDeleteGoal() {
+    if (goal.current_balance > 0) return;
+    if (!confirm("Are you sure you want to cancel this goal? This action cannot be undone.")) return;
+    setDeleting(true);
+    const { error } = await supabase
+      .from("goals")
+      .update({ status: "cancelled" } as never)
+      .eq("id", goal.id);
+    if (error) {
+      console.error("Failed to cancel goal:", error);
+      setDeleting(false);
+    } else {
+      window.location.reload();
+    }
+  }
 
   const percentage = goal.target_amount > 0
     ? Math.min((goal.current_balance / goal.target_amount) * 100, 100)
@@ -237,7 +256,7 @@ export default function GoalDetailView({
           className="action-buttons-grid"
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
+            gridTemplateColumns: "repeat(4, 1fr)",
             gap: "0.75rem",
             marginTop: "1.5rem",
           }}
@@ -289,11 +308,52 @@ export default function GoalDetailView({
           >
             Withdraw
           </button>
+          <button
+            onClick={() => setEditModalOpen(true)}
+            style={{
+              padding: "0.75rem",
+              background: "var(--off-white)",
+              color: "var(--midnight)",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--border)",
+              cursor: "pointer",
+            }}
+          >
+            Edit
+          </button>
+          {goal.current_balance === 0 && (
+            <button
+              onClick={handleDeleteGoal}
+              disabled={deleting}
+              style={{
+                padding: "0.75rem",
+                background: "var(--off-white)",
+                color: "var(--danger)",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--danger)",
+                cursor: "pointer",
+                opacity: deleting ? 0.6 : 1,
+              }}
+            >
+              {deleting ? "Cancelling..." : "Delete"}
+            </button>
+          )}
         </div>
       </div>
 
       {/* Section 2: Milestone track */}
       <MilestoneTrack goal={goal} milestoneRewards={milestoneRewards} />
+
+      {editModalOpen && (
+        <EditGoalForm
+          goal={goal}
+          onClose={() => setEditModalOpen(false)}
+        />
+      )}
 
       {/* Section 3: Active section panel + transaction history */}
       {activeSection === "deposit" && (
