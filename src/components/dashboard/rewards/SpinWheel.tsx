@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 interface WheelSlot {
@@ -36,7 +36,7 @@ export default function SpinWheel({ promotion, userId, onSpinComplete }: SpinWhe
   const numSlots = slots.length;
   const sliceAngle = (2 * Math.PI) / numSlots;
 
-  function drawWheel(angle: number) {
+  const drawWheel = useCallback((angle: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -89,11 +89,11 @@ export default function SpinWheel({ promotion, userId, onSpinComplete }: SpinWhe
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("SPIN", cx, cy);
-  }
+  }, [slots]);
 
   useEffect(() => {
     drawWheel(currentAngle);
-  }, [currentAngle, slots]);
+  }, [currentAngle, drawWheel]);
 
   function selectWinner(): number {
     const total = slots.reduce((sum, s) => sum + s.probability, 0);

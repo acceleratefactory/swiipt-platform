@@ -34,7 +34,7 @@ export default function ProfileForm({ profile, userId: _userId, userEmail }: { p
 
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
-    } catch (err) {
+    } catch {
       setError("Network error. Please check your connection and try again.");
     } finally {
       setSaving(false);
