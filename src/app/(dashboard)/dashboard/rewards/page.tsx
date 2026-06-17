@@ -52,7 +52,7 @@ export default async function RewardsPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("leaderboard_entries").select("rank, referral_count").eq("user_id", user.id).eq("period_key", periodKey.data).single(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).from("promotions").select("id, title, spin_config").eq("promotion_type", "spin_win").in("status", ["active", "scheduled"]).lte("starts_at", now).or(`ends_at.is.null,ends_at.gte.${now}`),
+    (supabase as any).from("promotions").select("id, title, spin_config").eq("promotion_type", "spin_win").in("status", ["active", "scheduled"]).lte("starts_at", now).gte("ends_at", now),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("promotion_awards").select("promotion_id").eq("user_id", user.id).eq("award_type", "spin_win"),
   ]);

@@ -65,6 +65,8 @@ export default function CreatePromotionForm() {
         body: JSON.stringify({
           ...formData,
           promotion_type: type,
+          starts_at: formData.starts_at ? new Date(formData.starts_at).toISOString() : null,
+          ends_at: formData.ends_at ? new Date(formData.ends_at).toISOString() : null,
           prize_value_ngn: formData.prize_value_ngn ? Number(formData.prize_value_ngn) : null,
           quantity_cap: formData.quantity_cap ? Number(formData.quantity_cap) : null,
           wheelSlots: type === "spin_win" ? wheelSlots : null,
