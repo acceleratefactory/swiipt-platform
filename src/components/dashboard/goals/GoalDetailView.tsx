@@ -116,7 +116,7 @@ export default function GoalDetailView({
       console.error("Failed to cancel goal:", error);
       setDeleting(false);
     } else {
-      window.location.reload();
+      window.location.href = "/dashboard/goals";
     }
   }
 
