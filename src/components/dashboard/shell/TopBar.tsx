@@ -1,8 +1,10 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useState, useRef, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Menu, Bell } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const titleMap: Record<string, string> = {
   "/dashboard": "Home",
@@ -31,6 +33,26 @@ export default function TopBar({
 }) {
   const pathname = usePathname();
   const pageTitle = titleMap[pathname] || "Dashboard";
+  const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const supabase = createClient();
+  const router = useRouter();
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setAvatarMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <header
@@ -124,24 +146,50 @@ export default function TopBar({
         )}
       </button>
 
-      {/* Avatar */}
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: "50%",
-          background: "var(--midnight)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "white",
-          fontWeight: 700,
-          fontSize: "0.875rem",
-          cursor: "pointer",
-          flexShrink: 0,
-        }}
-      >
-        {profile.full_name?.charAt(0).toUpperCase()}
+      {/* Avatar with dropdown */}
+      <div ref={menuRef} style={{ position: "relative" }}>
+        <button
+          onClick={() => setAvatarMenuOpen(!avatarMenuOpen)}
+          style={{
+            width: 36, height: 36, borderRadius: "50%",
+            background: "var(--midnight)", color: "white",
+            fontWeight: 700, fontSize: "0.875rem",
+            border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {profile.full_name?.charAt(0).toUpperCase()}
+        </button>
+
+        {avatarMenuOpen && (
+          <div style={{
+            position: "absolute", top: "calc(100% + 8px)", right: 0,
+            background: "white", borderRadius: "var(--radius-md)",
+            border: "1px solid var(--border)", boxShadow: "var(--shadow-md)",
+            minWidth: "180px", zIndex: 100, overflow: "hidden",
+          }}>
+            <div style={{ padding: "0.75rem 1rem", borderBottom: "1px solid var(--border)" }}>
+              <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--midnight)" }}>{profile.full_name}</p>
+            </div>
+            <a href="/dashboard/settings" style={{ display: "block", padding: "0.75rem 1rem", fontSize: "0.875rem", color: "var(--text-secondary)", textDecoration: "none", borderBottom: "1px solid var(--border)" }}
+              onClick={() => setAvatarMenuOpen(false)}>
+              Settings
+            </a>
+            <button
+              onClick={handleSignOut}
+              style={{
+                width: "100%", padding: "0.75rem 1rem",
+                background: "none", border: "none",
+                textAlign: "left", fontSize: "0.875rem",
+                color: "var(--danger)", cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

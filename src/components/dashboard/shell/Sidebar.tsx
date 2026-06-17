@@ -1,12 +1,13 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Home, Target, Globe, Plane, Umbrella,
   FileText, Gift, Users, MessageCircle,
-  Settings, Wallet,
+  Settings, Wallet, LogOut,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import CurrencyDisplay from "@/components/dashboard/shared/CurrencyDisplay";
 
 const navItems = [
@@ -34,6 +35,14 @@ export default function Sidebar({
   onClose: () => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const supabase = createClient();
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <>
@@ -110,17 +119,32 @@ export default function Sidebar({
         </nav>
 
         {/* User profile at bottom */}
-        <div style={{ padding: "1rem", borderTop: "1px solid rgba(255,255,255,0.08)", display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--midnight-muted)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "0.875rem", flexShrink: 0 }}>
-            {profile.full_name?.charAt(0).toUpperCase()}
+        <div style={{ padding: "1rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "0.5rem" }}>
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--midnight-muted)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "0.875rem", flexShrink: 0 }}>
+              {profile.full_name?.charAt(0).toUpperCase()}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.full_name}</p>
+              <p style={{ fontSize: "0.7rem", color: "var(--gray-500)" }}>Score: {profile.mobility_score}</p>
+            </div>
+            <Link href="/dashboard/settings" style={{ marginLeft: "auto", color: "var(--gray-500)" }}>
+              <Settings size={16} />
+            </Link>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "white", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.full_name}</p>
-            <p style={{ fontSize: "0.7rem", color: "var(--gray-500)" }}>Score: {profile.mobility_score}</p>
-          </div>
-          <Link href="/dashboard/settings" style={{ marginLeft: "auto", color: "var(--gray-500)" }}>
-            <Settings size={16} />
-          </Link>
+          <button
+            onClick={handleSignOut}
+            style={{
+              width: "100%", padding: "0.75rem 1rem",
+              background: "rgba(255,255,255,0.05)", border: "none",
+              color: "rgba(255,255,255,0.5)", cursor: "pointer",
+              fontSize: "0.8125rem", textAlign: "left",
+              display: "flex", alignItems: "center", gap: "0.5rem",
+            }}
+          >
+            <LogOut size={16} />
+            Sign out
+          </button>
         </div>
       </aside>
     </>

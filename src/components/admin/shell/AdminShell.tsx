@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Menu } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import AdminSidebar from "./AdminSidebar";
 
 export default function AdminShell({
@@ -101,16 +102,21 @@ export default function AdminShell({
               </span>
             </span>
           </div>
-          <a
-            href="/dashboard"
-            style={{
-              fontSize: "0.8125rem",
-              color: "var(--text-muted)",
-              textDecoration: "none",
-            }}
-          >
-            ← User dashboard
-          </a>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            <a href="/dashboard" style={{ fontSize: "0.8125rem", color: "var(--text-muted)", textDecoration: "none" }}>
+              ← User dashboard
+            </a>
+            <button
+              onClick={async () => {
+                const supabase = createClient();
+                await supabase.auth.signOut();
+                window.location.href = "/login";
+              }}
+              style={{ fontSize: "0.8125rem", color: "var(--danger)", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}
+            >
+              Sign out
+            </button>
+          </div>
         </div>
         <main style={{ flex: 1, padding: "1.5rem", overflowY: "auto" }}>
           {children}
