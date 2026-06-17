@@ -20,8 +20,9 @@ interface Gift {
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   confirmed: { label: "Confirmed", color: "var(--teal)", bg: "var(--teal-pale)" },
-  pending: { label: "Pending", color: "#B45309", bg: "#FEF3C7" },
+  pending: { label: "Pending review", color: "#B45309", bg: "#FEF3C7" },
   rejected: { label: "Rejected", color: "var(--danger)", bg: "#FEF2F2" },
+  expired: { label: "Expired — not confirmed", color: "#6B7280", bg: "#F3F4F6" },
   completed: { label: "Completed", color: "var(--teal)", bg: "var(--teal-pale)" },
 };
 

@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
       ngn_equivalent: ngnEquivalent,
       payment_reference: reference,
       status: "pending",
+      expires_at: null, // Set when user clicks "I Have Sent"
     })
     .select()
     .single();

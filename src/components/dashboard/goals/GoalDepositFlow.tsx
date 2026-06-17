@@ -381,10 +381,14 @@ export default function GoalDepositFlow({
           <button
             onClick={async () => {
               const supabase = createClient();
+              const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               await (supabase as any)
                 .from("deposits")
-                .update({ user_confirmed_at: new Date().toISOString() })
+                .update({
+                  user_confirmed_at: new Date().toISOString(),
+                  expires_at: expiresAt,
+                })
                 .eq("id", depositData.depositId);
               setStep("pending");
             }}
@@ -466,9 +470,10 @@ export default function GoalDepositFlow({
               marginBottom: "1rem",
             }}
           >
-            We will confirm your transfer and update your balance within 1–4
-            hours during business hours. You will receive a notification as soon
-            as it is confirmed.
+            We will confirm your transfer and update your balance within 1–4 business hours
+            (9am–6pm WAT, Monday–Saturday). If not confirmed within 24 hours, the deposit
+            will expire automatically. Contact <strong>support@swiipt.com</strong> if you
+            have transferred and are waiting more than 4 hours.
           </p>
           <p
             style={{
