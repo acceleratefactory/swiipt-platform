@@ -33,9 +33,25 @@ export default function GoalWithdrawFlow({
     is_locked: boolean;
     maturity_date: string | null;
     early_exit_penalty_rate: number;
+    is_credit_funded?: boolean;
   };
   onClose: () => void;
 }) {
+  if (goal.is_credit_funded) {
+    return (
+      <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "2rem", border: "1px solid var(--border)", marginBottom: "1rem" }}>
+        <h3 style={{ fontWeight: 700, color: "var(--midnight)", marginBottom: "0.5rem" }}>Withdrawal not available</h3>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>
+          This goal contains travel credit that cannot be withdrawn as cash. 
+          Credits can only be used to pay for services on Swiipt.
+        </p>
+        <button onClick={onClose} style={{ marginTop: "1rem", padding: "0.625rem 1.25rem", background: "var(--midnight)", color: "white", fontWeight: 600, borderRadius: "var(--radius-md)", border: "none", cursor: "pointer" }}>
+          Close
+        </button>
+      </div>
+    );
+  }
+
   const isEarlyExit =
     goal.is_locked &&
     goal.maturity_date &&
