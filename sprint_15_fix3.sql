@@ -39,21 +39,25 @@ CREATE TABLE IF NOT EXISTS visa_redemptions (
 
 ALTER TABLE visa_redemptions ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Users can read own visa redemptions"
+DROP POLICY IF EXISTS "Users can read own visa redemptions" ON visa_redemptions;
+CREATE POLICY "Users can read own visa redemptions"
 ON visa_redemptions FOR SELECT
 USING (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Users can insert own visa redemptions"
+DROP POLICY IF EXISTS "Users can insert own visa redemptions" ON visa_redemptions;
+CREATE POLICY "Users can insert own visa redemptions"
 ON visa_redemptions FOR INSERT
 WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "Admins can read all visa redemptions"
+DROP POLICY IF EXISTS "Admins can read all visa redemptions" ON visa_redemptions;
+CREATE POLICY "Admins can read all visa redemptions"
 ON visa_redemptions FOR SELECT
 USING (
   EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'case_manager'))
 );
 
-CREATE POLICY IF NOT EXISTS "Admins can update visa redemptions"
+DROP POLICY IF EXISTS "Admins can update visa redemptions" ON visa_redemptions;
+CREATE POLICY "Admins can update visa redemptions"
 ON visa_redemptions FOR UPDATE
 USING (
   EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role IN ('admin', 'case_manager'))
