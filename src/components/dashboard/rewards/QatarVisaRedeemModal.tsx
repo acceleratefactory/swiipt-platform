@@ -15,6 +15,7 @@ export default function QatarVisaRedeemModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [redemptionData, setRedemptionData] = useState<any>(null);
+  const [nights, setNights] = useState(3);
   const [passportPhoto, setPassportPhoto] = useState<File | null>(null);
   const [passportDataPage, setPassportDataPage] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -25,11 +26,11 @@ export default function QatarVisaRedeemModal({
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/rewards/redeem-visa", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rewardId }),
-    });
+      const res = await fetch("/api/rewards/redeem-visa", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rewardId, nights }),
+      });
 
     const data = await res.json();
     setLoading(false);
@@ -103,7 +104,7 @@ export default function QatarVisaRedeemModal({
         {step === "info" && (
           <div>
             <p style={{ color: "var(--text-secondary)", fontSize: "0.9375rem", lineHeight: 1.6, marginBottom: "1.25rem" }}>
-              To redeem it, you need to pay a <strong>hotel booking fee of $150 USD</strong> (approximately ₦{(150 * 1600).toLocaleString()}).
+              To redeem it, you need to pay the <strong>hotel booking fee</strong>. The base fee of <strong>$150 USD</strong> covers <strong>3 nights</strong>. You can extend your stay by adding extra nights.
             </p>
 
             <div style={{ background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "1rem", marginBottom: "1.25rem" }}>
@@ -114,6 +115,33 @@ export default function QatarVisaRedeemModal({
                 <li>Status updates via notifications</li>
                 <li>Visa delivered digitally</li>
               </ul>
+            </div>
+
+            <div style={{ background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "1rem", marginBottom: "1rem" }}>
+              <p style={{ fontWeight: 700, color: "var(--midnight)", marginBottom: "0.75rem", fontSize: "0.9375rem" }}>
+                Number of nights
+              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <button
+                  onClick={() => setNights(n => Math.max(3, n - 1))}
+                  disabled={nights <= 3}
+                  style={{ width: "2.25rem", height: "2.25rem", borderRadius: "50%", border: "1px solid var(--gray-200)", background: nights <= 3 ? "var(--gray-100)" : "white", cursor: nights <= 3 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.25rem", color: nights <= 3 ? "var(--text-muted)" : "var(--midnight)" }}
+                >
+                  −
+                </button>
+                <span style={{ minWidth: "2rem", textAlign: "center", fontWeight: 700, fontSize: "1.125rem", color: "var(--midnight)" }}>{nights}</span>
+                <button
+                  onClick={() => setNights(n => Math.min(30, n + 1))}
+                  disabled={nights >= 30}
+                  style={{ width: "2.25rem", height: "2.25rem", borderRadius: "50%", border: "1px solid var(--gray-200)", background: nights >= 30 ? "var(--gray-100)" : "white", cursor: nights >= 30 ? "not-allowed" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: "1.25rem", color: nights >= 30 ? "var(--text-muted)" : "var(--midnight)" }}
+                >
+                  +
+                </button>
+                <span style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>nights</span>
+              </div>
+              <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginTop: "0.75rem" }}>
+                🛏️ 3 nights (base) + $50 per extra night
+              </p>
             </div>
 
             <div style={{ background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "1rem", marginBottom: "1.5rem" }}>
@@ -149,8 +177,21 @@ export default function QatarVisaRedeemModal({
             </p>
 
             <div style={{ background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "1.25rem", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid var(--gray-100)", fontSize: "0.875rem" }}>
+                <span style={{ color: "var(--text-muted)" }}>Base fee ({redemptionData?.minNights || 3} nights)</span>
+                <span style={{ fontWeight: 600, color: "var(--midnight)" }}>₦{Number(redemptionData?.baseFeeNgn || 0).toLocaleString()} (~${redemptionData?.baseFeeUsd || 0})</span>
+              </div>
+              {redemptionData?.extraFeeNgn && Number(redemptionData.extraFeeNgn) > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid var(--gray-100)", fontSize: "0.875rem" }}>
+                  <span style={{ color: "var(--text-muted)" }}>Extra nights ({(redemptionData?.nights || 3) - (redemptionData?.minNights || 3)})</span>
+                  <span style={{ fontWeight: 600, color: "var(--midnight)" }}>₦{Number(redemptionData.extraFeeNgn).toLocaleString()} (~${redemptionData.extraFeeUsd})</span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "0.75rem 0 0.5rem", borderTop: "2px solid var(--gray-200)", fontSize: "0.9375rem" }}>
+                <span style={{ fontWeight: 700, color: "var(--midnight)" }}>Total</span>
+                <span style={{ fontWeight: 700, color: "var(--midnight)" }}>₦{Number(redemptionData?.totalNgn || redemptionData?.bookingFeeNgn || 0).toLocaleString()} (~${redemptionData?.totalUsd || redemptionData?.bookingFeeUsd || 0})</span>
+              </div>
               {[
-                { label: "Hotel booking fee", value: `₦${redemptionData.bookingFeeNgn.toLocaleString()} (~$${redemptionData.bookingFeeUsd})` },
                 { label: "Bank", value: redemptionData.bankDetails?.bank_name || "Swiipt Account" },
                 { label: "Account number", value: redemptionData.bankDetails?.bank_account_number || "—" },
                 { label: "Account name", value: redemptionData.bankDetails?.bank_account_name || "—" },

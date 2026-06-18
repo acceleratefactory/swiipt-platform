@@ -68,6 +68,8 @@ export async function POST(request: NextRequest) {
 
   const usdToNgn = usdRate?.ngn_exchange_rate || 1600;
   const totalNgn = Math.ceil(totalUsd * usdToNgn);
+  const baseFeeNgn = Math.ceil(baseFeeUsd * usdToNgn);
+  const extraFeeNgn = Math.ceil(extraFeeUsd * usdToNgn);
 
   // Create visa redemption record with dynamic pricing
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -120,8 +122,11 @@ export async function POST(request: NextRequest) {
     totalUsd,
     totalNgn,
     baseFeeUsd,
+    baseFeeNgn,
     extraFeeUsd,
+    extraFeeNgn,
     nights,
+    minNights,
     bookingFeeUsd: totalUsd,
     bookingFeeNgn: totalNgn,
     reference,
