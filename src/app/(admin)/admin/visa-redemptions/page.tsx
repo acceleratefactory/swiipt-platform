@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import VisaRedemptionsActions from "@/components/admin/visa-redemptions/VisaRedemptionsActions";
 
 const statusStyles: Record<string, React.CSSProperties> = {
   pending_payment: { background: "#FEF3C7", color: "#92400E" },
@@ -55,7 +56,7 @@ export default async function AdminVisaRedemptionsPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
               <thead>
                 <tr style={{ background: "var(--gray-100)" }}>
-                  {["User", "Amount", "Nights", "Reference", "Status", "Created", "Expires", "Abandoned"].map(h => (
+                  {["User", "Amount", "Nights", "Reference", "Status", "Created", "Expires", "Abandoned", "Actions"].map(h => (
                     <th key={h} style={{ padding: "0.625rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
                       {h}
                     </th>
@@ -96,6 +97,9 @@ export default async function AdminVisaRedemptionsPage() {
                       </td>
                       <td style={{ padding: "0.75rem 1rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                         {r.abandoned_at ? new Date(r.abandoned_at).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
+                      </td>
+                      <td style={{ padding: "0.75rem 1rem" }}>
+                        <VisaRedemptionsActions redemption={r} />
                       </td>
                     </tr>
                   );

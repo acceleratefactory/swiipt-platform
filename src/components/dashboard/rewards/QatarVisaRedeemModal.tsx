@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { X } from "lucide-react";
 
 type Step = "info" | "payment" | "payment_pending" | "upload" | "complete";
@@ -48,6 +48,17 @@ export default function QatarVisaRedeemModal({
       }
       const existingData = await getRes.json();
       setRedemptionData(existingData);
+
+      // Resume at the correct step
+      if (existingData.status === "payment_confirmed" || existingData.status === "documents_uploaded") {
+        setStep("upload");
+        return;
+      }
+      if (existingData.status === "processing" || existingData.status === "completed") {
+        setStep("complete");
+        return;
+      }
+      // Default: still on payment step
       setStep("payment");
       return;
     }
@@ -105,6 +116,61 @@ export default function QatarVisaRedeemModal({
     }
 
     setStep("complete");
+  }
+
+  // Poll for payment confirmation when on payment_pending step
+  useEffect(() => {
+    if (step !== "payment_pending" || !redemptionData?.redemptionId) return;
+
+    const id = redemptionData.redemptionId;
+    let cancelled = false;
+    let pollCount = 0;
+    const MAX_POLLS = 30; // ~5 minutes of polling at 10s intervals
+
+    const checkStatus = async () => {
+      if (cancelled) return;
+      pollCount++;
+      if (pollCount > MAX_POLLS) {
+        setError("Taking longer than expected. We'll notify you when the payment is confirmed.");
+        return;
+      }
+      try {
+        const res = await fetch(`/api/rewards/redeem-visa?redemptionId=${id}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data.status === "payment_confirmed") {
+          setRedemptionData(data);
+          setStep("upload");
+        }
+      } catch {
+        // Silently retry on next interval
+      }
+    };
+
+    const interval = setInterval(checkStatus, 10000);
+    checkStatus(); // Also check immediately
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [step, redemptionData?.redemptionId]);
+
+  async function handleCheckStatus() {
+    if (!redemptionData?.redemptionId) return;
+    setLoading(true);
+    setError("");
+    const res = await fetch(`/api/rewards/redeem-visa?redemptionId=${redemptionData.redemptionId}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.status === "payment_confirmed") {
+        setRedemptionData(data);
+        setStep("upload");
+      } else {
+        setError("Payment not yet confirmed. Please wait or try again later.");
+      }
+    }
+    setLoading(false);
   }
 
   return (
@@ -272,6 +338,23 @@ export default function QatarVisaRedeemModal({
             <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "0.625rem 1rem", display: "inline-block", marginBottom: "1.5rem" }}>
               Reference: <strong style={{ color: "var(--midnight)", fontFamily: "monospace" }}>{redemptionData?.reference}</strong>
             </p>
+            <button
+              onClick={handleCheckStatus}
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "0.875rem",
+                background: loading ? "var(--gray-300)" : "var(--teal)",
+                color: loading ? "var(--text-muted)" : "var(--midnight)",
+                fontWeight: 700,
+                borderRadius: "var(--radius-md)",
+                border: "none",
+                cursor: loading ? "not-allowed" : "pointer",
+                marginBottom: "0.75rem",
+              }}
+            >
+              {loading ? "Checking..." : "Check payment status"}
+            </button>
             <button onClick={onClose} style={{ width: "100%", padding: "0.875rem", background: "var(--midnight)", color: "white", fontWeight: 700, borderRadius: "var(--radius-md)", border: "none", cursor: "pointer" }}>
               Close &mdash; I&apos;ll wait for confirmation
             </button>

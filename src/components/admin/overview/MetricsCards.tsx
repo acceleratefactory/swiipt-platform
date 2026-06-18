@@ -1,6 +1,7 @@
 interface MetricsCardsProps {
   totalUsers: number;
   pendingDeposits: number;
+  pendingVisaConfirmations: number;
   activeGoals: number;
   activeOrders: number;
   pendingWithdrawals: number;
@@ -11,6 +12,7 @@ interface MetricsCardsProps {
 export default function MetricsCards({
   totalUsers,
   pendingDeposits,
+  pendingVisaConfirmations,
   activeGoals,
   activeOrders,
   pendingWithdrawals,
@@ -20,6 +22,7 @@ export default function MetricsCards({
   const metrics = [
     { label: "Total users", value: totalUsers.toLocaleString(), color: 'var(--midnight)', urgent: false },
     { label: "Pending deposits", value: pendingDeposits.toLocaleString(), color: pendingDeposits > 0 ? 'var(--danger)' : 'var(--midnight)', urgent: pendingDeposits > 0, link: "/admin/deposits" },
+    { label: "Pending visa confirmations", value: pendingVisaConfirmations.toLocaleString(), color: pendingVisaConfirmations > 0 ? '#B45309' : 'var(--midnight)', urgent: pendingVisaConfirmations > 0, link: "/admin/visa-redemptions" },
     { label: "Active goals", value: activeGoals.toLocaleString(), color: 'var(--midnight)', urgent: false },
     { label: "Total AUM (NGN)", value: `₦${(totalAUM / 1000000).toFixed(1)}M`, color: 'var(--teal)', urgent: false },
     { label: "Open orders", value: activeOrders.toLocaleString(), color: 'var(--midnight)', urgent: false, link: "/admin/orders" },

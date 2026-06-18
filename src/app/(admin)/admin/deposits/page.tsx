@@ -23,6 +23,20 @@ export default async function AdminDepositsPage() {
     .not("user_confirmed_at", "is", null)
     .order("user_confirmed_at", { ascending: true });
 
+  // Detect which pending deposits are visa-related
+  let visaDepositIds = new Set<string>();
+  const pendingIds = (pendingDeposits || []).map((d: any) => d.id);
+  if (pendingIds.length > 0) {
+    const { data: visaLinks } = await supabaseAny
+      .from("visa_redemptions")
+      .select("deposit_id, booking_fee_deposit_id")
+      .or(`deposit_id.in.(${pendingIds.join(",")}),booking_fee_deposit_id.in.(${pendingIds.join(",")})`);
+    (visaLinks || []).forEach((v: any) => {
+      if (v.deposit_id) visaDepositIds.add(v.deposit_id);
+      if (v.booking_fee_deposit_id) visaDepositIds.add(v.booking_fee_deposit_id);
+    });
+  }
+
   const { data: recentConfirmed } = await supabaseAny
     .from("deposits")
     .select("*, users(full_name, email), savings_goals(goal_name)")
@@ -35,7 +49,7 @@ export default async function AdminDepositsPage() {
       <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1.375rem', fontWeight: 800, color: 'var(--midnight)', marginBottom: '1.5rem' }}>
         Deposits
       </h1>
-      <PendingDepositsTable initialDeposits={pendingDeposits || []} />
+      <PendingDepositsTable initialDeposits={pendingDeposits || []} visaDepositIds={visaDepositIds} />
       <DepositHistoryTable deposits={recentConfirmed || []} />
     </div>
   );

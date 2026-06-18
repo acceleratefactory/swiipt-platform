@@ -19,6 +19,7 @@ export default async function AdminOverviewPage() {
   const [
     { count: totalUsers },
     { count: pendingDeposits },
+    { count: pendingVisaConfirmations },
     { count: activeGoals },
     { count: activeOrders },
     { count: pendingWithdrawals },
@@ -29,6 +30,8 @@ export default async function AdminOverviewPage() {
     supabase.from("users").select("*", { count: "exact", head: true }),
     supabase.from("deposits").select("*", { count: "exact", head: true })
       .eq("status", "pending").not("user_confirmed_at", "is", null),
+    supabaseAny.from("visa_redemptions").select("*", { count: "exact", head: true })
+      .eq("status", "pending_payment"),
     supabase.from("savings_goals").select("*", { count: "exact", head: true }).eq("status", "active"),
     supabaseAny.from("service_orders").select("*", { count: "exact", head: true })
       .not("status", "in", '("completed","cancelled")'),
@@ -53,6 +56,7 @@ export default async function AdminOverviewPage() {
       <MetricsCards
         totalUsers={totalUsers || 0}
         pendingDeposits={pendingDeposits || 0}
+        pendingVisaConfirmations={pendingVisaConfirmations || 0}
         activeGoals={activeGoals || 0}
         activeOrders={activeOrders || 0}
         pendingWithdrawals={pendingWithdrawals || 0}

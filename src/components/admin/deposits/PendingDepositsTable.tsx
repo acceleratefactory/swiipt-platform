@@ -17,9 +17,10 @@ interface DepositWithUser {
 
 interface PendingDepositsTableProps {
   initialDeposits: DepositWithUser[];
+  visaDepositIds?: Set<string>;
 }
 
-export default function PendingDepositsTable({ initialDeposits }: PendingDepositsTableProps) {
+export default function PendingDepositsTable({ initialDeposits, visaDepositIds }: PendingDepositsTableProps) {
   const [deposits, setDeposits] = useState<DepositWithUser[]>(initialDeposits);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [modalDeposit, setModalDeposit] = useState<DepositWithUser | null>(null);
@@ -116,7 +117,7 @@ export default function PendingDepositsTable({ initialDeposits }: PendingDeposit
                     {d.payment_reference}
                   </td>
                   <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)' }}>
-                    {d.savings_goals?.goal_name || <span style={{ color: 'var(--text-muted)' }}>Free wallet</span>}
+                    {d.savings_goals?.goal_name || (visaDepositIds?.has(d.id) ? <span style={{ color: '#B45309', fontWeight: 600 }}>Qatar Visa booking fee</span> : <span style={{ color: 'var(--text-muted)' }}>Free wallet</span>)}
                   </td>
                   <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                     {new Date(d.user_confirmed_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}
