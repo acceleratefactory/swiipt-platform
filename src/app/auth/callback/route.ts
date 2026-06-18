@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { generateReferralCode } from "@/lib/referral-code";
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
@@ -36,6 +37,25 @@ export async function GET(request: NextRequest) {
           .select("id")
           .eq("id", user.id)
           .single();
+
+        if (!profile) {
+          const fullName =
+            user.user_metadata?.full_name ??
+            user.email?.split('@')[0] ??
+            'Swiipt User';
+
+          await supabase.from("users").insert({
+            id: user.id,
+            email: user.email ?? "",
+            full_name: fullName,
+            phone: user.user_metadata?.phone ?? null,
+            country_of_residence: null,
+            preferred_currency: "NGN",
+            profile_photo_url: null,
+            referral_code: generateReferralCode(fullName),
+            referred_by: null,
+          });
+        }
 
         const redirectUrl = profile
           ? `${origin}${returnUrl}`

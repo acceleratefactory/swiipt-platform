@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
+import { generateReferralCode } from "@/lib/referral-code";
 
 export default async function OnboardingPage() {
   const supabase = createClient();
@@ -15,18 +16,40 @@ export default async function OnboardingPage() {
 
   if (goals && goals.length > 0) redirect("/dashboard");
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from("users")
     .select("full_name, referral_code")
     .eq("id", user.id)
     .single();
 
+  if (!profile) {
+    const fullName =
+      user.user_metadata?.full_name ??
+      user.email?.split("@")[0] ??
+      "Swiipt User";
+    const code = generateReferralCode(fullName);
+
+    await supabase.from("users").insert({
+      id: user.id,
+      email: user.email ?? "",
+      full_name: fullName,
+      phone: user.user_metadata?.phone ?? null,
+      country_of_residence: null,
+      preferred_currency: "NGN",
+      profile_photo_url: null,
+      referral_code: code,
+      referred_by: null,
+    });
+
+    profile = { full_name: fullName, referral_code: code };
+  }
+
   return (
     <OnboardingShell
       user={{
         id: user.id,
-        full_name: profile?.full_name ?? undefined,
-        referral_code: profile?.referral_code ?? undefined,
+        full_name: profile.full_name,
+        referral_code: profile.referral_code ?? undefined,
       }}
     />
   );
