@@ -43,6 +43,7 @@ interface ServiceDetailViewProps {
   activeGoals: ActiveGoal[];
   existingOrder: ExistingOrder | null;
   userId: string;
+  walletCredits?: number;
 }
 
 const currencySymbols: Record<string, string> = {
@@ -57,7 +58,7 @@ const pricingFields = [
   { key: 'price_gbp', label: 'GBP', symbol: '£' },
 ];
 
-export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals, existingOrder, userId }: ServiceDetailViewProps) {
+export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals, existingOrder, userId, walletCredits = 0 }: ServiceDetailViewProps) {
   const [showOrder, setShowOrder] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const price = (pkg as any)[`price_${preferredCurrency.toLowerCase()}`] || pkg.price_ngn;
@@ -140,6 +141,7 @@ export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals,
           preferredCurrency={preferredCurrency}
           activeGoals={activeGoals}
           userId={userId}
+          walletCredits={walletCredits}
           onClose={() => setShowOrder(false)}
           onOrderPlaced={() => window.location.reload()}
         />

@@ -45,6 +45,7 @@ interface ServiceMarketplaceProps {
   activeGoals: ActiveGoal[];
   existingOrders: ExistingOrder[];
   userId: string;
+  walletCredits?: number;
 }
 
 const categories = [
@@ -66,6 +67,7 @@ export default function ServiceMarketplace({
   activeGoals,
   existingOrders,
   userId,
+  walletCredits = 0,
 }: ServiceMarketplaceProps) {
   const [activeCategory, setActiveCategory] = useState("all");
   const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
@@ -131,6 +133,7 @@ export default function ServiceMarketplace({
           preferredCurrency={preferredCurrency}
           activeGoals={activeGoals}
           userId={userId}
+          walletCredits={walletCredits}
           onClose={() => setSelectedPackage(null)}
           onOrderPlaced={() => {
             setSelectedPackage(null);

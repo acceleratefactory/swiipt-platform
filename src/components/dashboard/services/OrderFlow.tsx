@@ -33,6 +33,7 @@ interface OrderFlowProps {
   preferredCurrency: string;
   activeGoals: ActiveGoal[];
   userId: string;
+  walletCredits?: number;
   onClose: () => void;
   onOrderPlaced: () => void;
 }
@@ -43,7 +44,7 @@ const currencySymbols: Record<string, string> = {
 
 type OrderStep = "choose_payment" | "goal_select" | "direct_payment" | "confirmation";
 
-export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId: _userId, onClose, onOrderPlaced }: OrderFlowProps) {
+export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId: _userId, walletCredits = 0, onClose, onOrderPlaced }: OrderFlowProps) {
   const [step, setStep] = useState<OrderStep>("choose_payment");
   const [selectedGoalId, setSelectedGoalId] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -81,36 +82,97 @@ export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId:
         {step === "choose_payment" && (
           <div>
             <h3 style={{ fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.5rem' }}>How would you like to pay?</h3>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
               Service fee: <strong>{symbol}{price.toLocaleString()}</strong>
             </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <button
-                onClick={() => eligibleGoals.length > 0 ? setStep("goal_select") : setError("No goal with sufficient balance.")}
-                style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', background: 'white', textAlign: 'left', cursor: 'pointer' }}
-              >
-                <div style={{ fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.25rem' }}>🎯 Pay from savings goal</div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  {eligibleGoals.length > 0
-                    ? `${eligibleGoals.length} goal${eligibleGoals.length > 1 ? 's' : ''} available`
-                    : 'No goals with sufficient balance'}
-                </div>
-                {activeGoals.some(g => g.milestone_100_unlocked) && (
-                  <div style={{ fontSize: '0.75rem', color: 'var(--teal)', fontWeight: 600, marginTop: '0.375rem' }}>
-                    ✓ 15% milestone discount applies
+            {walletCredits > 0 && (
+              <>
+                <div style={{ background: 'var(--teal-pale)', border: '1px solid var(--teal)', borderRadius: 'var(--radius-md)', padding: '0.875rem 1rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontWeight: 700, color: 'var(--teal)', fontSize: '0.875rem' }}>
+                        ✓ Travel credit available: ₦{walletCredits.toLocaleString()}
+                      </p>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
+                        Applied automatically to your order
+                      </p>
+                    </div>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--teal)' }}>
+                      -{walletCredits >= price ? '100%' : `₦${Math.min(walletCredits, price).toLocaleString()}`}
+                    </span>
                   </div>
-                )}
-              </button>
+                </div>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                    <span>Service price</span>
+                    <span>₦{price.toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: 'var(--teal)', marginBottom: '0.25rem' }}>
+                    <span>Travel credit applied</span>
+                    <span>-₦{Math.min(walletCredits, price).toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 800, color: 'var(--midnight)', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                    <span>You pay</span>
+                    <span>₦{Math.max(0, price - walletCredits).toLocaleString()}</span>
+                  </div>
+                </div>
+              </>
+            )}
 
+            {walletCredits >= price ? (
               <button
-                onClick={() => setStep("direct_payment")}
-                style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', background: 'white', textAlign: 'left', cursor: 'pointer' }}
+                disabled={loading}
+                onClick={async () => {
+                  setLoading(true);
+                  const res = await fetch("/api/services/order", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      packageId: pkg.id,
+                      paymentMethod: "direct_payment",
+                      currency: preferredCurrency,
+                    }),
+                  });
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  const data: any = await res.json();
+                  if (!res.ok) { setError(data.error); setLoading(false); return; }
+                  setOrderResult(data);
+                  setStep("confirmation");
+                  setLoading(false);
+                }}
+                style={{ width: '100%', marginBottom: '0.75rem', padding: '0.875rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, fontSize: '1rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: loading ? 'not-allowed' : 'pointer' }}
               >
-                <div style={{ fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.25rem' }}>💳 Pay directly via bank transfer</div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Pay now without a savings goal</div>
+                {loading ? 'Processing...' : `Confirm order — ₦0 to pay →`}
               </button>
-            </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <button
+                  onClick={() => eligibleGoals.length > 0 ? setStep("goal_select") : setError("No goal with sufficient balance.")}
+                  style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', background: 'white', textAlign: 'left', cursor: 'pointer' }}
+                >
+                  <div style={{ fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.25rem' }}>🎯 Pay from savings goal</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                    {eligibleGoals.length > 0
+                      ? `${eligibleGoals.length} goal${eligibleGoals.length > 1 ? 's' : ''} available`
+                      : 'No goals with sufficient balance'}
+                  </div>
+                  {activeGoals.some(g => g.milestone_100_unlocked) && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--teal)', fontWeight: 600, marginTop: '0.375rem' }}>
+                      ✓ 15% milestone discount applies
+                    </div>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setStep("direct_payment")}
+                  style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', background: 'white', textAlign: 'left', cursor: 'pointer' }}
+                >
+                  <div style={{ fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.25rem' }}>💳 Pay directly via bank transfer</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Pay now without a savings goal</div>
+                </button>
+              </div>
+            )}
 
             {error && (
               <p style={{ color: 'var(--danger)', fontSize: '0.8125rem', marginTop: '0.75rem' }}>{error}</p>
@@ -212,6 +274,13 @@ export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId:
                 ? "Payment deducted from your goal. Our team will be in touch within 24 hours."
                 : "Payment received. Our team will confirm and begin processing within 1–4 hours."}
             </p>
+            {orderResult?.creditApplied > 0 && (
+              <div style={{ background: 'var(--teal-pale)', borderRadius: 'var(--radius-md)', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
+                <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--teal)' }}>
+                  ✓ ₦{orderResult.creditApplied.toLocaleString()} travel credit applied to this order
+                </p>
+              </div>
+            )}
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', background: 'var(--off-white)', borderRadius: 'var(--radius-md)', padding: '0.625rem 1rem', display: 'inline-block', marginBottom: '1.5rem' }}>
               {pkg.processing_weeks_min && pkg.processing_weeks_max && `Estimated processing: ${pkg.processing_weeks_min}–${pkg.processing_weeks_max} weeks`}
             </p>

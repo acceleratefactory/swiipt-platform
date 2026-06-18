@@ -147,34 +147,50 @@ export default function SpinWheel({ promotion, userId, onSpinComplete }: SpinWhe
 
   async function saveSpinResult(won: WheelSlot) {
     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
 
+    // Add credit directly to wallet — NOT a goal
+    await supabase.rpc("add_credit_to_wallet", {
+      user_id_input: user.id,
+      credit_amount_input: won.value_ngn,
+      reward_id_input: promotion.id,
+    });
+
+    // Create a milestone_reward record for audit trail
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from("milestone_rewards").insert({
       goal_id: null,
-      user_id: userId,
+      user_id: user.id,
       milestone_type: "spin_win",
-      reward_type: "free_service",
-      reward_label: `Spin & Win: ${won.label}`,
-      reward_value_description: `You won ${won.label} from the ${promotion.title} spin. Convert to locked travel credit.`,
+      reward_type: "credit_voucher",
+      reward_label: `Spin Win: ${won.label}`,
+      reward_value_description: `₦${won.value_ngn.toLocaleString()} travel credit. Use it to reduce the price of any service on Swiipt.`,
+      redeemed: true,
+      redeemed_at: new Date().toISOString(),
+      redeemed_as: "credit",
+      credit_amount_ngn: won.value_ngn,
       expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     });
 
+    // Record promotion award
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from("promotion_awards").insert({
       promotion_id: promotion.id,
-      user_id: userId,
+      user_id: user.id,
       award_type: "spin_win",
       award_value_ngn: won.value_ngn,
       award_description: won.label,
     });
 
+    // Notification
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).from("notifications").insert({
-      user_id: userId,
+      user_id: user.id,
       type: "spin_win",
-      title: `You won: ${won.label}!`,
-      body: `Your spin prize has been added to your rewards. Redeem or convert to credit.`,
-      action_url: "/dashboard/rewards",
+      title: `🎰 You won ₦${won.value_ngn.toLocaleString()} travel credit!`,
+      body: `Your spin prize has been added to your wallet credit balance. It will be applied automatically when you order a service.`,
+      action_url: "/dashboard/services",
     });
   }
 
@@ -233,21 +249,19 @@ export default function SpinWheel({ promotion, userId, onSpinComplete }: SpinWhe
           padding: "1.5rem 2rem",
           textAlign: "center",
           border: "1px solid var(--teal)",
-          animation: "fadeInUp 0.5s ease",
-          minWidth: 280,
         }}>
-          <p style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>&#x1F389;</p>
+          <p style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🎉</p>
           <p style={{ color: "var(--teal)", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "0.375rem" }}>
             You won
           </p>
           <p style={{ color: "white", fontSize: "1.25rem", fontWeight: 800 }}>
-            {winner.label}
+            ₦{winner.value_ngn.toLocaleString()} travel credit
           </p>
-          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.875rem", marginTop: "0.375rem" }}>
-            Added to your rewards. Redeem or convert to credit.
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.8125rem", marginTop: "0.5rem", marginBottom: "1rem" }}>
+            Added to your wallet. Applied automatically when you order a service.
           </p>
-          <a href="/dashboard/rewards" style={{ display: "inline-block", marginTop: "1rem", padding: "0.625rem 1.25rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, fontSize: "0.875rem", borderRadius: "var(--radius-md)", textDecoration: "none" }}>
-            View my rewards &rarr;
+          <a href="/dashboard/services" style={{ display: "inline-block", padding: "0.75rem 1.5rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, fontSize: "0.875rem", borderRadius: "var(--radius-md)", textDecoration: "none" }}>
+            Use credit — browse services →
           </a>
         </div>
       )}

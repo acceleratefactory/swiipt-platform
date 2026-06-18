@@ -28,6 +28,14 @@ export default async function ServiceDetailPage({ params }: { params: { id: stri
     .eq("user_id", user.id)
     .eq("status", "active");
 
+  const { data: wallet } = await supabase
+    .from("wallets")
+    .select("total_credits_ngn")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const walletCredits = (wallet as unknown as { total_credits_ngn: number } | null)?.total_credits_ngn || 0;
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existingOrder } = await (supabase as any)
     .from("service_orders")
@@ -46,6 +54,7 @@ export default async function ServiceDetailPage({ params }: { params: { id: stri
       activeGoals={goals || []}
       existingOrder={existingOrder}
       userId={user.id}
+      walletCredits={walletCredits}
     />
   );
 }

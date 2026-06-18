@@ -106,11 +106,35 @@ export async function POST(request: NextRequest) {
     bankDetails = settings?.reduce((acc: any, s: any) => ({ ...acc, [s.key]: s.value }), {});
   }
 
+  let creditApplied = 0;
+  const { data: wallet } = await supabase
+    .from("wallets")
+    .select("total_credits_ngn")
+    .eq("user_id", user.id)
+    .single();
+
+  if (wallet && wallet.total_credits_ngn > 0 && finalPrice > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: remainingToPay } = await (supabase as any).rpc("apply_credit_to_order", {
+      order_id_input: order.id,
+      user_id_input: user.id,
+      credit_amount_to_apply: wallet.total_credits_ngn,
+    });
+    creditApplied = Math.min(wallet.total_credits_ngn, finalPrice);
+    if (remainingToPay !== undefined && remainingToPay !== null) {
+      finalPrice = Number(remainingToPay);
+    }
+    if (finalPrice <= 0) {
+      await supabase.from("service_orders").update({ status: "payment_confirmed" }).eq("id", order.id);
+      order.status = "payment_confirmed";
+    }
+  }
+
   await supabase.from("notifications").insert({
     user_id: null,
     type: "new_order",
     title: "New service order",
-    body: `${pkg.name} ordered. Payment method: ${paymentMethod}.`,
+    body: `${pkg.name} ordered. Payment method: ${paymentMethod}.${creditApplied > 0 ? ` Credit applied: ₦${creditApplied}.` : ""}`,
     action_url: "/admin/orders",
     target_segment: null,
   });
@@ -118,13 +142,15 @@ export async function POST(request: NextRequest) {
   await supabase.from("activity_log").insert({
     user_id: user.id,
     event_type: "service_ordered",
-    event_data: { package_id: packageId, package_name: pkg.name, payment_method: paymentMethod },
+    event_data: { package_id: packageId, package_name: pkg.name, payment_method: paymentMethod, credit_applied: creditApplied },
   });
 
   return NextResponse.json({
     orderId: order.id,
     orderReference,
     finalPrice,
+    originalPrice,
+    creditApplied,
     currency,
     paymentMethod,
     bankDetails,
