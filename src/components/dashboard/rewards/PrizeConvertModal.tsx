@@ -37,7 +37,8 @@ export default function PrizeConvertModal({ reward, onClose, onConverted }: Priz
 
     const supabase = createClient();
 
-    const { error: rpcError } = await supabase.rpc("add_credit_to_wallet", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: rpcError } = await (supabase as any).rpc("add_credit_to_wallet", {
       user_id_input: (await supabase.auth.getUser()).data.user?.id,
       credit_amount_input: creditAmount,
       reward_id_input: reward.id,

@@ -81,7 +81,8 @@ export async function POST(request: NextRequest) {
   const reference = `SWP-VISA-${user.id.replace(/-/g, "").slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-6)}`;
 
   // Create a deposit record for the booking fee
-  await supabase.from("deposits").insert({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("deposits").insert({
     user_id: user.id,
     goal_id: null,
     amount: bookingFeeNgn,

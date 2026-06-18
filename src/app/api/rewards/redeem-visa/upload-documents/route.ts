@@ -66,28 +66,33 @@ export async function POST(request: NextRequest) {
   }).eq("id", redemptionId);
 
   // Mark the reward as redeemed
-  await supabase.from("milestone_rewards").update({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("milestone_rewards").update({
     redeemed: true,
     redeemed_at: new Date().toISOString(),
     redeemed_as: "visa_redemption",
   }).eq("id", redemption.reward_id);
 
   // Notify admin
-  await supabase.from("notifications").insert({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("notifications").insert({
     user_id: null,
     type: "visa_redemption_ready",
     title: "Qatar visa redemption ready to process",
     body: "A user has paid the booking fee and uploaded documents for Qatar Tourist Visa. Ready to create service order.",
     action_url: "/admin/visa-redemptions",
+    target_segment: null,
   });
 
   // Notify user
-  await supabase.from("notifications").insert({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("notifications").insert({
     user_id: user.id,
     type: "visa_documents_received",
     title: "Documents received — Qatar visa processing started",
     body: "Your booking fee and documents have been received. Your Qatar Tourist Visa application has started. We will update you within 2–5 business days.",
     action_url: "/dashboard/rewards",
+    target_segment: null,
   });
 
   return NextResponse.json({ success: true, status: "documents_uploaded" });

@@ -151,7 +151,8 @@ export default function SpinWheel({ promotion, userId: _userId, onSpinComplete }
     if (!user) return;
 
     // Add credit directly to wallet — NOT a goal
-    await supabase.rpc("add_credit_to_wallet", {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).rpc("add_credit_to_wallet", {
       user_id_input: user.id,
       credit_amount_input: won.value_ngn,
       reward_id_input: promotion.id,

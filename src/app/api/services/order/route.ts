@@ -125,7 +125,8 @@ export async function POST(request: NextRequest) {
       finalPrice = Number(remainingToPay);
     }
     if (finalPrice <= 0) {
-      await supabase.from("service_orders").update({ status: "payment_confirmed" }).eq("id", order.id);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).from("service_orders").update({ status: "payment_confirmed" }).eq("id", order.id);
       order.status = "payment_confirmed";
     }
   }
