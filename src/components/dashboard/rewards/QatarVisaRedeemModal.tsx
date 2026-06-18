@@ -1,7 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
 import { X } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 
 type Step = "info" | "payment" | "payment_pending" | "upload" | "complete";
 
