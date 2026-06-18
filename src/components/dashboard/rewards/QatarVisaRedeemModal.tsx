@@ -47,7 +47,6 @@ export default function QatarVisaRedeemModal({
   async function handlePaymentConfirmed() {
     // User claims they have sent the payment
     // We update the deposit user_confirmed_at
-    const supabase = createClient();
     // The deposit reference is in redemptionData.reference
     // Find the deposit and mark user_confirmed_at
     setStep("payment_pending");
@@ -206,7 +205,7 @@ export default function QatarVisaRedeemModal({
               Reference: <strong style={{ color: "var(--midnight)", fontFamily: "monospace" }}>{redemptionData?.reference}</strong>
             </p>
             <button onClick={onClose} style={{ width: "100%", padding: "0.875rem", background: "var(--midnight)", color: "white", fontWeight: 700, borderRadius: "var(--radius-md)", border: "none", cursor: "pointer" }}>
-              Close — I'll wait for confirmation
+              Close &mdash; I&apos;ll wait for confirmation
             </button>
           </div>
         )}

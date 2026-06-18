@@ -24,7 +24,7 @@ const DEFAULT_COLORS = [
   "#0D2444", "#00DBA8", "#0A1E38", "#33D9B2",
 ];
 
-export default function SpinWheel({ promotion, userId, onSpinComplete }: SpinWheelProps) {
+export default function SpinWheel({ promotion, userId: _userId, onSpinComplete }: SpinWheelProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [spinning, setSpinning] = useState(false);
   const [hasSpun, setHasSpun] = useState(false);
@@ -89,7 +89,7 @@ export default function SpinWheel({ promotion, userId, onSpinComplete }: SpinWhe
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("SPIN", cx, cy);
-  }, [slots]);
+  }, [slots, sliceAngle]);
 
   useEffect(() => {
     drawWheel(currentAngle);

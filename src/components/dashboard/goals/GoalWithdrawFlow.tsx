@@ -37,6 +37,13 @@ export default function GoalWithdrawFlow({
   };
   onClose: () => void;
 }) {
+  const [bankName, setBankName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountName, setAccountName] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+
   if (goal.is_credit_funded) {
     return (
       <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "2rem", border: "1px solid var(--border)", marginBottom: "1rem" }}>
@@ -60,13 +67,6 @@ export default function GoalWithdrawFlow({
     ? goal.current_balance * goal.early_exit_penalty_rate
     : 0;
   const netAmount = goal.current_balance - penaltyAmount;
-
-  const [bankName, setBankName] = useState("");
-  const [accountNumber, setAccountNumber] = useState("");
-  const [accountName, setAccountName] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
   return (
     <>
