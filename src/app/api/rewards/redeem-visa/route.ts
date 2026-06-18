@@ -90,7 +90,8 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: "Failed to initiate redemption." }, { status: 500 });
+    console.error("Visa redemption insert error:", error);
+    return NextResponse.json({ error: "Failed to initiate redemption.", details: error.message || error }, { status: 500 });
   }
 
   // Get bank details for payment
