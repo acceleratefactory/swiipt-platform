@@ -1,11 +1,14 @@
 "use client";
 import { useState } from "react";
 import PrizeConvertModal from "./PrizeConvertModal";
+import QatarVisaRedeemModal from "./QatarVisaRedeemModal";
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 export default function RewardsList({ rewards, userId, activeGoals }: { rewards: any[]; userId: string; activeGoals: any[] }) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [convertModal, setConvertModal] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [redeemingVisaReward, setRedeemingVisaReward] = useState<any>(null);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const unredeemedRewards = rewards.filter((r: any) => !r.redeemed && (!r.expires_at || new Date(r.expires_at) > new Date()));
@@ -50,20 +53,32 @@ export default function RewardsList({ rewards, userId, activeGoals }: { rewards:
           )}
 
           {reward.reward_type !== "service_discount" && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              <a
-                href="/dashboard/services"
-                style={{ padding: '0.625rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, fontSize: '0.8125rem', borderRadius: 'var(--radius-sm)', textAlign: 'center', textDecoration: 'none' }}
-              >
-                Redeem
-              </a>
-              <button
-                onClick={() => setConvertModal(reward)}
-                style={{ padding: '0.625rem', background: 'var(--off-white)', color: 'var(--midnight)', fontWeight: 600, fontSize: '0.8125rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', cursor: 'pointer' }}
-              >
-                Convert to credit
-              </button>
-            </div>
+            <>
+              {reward.milestone_type === "welcome_gift" && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+                  <button
+                    onClick={() => setRedeemingVisaReward(reward)}
+                    style={{ padding: "0.625rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, fontSize: "0.8125rem", borderRadius: "var(--radius-sm)", border: "none", cursor: "pointer" }}
+                  >
+                    Redeem visa
+                  </button>
+                  <button
+                    onClick={() => setConvertModal(reward)}
+                    style={{ padding: "0.625rem", background: "var(--off-white)", color: "var(--midnight)", fontWeight: 600, fontSize: "0.8125rem", borderRadius: "var(--radius-sm)", border: "1px solid var(--border)", cursor: "pointer" }}
+                  >
+                    Convert to credit
+                  </button>
+                </div>
+              )}
+              {reward.milestone_type !== "welcome_gift" && (
+                <button
+                  onClick={() => setConvertModal(reward)}
+                  style={{ width: "100%", padding: "0.625rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, fontSize: "0.8125rem", borderRadius: "var(--radius-sm)", border: "none", cursor: "pointer" }}
+                >
+                  Convert to credit
+                </button>
+              )}
+            </>
           )}
 
           {reward.reward_type === "service_discount" && (
@@ -92,12 +107,17 @@ export default function RewardsList({ rewards, userId, activeGoals }: { rewards:
       {convertModal && (
         <PrizeConvertModal
           reward={convertModal}
-          activeGoals={activeGoals}
           onClose={() => setConvertModal(null)}
-          onConverted={() => {
+          onConverted={(creditAmount) => {
             setConvertModal(null);
             window.location.reload();
           }}
+        />
+      )}
+      {redeemingVisaReward && (
+        <QatarVisaRedeemModal
+          rewardId={redeemingVisaReward.id}
+          onClose={() => setRedeemingVisaReward(null)}
         />
       )}
     </div>

@@ -2,15 +2,17 @@
 
 import { useState } from "react";
 import { X } from "lucide-react";
+import QatarVisaRedeemModal from "../rewards/QatarVisaRedeemModal";
 
 export default function WelcomeBanner({
-  reward: _reward,
+  reward,
   userId: _userId,
 }: {
   reward: { id: string };
   userId: string;
 }) {
   const [dismissed, setDismissed] = useState(false);
+  const [showRedeemModal, setShowRedeemModal] = useState(false);
   if (dismissed) return null;
 
   return (
@@ -40,8 +42,8 @@ export default function WelcomeBanner({
       </div>
       <div style={{ display: "flex", gap: "0.5rem", flexShrink: 0, flexWrap: "wrap" }}>
         <button
-          onClick={() => { window.location.href = "/dashboard/rewards"; }}
-          style={{ padding: "0.5rem 1rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, fontSize: "0.8125rem", borderRadius: "var(--radius-sm)", border: "none", cursor: "pointer" }}
+          onClick={() => setShowRedeemModal(true)}
+          style={{ padding: "0.5rem 1rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, fontSize: "0.8125rem", borderRadius: "var(--radius-sm)", border: "none", cursor: "pointer", whiteSpace: "nowrap" }}
         >
           Redeem visa
         </button>
@@ -58,6 +60,12 @@ export default function WelcomeBanner({
           <X size={16} />
         </button>
       </div>
+      {showRedeemModal && (
+        <QatarVisaRedeemModal
+          rewardId={reward.id}
+          onClose={() => setShowRedeemModal(false)}
+        />
+      )}
     </div>
   );
 }
