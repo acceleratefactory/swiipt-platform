@@ -24,7 +24,7 @@ export default async function AdminDepositsPage() {
     .order("user_confirmed_at", { ascending: true });
 
   // Detect which pending deposits are visa-related
-  let visaDepositIds = new Set<string>();
+  const visaDepositIds = new Set<string>();
   const pendingIds = (pendingDeposits || []).map((d: any) => d.id);
   if (pendingIds.length > 0) {
     const { data: visaLinks } = await supabaseAny
