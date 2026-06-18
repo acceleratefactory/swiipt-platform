@@ -206,7 +206,7 @@ export default function QatarVisaRedeemModal({
                 <span style={{ color: "var(--text-muted)" }}>Base fee ({redemptionData?.minNights || 3} nights)</span>
                 <span style={{ fontWeight: 600, color: "var(--midnight)" }}>₦{Number(redemptionData?.baseFeeNgn || 0).toLocaleString()} (~${redemptionData?.baseFeeUsd || 0})</span>
               </div>
-              {redemptionData?.extraFeeNgn && Number(redemptionData.extraFeeNgn) > 0 && (
+              {Number(redemptionData?.extraFeeNgn || 0) > 0 && (
                 <div style={{ display: "flex", justifyContent: "space-between", padding: "0.5rem 0", borderBottom: "1px solid var(--gray-100)", fontSize: "0.875rem" }}>
                   <span style={{ color: "var(--text-muted)" }}>Extra nights ({(redemptionData?.nights || 3) - (redemptionData?.minNights || 3)})</span>
                   <span style={{ fontWeight: 600, color: "var(--midnight)" }}>₦{Number(redemptionData.extraFeeNgn).toLocaleString()} (~${redemptionData.extraFeeUsd})</span>
