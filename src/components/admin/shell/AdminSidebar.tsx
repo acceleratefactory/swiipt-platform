@@ -30,6 +30,7 @@ const navItems: Array<{
 }> = [
   { href: "/admin", label: "Overview", icon: <LayoutDashboard size={16} /> },
   { href: "/admin/deposits", label: "Deposits", icon: <ArrowDownCircle size={16} />, badge: 0 },
+  { href: "/admin/visa-redemptions", label: "Visa Apps", icon: <FileText size={16} /> },
   { href: "/admin/withdrawals", label: "Withdrawals", icon: <ArrowUpCircle size={16} />, badge: 0 },
   { href: "/admin/users", label: "Users", icon: <Users size={16} /> },
   { href: "/admin/orders", label: "Orders", icon: <Package size={16} /> },

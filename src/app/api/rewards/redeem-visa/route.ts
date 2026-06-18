@@ -89,6 +89,7 @@ export async function POST(request: NextRequest) {
       base_fee_usd: baseFeeUsd,
       extra_fee_usd: extraFeeUsd,
       payment_reference: reference,
+      expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     })
     .select()
     .single();

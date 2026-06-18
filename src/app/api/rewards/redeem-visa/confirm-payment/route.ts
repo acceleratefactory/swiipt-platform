@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: updateError } = await (supabase as any)
     .from("visa_redemptions")
-    .update({ booking_fee_deposit_id: deposit.id })
+    .update({ booking_fee_deposit_id: deposit.id, deposit_id: deposit.id })
     .eq("id", redemptionId);
 
   if (updateError) {
