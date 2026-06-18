@@ -106,3 +106,16 @@ BEGIN
   RETURN remaining_to_pay;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 8. Seed hotel booking settings (admin-configurable)
+INSERT INTO platform_settings (key, value, description) VALUES
+  ('hotel_base_fee_usd', '150', 'Hotel booking base fee in USD (covers 3 nights)')
+ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO platform_settings (key, value, description) VALUES
+  ('hotel_extra_night_fee_usd', '50', 'Fee per additional hotel night beyond the base 3 nights')
+ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO platform_settings (key, value, description) VALUES
+  ('hotel_min_nights', '3', 'Minimum hotel nights for visa redemption (static minimum)')
+ON CONFLICT (key) DO NOTHING;
