@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { rewardId } = await request.json();
+  const { rewardId, nights: rawNights } = await request.json();
 
   // Verify reward exists and belongs to user
   const { data: reward } = await supabase
@@ -40,6 +40,25 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  // Fetch hotel booking settings from platform_settings
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: hotelSettings } = await (supabase as any)
+    .from("platform_settings")
+    .select("key, value")
+    .in("key", ["hotel_base_fee_usd", "hotel_extra_night_fee_usd", "hotel_min_nights"]);
+
+  const hotelConfig: Record<string, number> = {};
+  (hotelSettings || []).forEach((s: any) => { hotelConfig[s.key] = Number(s.value); });
+
+  const baseFeeUsd = hotelConfig.hotel_base_fee_usd || 150;
+  const extraNightFeeUsd = hotelConfig.hotel_extra_night_fee_usd || 50;
+  const minNights = hotelConfig.hotel_min_nights || 3;
+
+  const nights = Math.max(minNights, Math.floor(Number(rawNights) || minNights));
+  const extraNights = Math.max(0, nights - minNights);
+  const extraFeeUsd = extraNights * extraNightFeeUsd;
+  const totalUsd = baseFeeUsd + extraFeeUsd;
+
   // Get current USD → NGN rate from currencies table
   const { data: usdRate } = await supabase
     .from("currencies")
@@ -47,20 +66,23 @@ export async function POST(request: NextRequest) {
     .eq("code", "USD")
     .single();
 
-  const usdToNgn = usdRate?.ngn_exchange_rate || 1600; // fallback rate
-  const bookingFeeUsd = 150;
-  const bookingFeeNgn = Math.ceil(bookingFeeUsd * usdToNgn);
+  const usdToNgn = usdRate?.ngn_exchange_rate || 1600;
+  const totalNgn = Math.ceil(totalUsd * usdToNgn);
 
-  // Create visa redemption record
+  // Create visa redemption record with dynamic pricing
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: redemption, error } = await (supabase as any)
     .from("visa_redemptions")
     .insert({
       user_id: user.id,
       reward_id: rewardId,
-      booking_fee_usd: bookingFeeUsd,
-      booking_fee_ngn: bookingFeeNgn,
+      booking_fee_usd: totalUsd,
+      booking_fee_ngn: totalNgn,
       status: "pending_payment",
+      nights,
+      total_fee_usd: totalUsd,
+      base_fee_usd: baseFeeUsd,
+      extra_fee_usd: extraFeeUsd,
     })
     .select()
     .single();
@@ -80,14 +102,14 @@ export async function POST(request: NextRequest) {
   // Generate payment reference
   const reference = `SWP-VISA-${user.id.replace(/-/g, "").slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-6)}`;
 
-  // Create a deposit record for the booking fee
+  // Create a deposit record for the total fee
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any).from("deposits").insert({
     user_id: user.id,
     goal_id: null,
-    amount: bookingFeeNgn,
+    amount: totalNgn,
     currency: "NGN",
-    ngn_equivalent: bookingFeeNgn,
+    ngn_equivalent: totalNgn,
     payment_reference: reference,
     status: "pending",
     expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -95,8 +117,13 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     redemptionId: redemption.id,
-    bookingFeeUsd,
-    bookingFeeNgn,
+    totalUsd,
+    totalNgn,
+    baseFeeUsd,
+    extraFeeUsd,
+    nights,
+    bookingFeeUsd: totalUsd,
+    bookingFeeNgn: totalNgn,
     reference,
     bankDetails,
     status: "pending_payment",

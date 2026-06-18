@@ -123,3 +123,9 @@ ON CONFLICT (key) DO NOTHING;
 INSERT INTO platform_settings (key, value, description) VALUES
   ('hotel_min_nights', '3', 'Minimum hotel nights for visa redemption (static minimum)')
 ON CONFLICT (key) DO NOTHING;
+
+-- 9. Add dynamic hotel booking columns to visa_redemptions
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS nights INTEGER DEFAULT 3;
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS total_fee_usd NUMERIC DEFAULT 150;
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS base_fee_usd NUMERIC DEFAULT 150;
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS extra_fee_usd NUMERIC DEFAULT 0;
