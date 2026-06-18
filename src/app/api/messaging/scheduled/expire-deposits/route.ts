@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  // Find deposits that are pending, user has confirmed, and expires_at is in the past
+  // ── 1. Expire deposits where user clicked "I Have Sent" but 24h passed ──
   const { data: expiredDeposits } = await supabase
     .from("deposits")
     .select("id, user_id, amount, currency, payment_reference")
@@ -21,26 +21,46 @@ export async function POST(request: NextRequest) {
     .not("expires_at", "is", null)
     .lt("expires_at", new Date().toISOString());
 
-  if (!expiredDeposits || expiredDeposits.length === 0) {
-    return NextResponse.json({ expired: 0 });
-  }
-
-  // Mark as expired
-  for (const deposit of expiredDeposits) {
+  let expiredCount = 0;
+  for (const deposit of expiredDeposits || []) {
     await supabase
       .from("deposits")
       .update({ status: "expired" })
       .eq("id", deposit.id);
 
-    // Notify the user
     await supabase.from("notifications").insert({
       user_id: deposit.user_id,
       type: "deposit_expired",
-      title: "Payment not confirmed — deposit expired",
+      title: "Payment not confirmed \u2014 deposit expired",
       body: `Your deposit of ${deposit.currency} ${deposit.amount.toLocaleString()} (ref: ${deposit.payment_reference}) was not confirmed within 24 hours. If you sent the money, contact support@swiipt.com with your reference.`,
       action_url: "/dashboard/goals",
     });
+    expiredCount++;
   }
 
-  return NextResponse.json({ expired: expiredDeposits.length });
+  // ── 2. Clean up abandoned deposits (user never clicked "I Have Sent", older than 48h) ──
+  const fortyEightHoursAgo = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+  const { data: abandonedDeposits } = await supabase
+    .from("deposits")
+    .select("id, user_id, amount, currency, payment_reference")
+    .eq("status", "pending")
+    .is("user_confirmed_at", null)
+    .is("expires_at", null)
+    .lt("created_at", fortyEightHoursAgo);
+
+  let abandonedCount = 0;
+  for (const deposit of abandonedDeposits || []) {
+    await supabase
+      .from("deposits")
+      .update({ status: "abandoned" })
+      .eq("id", deposit.id);
+
+    // No notification for abandoned deposits \u2014 user never confirmed intent to pay
+    abandonedCount++;
+  }
+
+  return NextResponse.json({
+    expired: expiredCount,
+    abandoned: abandonedCount,
+  });
 }

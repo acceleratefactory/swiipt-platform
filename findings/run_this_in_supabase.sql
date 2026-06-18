@@ -12,7 +12,14 @@ ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS extra_fee_usd NUMERIC DEFA
 -- 2. Add payment_reference column for resume flow
 ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS payment_reference TEXT;
 
--- 2. Seed hotel booking settings (safe to re-run)
+-- 3. Add columns for abandonment tracking
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ;
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS abandoned_at TIMESTAMPTZ;
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS deposit_id UUID REFERENCES deposits(id);
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMPTZ;
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS final_reminder_sent_at TIMESTAMPTZ;
+
+-- 4. Seed hotel booking settings (safe to re-run)
 INSERT INTO platform_settings (key, value, description) VALUES
   ('hotel_base_fee_usd', '150', 'Hotel booking base fee in USD (covers 3 nights)')
 ON CONFLICT (key) DO NOTHING;

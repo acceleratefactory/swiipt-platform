@@ -14,12 +14,18 @@ Complete the reward system security fixes from `docs/reward_system_security_fixe
 - **Number 3** — DB columns for dynamic pricing
 - **Number 4-5** — Modal: night selector + dynamic breakdown
 
-### Outstanding Issues
-- Premature deposit creation (deposit created before "I Have Sent the Payment")
-- No resume flow for abandoned payments (alreadyStarted not handled in modal)
-- Abandoned payments show as $0 on return
-- No admin visibility for abandoned visa redemptions
-- No recovery email flow for abandoned payments
+### Session 2 — Completed
+- **Number 6** — Complete Database type definitions: Added 24 missing table definitions + `user_preferences` table + 8 missing RPC functions (36 tables, 9 RPCs total). File: `src/types/database.ts` (759 lines).
+- **Number 7** — Notification preferences persistence: Implemented `user_preferences` table, updated `POST /api/settings/update-notifications` to upsert, added `GET` endpoint to fetch, updated `NotificationPreferences.tsx` to load from API on mount with localStorage fallback.
+- **Number 8** — Deposit flow resume/recovery:
+  - Updated `initiate` route (`POST` + `GET`) to detect and reuse existing pending deposits (no duplicate creation)
+  - Added resume UI step in `GoalDepositFlow.tsx` showing existing deposit details with "I Have Sent" / "Cancel & start new" options
+  - Updated `expire-deposits` cron to handle abandoned deposits (user never confirmed, >48h old)
+
+### Session 3 — Completed
+- **Build fix** — Fixed syntax error in `NotificationPreferences.tsx` (unescaped quote) that broke entire build
+- **Type fixes** — Fixed deposits Insert/Update types (status union, missing fields), user_preferences Insert type, removed unused state/vars
+- **Build verified** — `npm run build` passes with zero errors
 
 ### Documents Created
 - `findings/run_this_in_supabase.sql` — SQL migration for visa_redemptions columns

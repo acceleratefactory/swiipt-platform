@@ -41,30 +41,59 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: () => void 
   );
 }
 
-export default function NotificationPreferences({ userId: _userId }: { userId: string }) {
-  const [prefs, setPrefs] = useState<Record<string, { inApp: boolean; email: boolean }>>({});
+function buildDefaults(): Record<string, { inApp: boolean; email: boolean }> {
+  const initial: Record<string, { inApp: boolean; email: boolean }> = {};
+  DEFAULTS.forEach(d => { initial[d.key] = { inApp: d.inApp, email: d.email }; });
+  return initial;
+}
 
+export default function NotificationPreferences({ userId: _userId }: { userId: string }) {
+  const [prefs, setPrefs] = useState<Record<string, { inApp: boolean; email: boolean }>>(buildDefaults);
+
+  // Load from API on mount, fall back to localStorage, then to defaults
   useEffect(() => {
-    const stored = localStorage.getItem("swiipt_notification_prefs");
-    if (stored) {
-      setPrefs(JSON.parse(stored));
-    } else {
-      const initial: Record<string, { inApp: boolean; email: boolean }> = {};
-      DEFAULTS.forEach(d => { initial[d.key] = { inApp: d.inApp, email: d.email }; });
-      setPrefs(initial);
+    async function load() {
+      try {
+        const res = await fetch("/api/settings/update-notifications");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.preferences && Object.keys(data.preferences).length > 0) {
+            setPrefs(prev => {
+              const merged = { ...prev, ...data.preferences };
+              localStorage.setItem("swiipt_notification_prefs", JSON.stringify(merged));
+              return merged;
+            });
+            return;
+          }
+        }
+      } catch {
+        // API unavailable — fall through to localStorage
+      }
+
+      // Fallback to localStorage
+      const stored = localStorage.getItem("swiipt_notification_prefs");
+      if (stored) {
+        setPrefs(prev => ({ ...prev, ...JSON.parse(stored) }));
+      }
     }
+    load();
   }, []);
 
   function toggle(key: string, type: "inApp" | "email") {
     setPrefs(prev => {
       const next = { ...prev, [key]: { ...prev[key], [type]: !prev[key]?.[type] } };
       localStorage.setItem("swiipt_notification_prefs", JSON.stringify(next));
+
+      // Persist to API (fire-and-forget)
+      fetch("/api/settings/update-notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, inApp: next[key].inApp, email: next[key].email }),
+      }).catch(() => {
+        // Silently fail — localStorage will be source of truth until next API sync
+      });
+
       return next;
-    });
-    fetch("/api/settings/update-notifications", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ key, inApp: prefs[key]?.inApp, email: prefs[key]?.email }),
     });
   }
 
@@ -74,7 +103,7 @@ export default function NotificationPreferences({ userId: _userId }: { userId: s
         Notification Preferences
       </h2>
       <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "1rem" }}>
-        Choose how you receive updates. Preferences are saved locally for now.
+        Choose how you receive updates.
       </p>
 
       <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, display: "flex", padding: "0 0 0.5rem 0", borderBottom: "1px solid var(--gray-100)", marginBottom: "0.5rem" }}>
