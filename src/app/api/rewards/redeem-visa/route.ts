@@ -105,19 +105,6 @@ export async function POST(request: NextRequest) {
   // Generate payment reference
   const reference = `SWP-VISA-${user.id.replace(/-/g, "").slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-6)}`;
 
-  // Create a deposit record for the total fee
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("deposits").insert({
-    user_id: user.id,
-    goal_id: null,
-    amount: totalNgn,
-    currency: "NGN",
-    ngn_equivalent: totalNgn,
-    payment_reference: reference,
-    status: "pending",
-    expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-  });
-
   return NextResponse.json({
     redemptionId: redemption.id,
     totalUsd,

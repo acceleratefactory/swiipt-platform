@@ -45,10 +45,23 @@ export default function QatarVisaRedeemModal({
   }
 
   async function handlePaymentConfirmed() {
-    // User claims they have sent the payment
-    // We update the deposit user_confirmed_at
-    // The deposit reference is in redemptionData.reference
-    // Find the deposit and mark user_confirmed_at
+    setLoading(true);
+    setError("");
+
+    const res = await fetch("/api/rewards/redeem-visa/confirm-payment", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ redemptionId: redemptionData?.redemptionId, reference: redemptionData?.reference }),
+    });
+
+    setLoading(false);
+
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error || "Failed to confirm payment. Please try again.");
+      return;
+    }
+
     setStep("payment_pending");
   }
 
@@ -222,11 +235,14 @@ export default function QatarVisaRedeemModal({
               ⚠️ You <strong>must</strong> include the reference <strong>{redemptionData.reference}</strong> in your bank transfer narration.
             </div>
 
+            {error && <p style={{ color: "var(--danger)", fontSize: "0.875rem", marginBottom: "1rem" }}>{error}</p>}
+
             <button
               onClick={handlePaymentConfirmed}
-              style={{ width: "100%", padding: "0.875rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, fontSize: "0.9375rem", borderRadius: "var(--radius-md)", border: "none", cursor: "pointer" }}
+              disabled={loading}
+              style={{ width: "100%", padding: "0.875rem", background: loading ? "var(--gray-300)" : "var(--teal)", color: loading ? "var(--text-muted)" : "var(--midnight)", fontWeight: 700, fontSize: "0.9375rem", borderRadius: "var(--radius-md)", border: "none", cursor: loading ? "not-allowed" : "pointer" }}
             >
-              I Have Sent the Payment ✓
+              {loading ? "Please wait..." : "I Have Sent the Payment ✓"}
             </button>
           </div>
         )}
