@@ -103,7 +103,7 @@ export default function QatarVisaRedeemModal({
         {step === "info" && (
           <div>
             <p style={{ color: "var(--text-secondary)", fontSize: "0.9375rem", lineHeight: 1.6, marginBottom: "1.25rem" }}>
-              Your free Qatar Tourist Visa includes 30-day visa processing. To redeem it, you need to pay a <strong>booking fee of $150 USD</strong> (approximately ₦{(150 * 1600).toLocaleString()}) which covers the Qatar government application fee and processing.
+              To redeem it, you need to pay a <strong>hotel booking fee of $150 USD</strong> (approximately ₦{(150 * 1600).toLocaleString()}).
             </p>
 
             <div style={{ background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "1rem", marginBottom: "1.25rem" }}>
@@ -132,7 +132,7 @@ export default function QatarVisaRedeemModal({
                 disabled={loading}
                 style={{ flex: 1, padding: "0.875rem", background: loading ? "var(--gray-300)" : "var(--teal)", color: loading ? "var(--text-muted)" : "var(--midnight)", fontWeight: 700, fontSize: "0.9375rem", borderRadius: "var(--radius-md)", border: "none", cursor: loading ? "not-allowed" : "pointer" }}
               >
-                {loading ? "Please wait..." : "Continue — Pay booking fee →"}
+                {loading ? "Please wait..." : "Continue — Pay hotel booking →"}
               </button>
               <button onClick={onClose} style={{ padding: "0.875rem 1rem", background: "var(--gray-100)", color: "var(--text-secondary)", fontWeight: 600, borderRadius: "var(--radius-md)", border: "none", cursor: "pointer" }}>
                 Cancel
@@ -145,12 +145,12 @@ export default function QatarVisaRedeemModal({
         {step === "payment" && redemptionData && (
           <div>
             <p style={{ fontWeight: 700, color: "var(--midnight)", marginBottom: "1.25rem" }}>
-              Transfer the booking fee to confirm your visa application:
+              Transfer the hotel booking fee to confirm your visa application:
             </p>
 
             <div style={{ background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "1.25rem", marginBottom: "1rem" }}>
               {[
-                { label: "Booking fee", value: `₦${redemptionData.bookingFeeNgn.toLocaleString()} (~$${redemptionData.bookingFeeUsd})` },
+                { label: "Hotel booking fee", value: `₦${redemptionData.bookingFeeNgn.toLocaleString()} (~$${redemptionData.bookingFeeUsd})` },
                 { label: "Bank", value: redemptionData.bankDetails?.bank_name || "Swiipt Account" },
                 { label: "Account number", value: redemptionData.bankDetails?.bank_account_number || "—" },
                 { label: "Account name", value: redemptionData.bankDetails?.bank_account_name || "—" },
