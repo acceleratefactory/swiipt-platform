@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
   const bookingFeeNgn = Math.ceil(bookingFeeUsd * usdToNgn);
 
   // Create visa redemption record
-  const { data: redemption, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: redemption, error } = await (supabase as any)
     .from("visa_redemptions")
     .insert({
       user_id: user.id,

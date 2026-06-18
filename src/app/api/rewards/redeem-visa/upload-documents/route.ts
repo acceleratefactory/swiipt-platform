@@ -16,7 +16,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Verify redemption belongs to user
-  const { data: redemption } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: redemption } = await (supabase as any)
     .from("visa_redemptions")
     .select("*")
     .eq("id", redemptionId)
@@ -56,7 +57,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Update redemption record
-  await supabase.from("visa_redemptions").update({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase as any).from("visa_redemptions").update({
     passport_photo_url: photoPath,
     passport_data_page_url: passportPath,
     status: "documents_uploaded",
