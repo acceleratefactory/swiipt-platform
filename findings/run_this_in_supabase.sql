@@ -9,6 +9,9 @@ ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS total_fee_usd NUMERIC DEFA
 ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS base_fee_usd NUMERIC DEFAULT 150;
 ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS extra_fee_usd NUMERIC DEFAULT 0;
 
+-- 2. Add payment_reference column for resume flow
+ALTER TABLE visa_redemptions ADD COLUMN IF NOT EXISTS payment_reference TEXT;
+
 -- 2. Seed hotel booking settings (safe to re-run)
 INSERT INTO platform_settings (key, value, description) VALUES
   ('hotel_base_fee_usd', '150', 'Hotel booking base fee in USD (covers 3 nights)')

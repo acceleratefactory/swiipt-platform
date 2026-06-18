@@ -40,6 +40,18 @@ export default function QatarVisaRedeemModal({
       return;
     }
 
+    if (data.alreadyStarted) {
+      const getRes = await fetch(`/api/rewards/redeem-visa?redemptionId=${data.redemptionId}`);
+      if (!getRes.ok) {
+        setError("Failed to load your existing redemption. Please try again.");
+        return;
+      }
+      const existingData = await getRes.json();
+      setRedemptionData(existingData);
+      setStep("payment");
+      return;
+    }
+
     setRedemptionData(data);
     setStep("payment");
   }

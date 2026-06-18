@@ -71,6 +71,9 @@ export async function POST(request: NextRequest) {
   const baseFeeNgn = Math.ceil(baseFeeUsd * usdToNgn);
   const extraFeeNgn = Math.ceil(extraFeeUsd * usdToNgn);
 
+  // Generate payment reference
+  const reference = `SWP-VISA-${user.id.replace(/-/g, "").slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+
   // Create visa redemption record with dynamic pricing
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: redemption, error } = await (supabase as any)
@@ -85,6 +88,7 @@ export async function POST(request: NextRequest) {
       total_fee_usd: totalUsd,
       base_fee_usd: baseFeeUsd,
       extra_fee_usd: extraFeeUsd,
+      payment_reference: reference,
     })
     .select()
     .single();
@@ -102,9 +106,6 @@ export async function POST(request: NextRequest) {
 
   const bankDetails = bankSettings?.reduce((acc: any, s: any) => ({ ...acc, [s.key]: s.value }), {});
 
-  // Generate payment reference
-  const reference = `SWP-VISA-${user.id.replace(/-/g, "").slice(0, 6).toUpperCase()}-${Date.now().toString().slice(-6)}`;
-
   return NextResponse.json({
     redemptionId: redemption.id,
     totalUsd,
@@ -120,5 +121,77 @@ export async function POST(request: NextRequest) {
     reference,
     bankDetails,
     status: "pending_payment",
+  });
+}
+
+export async function GET(request: NextRequest) {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { searchParams } = new URL(request.url);
+  const redemptionId = searchParams.get("redemptionId");
+  if (!redemptionId) {
+    return NextResponse.json({ error: "Missing redemptionId." }, { status: 400 });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: redemption, error: fetchError } = await (supabase as any)
+    .from("visa_redemptions")
+    .select("*")
+    .eq("id", redemptionId)
+    .eq("user_id", user.id)
+    .single();
+
+  if (fetchError || !redemption) {
+    return NextResponse.json({ error: "Redemption not found." }, { status: 404 });
+  }
+
+  // Get current USD → NGN rate
+  const { data: usdRate } = await supabase
+    .from("currencies")
+    .select("ngn_exchange_rate")
+    .eq("code", "USD")
+    .single();
+
+  const usdToNgn = usdRate?.ngn_exchange_rate || 1600;
+  const totalNgn = Math.ceil((redemption.total_fee_usd || redemption.booking_fee_usd) * usdToNgn);
+  const baseFeeNgn = Math.ceil((redemption.base_fee_usd || 150) * usdToNgn);
+  const extraFeeNgn = Math.ceil((redemption.extra_fee_usd || 0) * usdToNgn);
+
+  // Fetch bank details
+  const { data: bankSettings } = await supabase
+    .from("platform_settings")
+    .select("key, value")
+    .in("key", ["bank_name", "bank_account_number", "bank_account_name"]);
+
+  const bankDetails = bankSettings?.reduce((acc: any, s: any) => ({ ...acc, [s.key]: s.value }), {});
+
+  // Fetch minNights
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: hotelSettings } = await (supabase as any)
+    .from("platform_settings")
+    .select("key, value")
+    .in("key", ["hotel_min_nights"]);
+
+  const hotelConfig: Record<string, number> = {};
+  (hotelSettings || []).forEach((s: any) => { hotelConfig[s.key] = Number(s.value); });
+  const minNights = hotelConfig.hotel_min_nights || 3;
+
+  return NextResponse.json({
+    redemptionId: redemption.id,
+    totalUsd: redemption.total_fee_usd || redemption.booking_fee_usd,
+    totalNgn,
+    baseFeeUsd: redemption.base_fee_usd || 150,
+    baseFeeNgn,
+    extraFeeUsd: redemption.extra_fee_usd || 0,
+    extraFeeNgn,
+    nights: redemption.nights || 3,
+    minNights,
+    bookingFeeUsd: redemption.booking_fee_usd,
+    bookingFeeNgn: redemption.booking_fee_ngn,
+    reference: redemption.payment_reference,
+    bankDetails,
+    status: redemption.status,
   });
 }
