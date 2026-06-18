@@ -23,13 +23,14 @@ export async function POST(request: NextRequest) {
   }
 
   // Check if user already has a pending visa redemption
-  const { data: existing } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: existing } = await (supabase as any)
     .from("visa_redemptions")
     .select("id, status")
     .eq("user_id", user.id)
     .eq("reward_id", rewardId)
     .not("status", "eq", "cancelled")
-    .single();
+    .maybeSingle();
 
   if (existing) {
     return NextResponse.json({
