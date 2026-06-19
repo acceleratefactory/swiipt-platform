@@ -3,6 +3,9 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import OrdersTable from "@/components/admin/orders/OrdersTable";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminOrdersPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();

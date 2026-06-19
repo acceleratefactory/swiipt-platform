@@ -4,6 +4,9 @@ import { redirect } from "next/navigation";
 import PendingDepositsTable from "@/components/admin/deposits/PendingDepositsTable";
 import DepositHistoryTable from "@/components/admin/deposits/DepositHistoryTable";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminDepositsPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();

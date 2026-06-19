@@ -3,6 +3,9 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import WithdrawalRequestsTable from "@/components/admin/withdrawals/WithdrawalRequestsTable";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function AdminWithdrawalsPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
