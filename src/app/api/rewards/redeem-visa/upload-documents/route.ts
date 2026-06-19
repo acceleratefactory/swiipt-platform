@@ -58,12 +58,16 @@ export async function POST(request: NextRequest) {
 
   // Update redemption record
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("visa_redemptions").update({
+  const { error: updateError } = await (supabase as any).from("visa_redemptions").update({
     passport_photo_url: photoPath,
     passport_data_page_url: passportPath,
     status: "documents_uploaded",
     updated_at: new Date().toISOString(),
   }).eq("id", redemptionId);
+
+  if (updateError) {
+    return NextResponse.json({ error: "Documents uploaded to storage but failed to update record. Please contact support." }, { status: 500 });
+  }
 
   // Mark the reward as redeemed
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

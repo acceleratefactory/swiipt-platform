@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     .eq("id", redemptionId);
 
   if (updateError) {
-    console.error("Failed to link deposit to redemption:", updateError);
+    return NextResponse.json({ error: "Deposit created but failed to link to visa redemption. Please contact support." }, { status: 500 });
   }
 
   // Notify admins about the new pending visa payment
