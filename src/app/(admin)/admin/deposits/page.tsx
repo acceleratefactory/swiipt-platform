@@ -46,6 +46,8 @@ export default async function AdminDepositsPage() {
     .order("admin_confirmed_at", { ascending: false })
     .limit(50);
 
+  console.log("pendingDeposits:", pendingDeposits?.length, "recentConfirmed:", recentConfirmed?.length);
+
   return (
     <div>
       <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1.375rem', fontWeight: 800, color: 'var(--midnight)', marginBottom: '1.5rem' }}>
