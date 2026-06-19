@@ -18,10 +18,27 @@ export default async function AdminDepositsPage() {
 
   const { data: pendingDeposits } = await supabaseAny
     .from("deposits")
-    .select("*, users(full_name, email), savings_goals(goal_name, destination)")
+    .select("*, users(full_name, email)")
     .eq("status", "pending")
     .not("user_confirmed_at", "is", null)
     .order("user_confirmed_at", { ascending: true });
+
+  // Fetch goal names separately to avoid RLS join issue with savings_goals
+  if (pendingDeposits && pendingDeposits.length > 0) {
+    const goalIds = pendingDeposits
+      .map((d: any) => d.goal_id)
+      .filter((id: any) => id !== null);
+    if (goalIds.length > 0) {
+      const { data: goals } = await supabaseAny
+        .from("savings_goals")
+        .select("id, goal_name, destination")
+        .in("id", goalIds);
+      const goalMap = new Map((goals || []).map((g: any) => [g.id, g]));
+      pendingDeposits.forEach((d: any) => {
+        d.savings_goals = d.goal_id ? (goalMap.get(d.goal_id) || null) : null;
+      });
+    }
+  }
 
   // Detect which pending deposits are visa-related
   const visaDepositIds = new Set<string>();
@@ -39,10 +56,26 @@ export default async function AdminDepositsPage() {
 
   const { data: recentConfirmed } = await supabaseAny
     .from("deposits")
-    .select("*, users(full_name, email), savings_goals(goal_name)")
+    .select("*, users(full_name, email)")
     .in("status", ["confirmed", "rejected"])
     .order("admin_confirmed_at", { ascending: false })
     .limit(50);
+
+  if (recentConfirmed && recentConfirmed.length > 0) {
+    const goalIds = recentConfirmed
+      .map((d: any) => d.goal_id)
+      .filter((id: any) => id !== null);
+    if (goalIds.length > 0) {
+      const { data: goals } = await supabaseAny
+        .from("savings_goals")
+        .select("id, goal_name")
+        .in("id", goalIds);
+      const goalMap = new Map((goals || []).map((g: any) => [g.id, g]));
+      recentConfirmed.forEach((d: any) => {
+        d.savings_goals = d.goal_id ? (goalMap.get(d.goal_id) || null) : null;
+      });
+    }
+  }
 
   return (
     <div>
