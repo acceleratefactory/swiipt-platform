@@ -40,6 +40,10 @@ export default async function AdminVisaRedemptionsPage() {
     cancelled: "Cancelled",
   };
 
+  const storageBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/documents`
+    : "";
+
   return (
     <div>
       <h1 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.375rem", fontWeight: 800, color: "var(--midnight)", marginBottom: "1.5rem" }}>
@@ -56,7 +60,7 @@ export default async function AdminVisaRedemptionsPage() {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
               <thead>
                 <tr style={{ background: "var(--gray-100)" }}>
-                  {["User", "Amount", "Nights", "Reference", "Status", "Created", "Expires", "Abandoned", "Actions"].map(h => (
+                  {["User", "Amount", "Nights", "Reference", "Status", "Passport Photo", "Data Page", "Created", "Expires", "Abandoned", "Actions"].map(h => (
                     <th key={h} style={{ padding: "0.625rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
                       {h}
                     </th>
@@ -88,6 +92,34 @@ export default async function AdminVisaRedemptionsPage() {
                         <span style={{ fontSize: "0.7rem", fontWeight: 700, padding: "2px 8px", borderRadius: "20px", ...(statusStyles[r.status] || { background: "var(--gray-100)", color: "var(--text-muted)" }) }}>
                           {isAbandoned ? "Abandoned" : (statusLabel[r.status] || r.status)}
                         </span>
+                      </td>
+                      <td style={{ padding: "0.75rem 1rem" }}>
+                        {r.passport_photo_url ? (
+                          <a
+                            href={`${storageBaseUrl}/${r.passport_photo_url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "var(--teal)", fontWeight: 600, fontSize: "0.75rem", textDecoration: "none" }}
+                          >
+                            View photo →
+                          </a>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ padding: "0.75rem 1rem" }}>
+                        {r.passport_data_page_url ? (
+                          <a
+                            href={`${storageBaseUrl}/${r.passport_data_page_url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ color: "var(--teal)", fontWeight: 600, fontSize: "0.75rem", textDecoration: "none" }}
+                          >
+                            View page →
+                          </a>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>—</span>
+                        )}
                       </td>
                       <td style={{ padding: "0.75rem 1rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                         {new Date(r.created_at).toLocaleString("en-NG", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}

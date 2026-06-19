@@ -72,7 +72,27 @@ export async function POST(request: NextRequest) {
     }, { status: 400 });
   }
 
-  // Update status
+  // If confirming payment, confirm the linked deposit FIRST
+  // (before updating redemption status, so a failure rolls back cleanly)
+  if (newStatus === "payment_confirmed") {
+    const depositId = redemption.booking_fee_deposit_id || redemption.deposit_id;
+    if (!depositId) {
+      return NextResponse.json({
+        error: "Cannot confirm payment: no linked deposit found for this redemption.",
+      }, { status: 400 });
+    }
+    const { error: rpcError } = await supabaseAny.rpc("confirm_deposit", {
+      deposit_id_param: depositId,
+      admin_id: user.id,
+    });
+    if (rpcError) {
+      return NextResponse.json({
+        error: `Failed to confirm linked deposit: ${rpcError.message}`,
+      }, { status: 500 });
+    }
+  }
+
+  // Update status (only reached if deposit confirmation succeeded or was not needed)
   const { error: updateError } = await supabaseAny
     .from("visa_redemptions")
     .update({ status: newStatus, updated_at: new Date().toISOString() })
@@ -80,20 +100,6 @@ export async function POST(request: NextRequest) {
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
-  }
-
-  // If confirming payment and there's a linked pending deposit, confirm it too
-  if (newStatus === "payment_confirmed") {
-    const depositId = redemption.booking_fee_deposit_id || redemption.deposit_id;
-    if (depositId) {
-      const { error: rpcError } = await supabaseAny.rpc("confirm_deposit", {
-        deposit_id_param: depositId,
-        admin_id: user.id,
-      });
-      if (rpcError) {
-        console.error("Failed to confirm linked deposit:", rpcError);
-      }
-    }
   }
 
   // Send user notification
