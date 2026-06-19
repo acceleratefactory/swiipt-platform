@@ -39,20 +39,10 @@ export default function PendingDepositsTable({ initialDeposits, visaDepositIds }
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { data } = await (supabase as any)
             .from("deposits")
-            .select("*, users(full_name, email)")
+            .select("*, users(full_name, email), savings_goals(goal_name, destination)")
             .eq("id", payload.new.id)
             .single();
-          if (data) {
-            if (data.goal_id) {
-              const { data: goal } = await (supabase as any)
-                .from("savings_goals")
-                .select("goal_name, destination")
-                .eq("id", data.goal_id)
-                .single();
-              data.savings_goals = goal || null;
-            }
-            setDeposits(prev => [data, ...prev]);
-          }
+          if (data) setDeposits(prev => [data, ...prev]);
         }
       })
       .on("postgres_changes", {
