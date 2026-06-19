@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import UserListTable from "@/components/admin/users/UserListTable";
 
@@ -6,12 +7,16 @@ export default async function AdminUsersPage() {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
+
+  const adminSupabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: role } = await adminSupabase.from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) redirect("/dashboard");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: users, count } = await (supabase as any)
+  const { data: users, count } = await adminSupabase
     .from("users")
     .select(`
       id, full_name, email, phone, country_of_residence,

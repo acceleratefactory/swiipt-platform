@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import PendingDepositsTable from "@/components/admin/deposits/PendingDepositsTable";
 import DepositHistoryTable from "@/components/admin/deposits/DepositHistoryTable";
@@ -8,43 +9,27 @@ export default async function AdminDepositsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any)
+  const adminSupabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: role } = await adminSupabase
     .from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) redirect("/dashboard");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabaseAny = supabase as any;
-
-  const { data: pendingDeposits } = await supabaseAny
+  const { data: pendingDeposits } = await adminSupabase
     .from("deposits")
-    .select("*, users(full_name, email)")
+    .select("*, users(full_name, email), savings_goals(goal_name, destination)")
     .eq("status", "pending")
     .not("user_confirmed_at", "is", null)
     .order("user_confirmed_at", { ascending: true });
-
-  // Fetch goal names separately to avoid RLS join issue with savings_goals
-  if (pendingDeposits && pendingDeposits.length > 0) {
-    const goalIds = pendingDeposits
-      .map((d: any) => d.goal_id)
-      .filter((id: any) => id !== null);
-    if (goalIds.length > 0) {
-      const { data: goals } = await supabaseAny
-        .from("savings_goals")
-        .select("id, goal_name, destination")
-        .in("id", goalIds);
-      const goalMap = new Map((goals || []).map((g: any) => [g.id, g]));
-      pendingDeposits.forEach((d: any) => {
-        d.savings_goals = d.goal_id ? (goalMap.get(d.goal_id) || null) : null;
-      });
-    }
-  }
 
   // Detect which pending deposits are visa-related
   const visaDepositIds = new Set<string>();
   const pendingIds = (pendingDeposits || []).map((d: any) => d.id);
   if (pendingIds.length > 0) {
-    const { data: visaLinks } = await supabaseAny
+    const { data: visaLinks } = await adminSupabase
       .from("visa_redemptions")
       .select("deposit_id, booking_fee_deposit_id")
       .or(`deposit_id.in.(${pendingIds.join(",")}),booking_fee_deposit_id.in.(${pendingIds.join(",")})`);
@@ -54,28 +39,12 @@ export default async function AdminDepositsPage() {
     });
   }
 
-  const { data: recentConfirmed } = await supabaseAny
+  const { data: recentConfirmed } = await adminSupabase
     .from("deposits")
     .select("*, users(full_name, email)")
     .in("status", ["confirmed", "rejected"])
     .order("admin_confirmed_at", { ascending: false })
     .limit(50);
-
-  if (recentConfirmed && recentConfirmed.length > 0) {
-    const goalIds = recentConfirmed
-      .map((d: any) => d.goal_id)
-      .filter((id: any) => id !== null);
-    if (goalIds.length > 0) {
-      const { data: goals } = await supabaseAny
-        .from("savings_goals")
-        .select("id, goal_name")
-        .in("id", goalIds);
-      const goalMap = new Map((goals || []).map((g: any) => [g.id, g]));
-      recentConfirmed.forEach((d: any) => {
-        d.savings_goals = d.goal_id ? (goalMap.get(d.goal_id) || null) : null;
-      });
-    }
-  }
 
   return (
     <div>

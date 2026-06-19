@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import WithdrawalRequestsTable from "@/components/admin/withdrawals/WithdrawalRequestsTable";
 
@@ -7,21 +8,22 @@ export default async function AdminWithdrawalsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any)
+  const adminSupabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: role } = await adminSupabase
     .from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") redirect("/dashboard");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const supabaseAny = supabase as any;
-
-  const { data: withdrawals } = await supabaseAny
+  const { data: withdrawals } = await adminSupabase
     .from("withdrawals")
     .select("*, users(full_name, email), savings_goals(goal_name, currency)")
     .eq("status", "requested")
     .order("requested_at", { ascending: true });
 
-  const { data: recentProcessed } = await supabaseAny
+  const { data: recentProcessed } = await adminSupabase
     .from("withdrawals")
     .select("*, users(full_name, email)")
     .in("status", ["completed", "rejected"])

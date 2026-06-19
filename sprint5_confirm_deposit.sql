@@ -26,16 +26,24 @@ BEGIN
 
     PERFORM check_and_unlock_milestones(dep.goal_id, dep.user_id, pct);
   ELSE
-    UPDATE wallets SET
-      balance_ngn = balance_ngn + COALESCE(dep.ngn_equivalent, dep.amount)
-    WHERE user_id = dep.user_id;
-
-    -- If this deposit is linked to a visa redemption, update its status
-    UPDATE visa_redemptions SET
-      status = 'payment_confirmed',
-      updated_at = NOW()
-    WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
-      AND status = 'pending_payment';
+    -- Check if this deposit is linked to a visa redemption
+    IF EXISTS (
+      SELECT 1 FROM visa_redemptions
+      WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
+        AND status = 'pending_payment'
+    ) THEN
+      -- Visa booking fee: update visa status only, do NOT credit wallet
+      UPDATE visa_redemptions SET
+        status = 'payment_confirmed',
+        updated_at = NOW()
+      WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
+        AND status = 'pending_payment';
+    ELSE
+      -- Free wallet deposit: credit wallet balance
+      UPDATE wallets SET
+        balance_ngn = balance_ngn + COALESCE(dep.ngn_equivalent, dep.amount)
+      WHERE user_id = dep.user_id;
+    END IF;
   END IF;
 
   UPDATE wallets SET
@@ -69,7 +77,21 @@ BEGIN
       dep.currency || ' ' || dep.amount::TEXT || ' has been added to your goal.',
       '/dashboard/goals/' || dep.goal_id::TEXT
     );
+  ELSEIF EXISTS (
+    SELECT 1 FROM visa_redemptions
+    WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
+  ) THEN
+    -- Visa booking fee confirmed: notify user (wallet was NOT credited)
+    INSERT INTO notifications (user_id, type, title, body, action_url)
+    VALUES (
+      dep.user_id,
+      'visa_payment_confirmed',
+      'Visa payment confirmed ✓',
+      'Your visa booking fee has been confirmed. Proceed to upload your passport documents.',
+      '/dashboard/rewards'
+    );
   ELSE
+    -- Free wallet deposit: notify user
     INSERT INTO notifications (user_id, type, title, body, action_url)
     VALUES (
       dep.user_id,
