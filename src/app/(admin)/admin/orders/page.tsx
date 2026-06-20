@@ -19,15 +19,28 @@ export default async function AdminOrdersPage() {
   const { data: role } = await adminSupabase.from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) redirect("/dashboard");
 
-  const { data: orders } = await adminSupabase
+  const { data: rawOrders } = await adminSupabase
     .from("service_orders")
-    .select(`
-      *,
-      users(full_name, email),
-      service_packages(name, category, destination)
-    `)
+    .select("*")
     .not("status", "in", '("cancelled")')
     .order("created_at", { ascending: false });
+
+  const userIds = Array.from(new Set((rawOrders || []).map((o: any) => o.user_id).filter(Boolean)));
+  const packageIds = Array.from(new Set((rawOrders || []).map((o: any) => o.package_id).filter(Boolean)));
+
+  const [{ data: users }, { data: packages }] = await Promise.all([
+    userIds.length ? adminSupabase.from("users").select("id, full_name, email").in("id", userIds) : { data: [] },
+    packageIds.length ? adminSupabase.from("service_packages").select("id, name, category, destination").in("id", packageIds) : { data: [] },
+  ]);
+
+  const userMap = new Map((users || []).map((u: any) => [u.id, { full_name: u.full_name, email: u.email }]));
+  const pkgMap = new Map((packages || []).map((p: any) => [p.id, { name: p.name, category: p.category, destination: p.destination }]));
+
+  const orders = (rawOrders || []).map((o: any) => ({
+    ...o,
+    users: userMap.get(o.user_id) || null,
+    service_packages: pkgMap.get(o.package_id) || null,
+  }));
 
   return (
     <div>

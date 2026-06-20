@@ -21,16 +21,49 @@ export default async function AdminDepositsPage() {
     .from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) redirect("/dashboard");
 
-  const { data: pendingDeposits } = await adminSupabase
+  const { data: _pending } = await adminSupabase
     .from("deposits")
-    .select("*, users(full_name, email), savings_goals(goal_name, destination)")
+    .select("*")
     .eq("status", "pending")
     .not("user_confirmed_at", "is", null)
     .order("user_confirmed_at", { ascending: true });
 
+  const { data: _confirmed } = await adminSupabase
+    .from("deposits")
+    .select("*")
+    .in("status", ["confirmed", "rejected"])
+    .order("admin_confirmed_at", { ascending: false })
+    .limit(50);
+
+  const allUserIds = Array.from(new Set([
+    ...(_pending || []).map((d: any) => d.user_id),
+    ...(_confirmed || []).map((d: any) => d.user_id),
+  ].filter(Boolean)));
+
+  const allGoalIds = Array.from(new Set((_pending || []).map((d: any) => d.goal_id).filter(Boolean)));
+
+  const [{ data: users }, { data: goals }] = await Promise.all([
+    allUserIds.length ? adminSupabase.from("users").select("id, full_name, email").in("id", allUserIds) : { data: [] },
+    allGoalIds.length ? adminSupabase.from("savings_goals").select("id, goal_name, destination").in("id", allGoalIds) : { data: [] },
+  ]);
+
+  const userMap = new Map((users || []).map((u: any) => [u.id, { full_name: u.full_name, email: u.email }]));
+  const goalMap = new Map((goals || []).map((g: any) => [g.id, { goal_name: g.goal_name, destination: g.destination }]));
+
+  const pendingDeposits = (_pending || []).map((d: any) => ({
+    ...d,
+    users: userMap.get(d.user_id) || null,
+    savings_goals: d.goal_id ? goalMap.get(d.goal_id) || null : null,
+  }));
+
+  const recentConfirmed = (_confirmed || []).map((d: any) => ({
+    ...d,
+    users: userMap.get(d.user_id) || null,
+  }));
+
   // Detect which pending deposits are visa-related
   const visaDepositIds = new Set<string>();
-  const pendingIds = (pendingDeposits || []).map((d: any) => d.id);
+  const pendingIds = pendingDeposits.map((d: any) => d.id);
   if (pendingIds.length > 0) {
     const { data: visaLinks } = await adminSupabase
       .from("visa_redemptions")
@@ -41,15 +74,6 @@ export default async function AdminDepositsPage() {
       if (v.booking_fee_deposit_id) visaDepositIds.add(v.booking_fee_deposit_id);
     });
   }
-
-  const { data: recentConfirmed } = await adminSupabase
-    .from("deposits")
-    .select("*, users(full_name, email)")
-    .in("status", ["confirmed", "rejected"])
-    .order("admin_confirmed_at", { ascending: false })
-    .limit(50);
-
-  console.log({ pendingDeposits: pendingDeposits?.length, recentConfirmed: recentConfirmed?.length });
 
   return (
     <div>
