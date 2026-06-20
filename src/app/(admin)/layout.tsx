@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import AdminShell from "@/components/admin/shell/AdminShell";
 
@@ -14,8 +15,12 @@ export default async function AdminLayout({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any)
+  const adminSupabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: role } = await adminSupabase
     .from("user_roles")
     .select("role")
     .eq("user_id", user.id)
@@ -25,14 +30,13 @@ export default async function AdminLayout({
     redirect("/dashboard");
   }
 
-  const { count: pendingDeposits } = await supabase
+  const { count: pendingDeposits } = await adminSupabase
     .from("deposits")
     .select("*", { count: "exact", head: true })
     .eq("status", "pending")
     .not("user_confirmed_at", "is", null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { count: pendingWithdrawals } = await (supabase as any)
+  const { count: pendingWithdrawals } = await adminSupabase
     .from("withdrawals")
     .select("*", { count: "exact", head: true })
     .eq("status", "requested");

@@ -49,7 +49,7 @@ export default async function AdminDepositsPage() {
     .order("admin_confirmed_at", { ascending: false })
     .limit(50);
 
-  console.log("pendingDeposits:", pendingDeposits?.length, "recentConfirmed:", recentConfirmed?.length);
+  console.log({ pendingDeposits: pendingDeposits?.length, recentConfirmed: recentConfirmed?.length });
 
   return (
     <div>
