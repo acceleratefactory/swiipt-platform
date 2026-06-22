@@ -136,7 +136,7 @@ export default function ServiceCard({ pkg, preferredCurrency, existingOrder, act
         </div>
 
         {existingOrder ? (
-          <a href="/dashboard/services" style={{ display: 'block', padding: '0.625rem', background: 'var(--gray-100)', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.875rem', borderRadius: 'var(--radius-md)', textAlign: 'center', textDecoration: 'none' }}>
+          <a href={`/dashboard/services/${pkg.id}`} style={{ display: 'block', padding: '0.625rem', background: 'var(--gray-100)', color: 'var(--text-secondary)', fontWeight: 600, fontSize: '0.875rem', borderRadius: 'var(--radius-md)', textAlign: 'center', textDecoration: 'none' }}>
             View order status →
           </a>
         ) : (

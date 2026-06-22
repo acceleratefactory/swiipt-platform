@@ -16,7 +16,7 @@ export default async function DashboardHomePage() {
     supabase.from("wallets").select("*").eq("user_id", user.id).single(),
     supabase.from("savings_goals").select("*").eq("user_id", user.id).eq("status", "active").order("created_at", { ascending: false }),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (supabase as any).from("service_orders").select("*, service_packages(name, category, destination)").eq("user_id", user.id).not("status", "in", '("completed","cancelled")').order("created_at", { ascending: false }).limit(3),
+    (supabase as any).from("service_orders").select("*, service_packages(id, name, category, destination)").eq("user_id", user.id).not("status", "in", '("completed","cancelled")').order("created_at", { ascending: false }).limit(3),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("milestone_rewards").select("*").eq("user_id", user.id).eq("milestone_type", "welcome_gift").eq("redeemed", false).single(),
   ]);
@@ -25,7 +25,7 @@ export default async function DashboardHomePage() {
   const profile = profileRes.data;
   const wallet = walletRes.data as unknown as { balance_ngn: number; total_locked_ngn: number; total_credits_ngn: number } | null;
   const goals = goalsRes.data || [];
-  const activeOrders = (ordersRes.data || []) as unknown as Array<{ id: string; status: string; service_packages: { name: string; category: string; destination: string } | null }>;
+  const activeOrders = (ordersRes.data || []) as unknown as Array<{ id: string; status: string; service_packages: { id: string; name: string; category: string; destination: string } | null }>;
   const welcomeReward = welcomeRewardRes.data as unknown as { id: string } | null;
 
   return (

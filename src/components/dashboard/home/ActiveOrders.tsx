@@ -17,7 +17,7 @@ export default function ActiveOrders({
   orders: Array<{
     id: string;
     status: string;
-    service_packages: { name: string; category: string; destination: string } | null;
+    service_packages: { id: string; name: string; category: string; destination: string } | null;
   }>;
 }) {
   return (
@@ -35,7 +35,7 @@ export default function ActiveOrders({
         {orders.map((order) => {
           const status = statusConfig[order.status] || { label: order.status, color: "#6B7280", bg: "#F3F4F6" };
           return (
-            <a key={order.id} href="/dashboard/services" style={{ textDecoration: "none" }}>
+            <a key={order.id} href={`/dashboard/services/${order.service_packages?.id}`} style={{ textDecoration: "none" }}>
               <div style={{ background: "white", borderRadius: "var(--radius-lg)", padding: "1rem 1.25rem", border: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "1rem" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--midnight)", marginBottom: "0.25rem" }}>

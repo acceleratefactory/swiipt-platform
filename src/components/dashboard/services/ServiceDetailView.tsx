@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import OrderFlow from "./OrderFlow";
 import ActiveOrderTracker from "./ActiveOrderTracker";
 
@@ -60,14 +60,21 @@ const pricingFields = [
 
 export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals, existingOrder, userId, walletCredits = 0 }: ServiceDetailViewProps) {
   const [showOrder, setShowOrder] = useState(false);
+  const trackerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const price = (pkg as any)[`price_${preferredCurrency.toLowerCase()}`] || pkg.price_ngn;
   const symbol = currencySymbols[preferredCurrency] || '₦';
 
+  useEffect(() => {
+    if (existingOrder && trackerRef.current) {
+      trackerRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [existingOrder]);
+
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
       {existingOrder ? (
-        <ActiveOrderTracker order={existingOrder} />
+        <div ref={trackerRef}><ActiveOrderTracker order={existingOrder} /></div>
       ) : (
         <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', overflow: 'hidden' }}>
           <div style={{ padding: '2rem' }}>
