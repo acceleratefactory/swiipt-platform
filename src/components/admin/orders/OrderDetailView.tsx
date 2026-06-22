@@ -5,7 +5,8 @@ import DocumentRequestForm from "./DocumentRequestForm";
 
 const validTransitions: Record<string, string[]> = {
   initiated: ["payment_pending", "cancelled"],
-  payment_pending: ["payment_confirmed", "cancelled"],
+  payment_pending: ["payment_submitted", "payment_confirmed", "cancelled"],
+  payment_submitted: ["payment_confirmed", "cancelled"],
   payment_confirmed: ["documents_requested", "in_progress"],
   documents_requested: ["documents_received"],
   documents_received: ["in_progress"],
@@ -17,6 +18,7 @@ const validTransitions: Record<string, string[]> = {
 const statusColors: Record<string, { bg: string; color: string }> = {
   initiated: { bg: '#F3F4F6', color: '#6B7280' },
   payment_pending: { bg: '#FEF3C7', color: '#B45309' },
+  payment_submitted: { bg: '#FFFBEB', color: '#D97706' },
   payment_confirmed: { bg: 'var(--teal-pale)', color: 'var(--teal)' },
   documents_requested: { bg: '#FEF3C7', color: '#B45309' },
   documents_received: { bg: '#DBEAFE', color: '#1D4ED8' },

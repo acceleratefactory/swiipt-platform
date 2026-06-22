@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase as any)
     .from("service_orders")
-    .update({ status: "payment_pending" })
+    .update({ status: "payment_submitted" })
     .eq("id", orderId)
     .eq("user_id", user.id);
 
