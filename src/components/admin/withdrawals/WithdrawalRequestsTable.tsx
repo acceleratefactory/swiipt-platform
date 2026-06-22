@@ -4,6 +4,7 @@ import { useState } from "react";
 
 interface WithdrawalRecord {
   id: string;
+  status: string;
   currency: string;
   gross_amount: number;
   net_amount: number;
@@ -13,6 +14,7 @@ interface WithdrawalRecord {
   account_number: string;
   account_name: string;
   requested_at: string;
+  processed_at: string | null;
   users?: { full_name: string; email: string } | null;
   savings_goals?: { goal_name: string } | null;
 }
@@ -22,7 +24,7 @@ interface WithdrawalRequestsTableProps {
   recentProcessed: WithdrawalRecord[];
 }
 
-export default function WithdrawalRequestsTable({ pendingWithdrawals }: WithdrawalRequestsTableProps) {
+export default function WithdrawalRequestsTable({ pendingWithdrawals, recentProcessed }: WithdrawalRequestsTableProps) {
   const [processing, setProcessing] = useState<string | null>(null);
 
   async function handleAction(withdrawalId: string, action: 'complete' | 'reject') {
@@ -110,6 +112,50 @@ export default function WithdrawalRequestsTable({ pendingWithdrawals }: Withdraw
           </table>
         )}
       </div>
+
+      {recentProcessed.length > 0 && (
+        <div style={{ background: 'white', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', overflow: 'hidden' }}>
+          <div style={{ padding: '0.875rem 1rem', borderBottom: '1px solid var(--border)' }}>
+            <h2 style={{ fontSize: '0.9375rem', fontWeight: 700, color: 'var(--midnight)' }}>Recent history</h2>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <thead>
+              <tr style={{ background: 'var(--gray-100)' }}>
+                {["User", "Amount", "Net payout", "Bank", "Status", "Processed at"].map(h => (
+                  <th key={h} style={{ padding: '0.625rem 1rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {recentProcessed.map(w => (
+                <tr key={w.id} style={{ borderBottom: '1px solid var(--gray-100)' }}>
+                  <td style={{ padding: '0.625rem 1rem', color: 'var(--midnight)', fontWeight: 500 }}>{w.users?.full_name}</td>
+                  <td style={{ padding: '0.625rem 1rem', fontWeight: 700 }}>{w.currency} {w.gross_amount.toLocaleString()}</td>
+                  <td style={{ padding: '0.625rem 1rem', fontWeight: 700, color: 'var(--teal)' }}>{w.currency} {w.net_amount.toLocaleString()}</td>
+                  <td style={{ padding: '0.625rem 1rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                    {w.bank_name}<br />
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{w.account_number}</span>
+                  </td>
+                  <td style={{ padding: '0.625rem 1rem' }}>
+                    <span style={{
+                      fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
+                      background: w.status === 'completed' ? 'var(--teal-pale)' : '#FEF2F2',
+                      color: w.status === 'completed' ? 'var(--teal)' : 'var(--danger)',
+                    }}>
+                      {w.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0.625rem 1rem', color: 'var(--text-muted)' }}>
+                    {w.processed_at ? new Date(w.processed_at).toLocaleString('en-NG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
