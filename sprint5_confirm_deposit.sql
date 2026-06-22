@@ -1,20 +1,20 @@
 DROP FUNCTION IF EXISTS confirm_deposit(UUID, UUID);
 
-CREATE OR REPLACE FUNCTION confirm_deposit(deposit_id_param UUID, admin_id UUID)
+CREATE OR REPLACE FUNCTION confirm_deposit(deposit_id UUID, admin_id UUID)
 RETURNS VOID AS $$
 DECLARE
   dep RECORD;
   pct NUMERIC;
   goal RECORD;
 BEGIN
-  SELECT * INTO dep FROM deposits WHERE id = deposit_id_param AND status = 'pending';
+  SELECT * INTO dep FROM deposits WHERE id = deposit_id AND status = 'pending';
   IF NOT FOUND THEN RAISE EXCEPTION 'Deposit not found or already processed'; END IF;
 
   UPDATE deposits SET
     status = 'confirmed',
     admin_confirmed_at = NOW(),
     confirmed_by = admin_id
-  WHERE id = deposit_id_param;
+  WHERE id = deposit_id;
 
   IF dep.goal_id IS NOT NULL THEN
     UPDATE savings_goals SET
@@ -26,20 +26,17 @@ BEGIN
 
     PERFORM check_and_unlock_milestones(dep.goal_id, dep.user_id, pct);
   ELSE
-    -- Check if this deposit is linked to a visa redemption
     IF EXISTS (
       SELECT 1 FROM visa_redemptions
-      WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
+      WHERE (deposit_id = deposit_id OR booking_fee_deposit_id = deposit_id)
         AND status = 'pending_payment'
     ) THEN
-      -- Visa booking fee: update visa status only, do NOT credit wallet
       UPDATE visa_redemptions SET
         status = 'payment_confirmed',
         updated_at = NOW()
-      WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
+      WHERE (deposit_id = deposit_id OR booking_fee_deposit_id = deposit_id)
         AND status = 'pending_payment';
     ELSE
-      -- Free wallet deposit: credit wallet balance
       UPDATE wallets SET
         balance_ngn = balance_ngn + COALESCE(dep.ngn_equivalent, dep.amount)
       WHERE user_id = dep.user_id;
@@ -56,7 +53,7 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM deposits
-    WHERE user_id = dep.user_id AND status = 'confirmed' AND id != deposit_id_param
+    WHERE user_id = dep.user_id AND status = 'confirmed' AND id != deposit_id
   ) THEN
     PERFORM increment_mobility_score(dep.user_id, 50);
   END IF;
@@ -79,9 +76,8 @@ BEGIN
     );
   ELSEIF EXISTS (
     SELECT 1 FROM visa_redemptions
-    WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
+    WHERE (deposit_id = deposit_id OR booking_fee_deposit_id = deposit_id)
   ) THEN
-    -- Visa booking fee confirmed: notify user (wallet was NOT credited)
     INSERT INTO notifications (user_id, type, title, body, action_url)
     VALUES (
       dep.user_id,
@@ -91,7 +87,6 @@ BEGIN
       '/dashboard/rewards'
     );
   ELSE
-    -- Free wallet deposit: notify user
     INSERT INTO notifications (user_id, type, title, body, action_url)
     VALUES (
       dep.user_id,

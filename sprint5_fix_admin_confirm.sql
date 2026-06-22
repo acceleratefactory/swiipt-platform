@@ -35,21 +35,21 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- -------------------------------------------------------------
 DROP FUNCTION IF EXISTS confirm_deposit(UUID, UUID);
 
-CREATE OR REPLACE FUNCTION confirm_deposit(deposit_id_param UUID, admin_id UUID)
+CREATE OR REPLACE FUNCTION confirm_deposit(deposit_id UUID, admin_id UUID)
 RETURNS VOID AS $$
 DECLARE
   dep RECORD;
   pct NUMERIC;
   goal RECORD;
 BEGIN
-  SELECT * INTO dep FROM deposits WHERE id = deposit_id_param AND status = 'pending';
+  SELECT * INTO dep FROM deposits WHERE id = deposit_id AND status = 'pending';
   IF NOT FOUND THEN RAISE EXCEPTION 'Deposit not found or already processed'; END IF;
 
   UPDATE deposits SET
     status = 'confirmed',
     admin_confirmed_at = NOW(),
     confirmed_by = admin_id
-  WHERE id = deposit_id_param;
+  WHERE id = deposit_id;
 
   IF dep.goal_id IS NOT NULL THEN
     UPDATE savings_goals SET
@@ -63,13 +63,13 @@ BEGIN
   ELSE
     IF EXISTS (
       SELECT 1 FROM visa_redemptions
-      WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
+      WHERE (deposit_id = deposit_id OR booking_fee_deposit_id = deposit_id)
         AND status = 'pending_payment'
     ) THEN
       UPDATE visa_redemptions SET
         status = 'payment_confirmed',
         updated_at = NOW()
-      WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
+      WHERE (deposit_id = deposit_id OR booking_fee_deposit_id = deposit_id)
         AND status = 'pending_payment';
     ELSE
       UPDATE wallets SET
@@ -88,7 +88,7 @@ BEGIN
 
   IF NOT EXISTS (
     SELECT 1 FROM deposits
-    WHERE user_id = dep.user_id AND status = 'confirmed' AND id != deposit_id_param
+    WHERE user_id = dep.user_id AND status = 'confirmed' AND id != deposit_id
   ) THEN
     PERFORM increment_mobility_score(dep.user_id, 50);
   END IF;
@@ -111,7 +111,7 @@ BEGIN
     );
   ELSEIF EXISTS (
     SELECT 1 FROM visa_redemptions
-    WHERE (deposit_id = deposit_id_param OR booking_fee_deposit_id = deposit_id_param)
+    WHERE (deposit_id = deposit_id OR booking_fee_deposit_id = deposit_id)
   ) THEN
     INSERT INTO notifications (user_id, type, title, body, action_url)
     VALUES (
