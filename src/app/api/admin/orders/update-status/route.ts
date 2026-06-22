@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 const validTransitions: Record<string, string[]> = {
   initiated: ["payment_pending", "cancelled"],
-  payment_pending: ["payment_confirmed", "cancelled"],
+  payment_pending: ["payment_submitted", "payment_confirmed", "cancelled"],
+  payment_submitted: ["payment_confirmed", "cancelled"],
   payment_confirmed: ["documents_requested", "in_progress"],
   documents_requested: ["documents_received"],
   documents_received: ["in_progress"],
@@ -24,11 +26,15 @@ const userNotifications: Record<string, { title: string; body: string }> = {
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
+  const adminSupabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any)
+  const { data: role } = await (adminSupabase as any)
     .from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -37,9 +43,9 @@ export async function POST(request: NextRequest) {
   const { orderId, newStatus, caseManagerNotes, internalNotes } = await request.json();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: order } = await (supabase as any)
+  const { data: order } = await (adminSupabase as any)
     .from("service_orders")
-    .select("status, user_id, package_id, service_packages(name)")
+    .select("status, user_id, package_id")
     .eq("id", orderId)
     .single();
 
@@ -59,7 +65,7 @@ export async function POST(request: NextRequest) {
   if (newStatus === "documents_requested") updateData.documents_requested_at = new Date().toISOString();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("service_orders").update(updateData).eq("id", orderId);
+  await (adminSupabase as any).from("service_orders").update(updateData).eq("id", orderId);
 
   if (newStatus === "completed") {
     await supabase.rpc("increment_mobility_score", {
@@ -67,8 +73,15 @@ export async function POST(request: NextRequest) {
       points: 200,
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("users").update({ alumni_status: true }).eq("id", order.user_id);
+    await (adminSupabase as any).from("users").update({ alumni_status: true }).eq("id", order.user_id);
   }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: pkg } = await (adminSupabase as any)
+    .from("service_packages")
+    .select("name")
+    .eq("id", order.package_id)
+    .single();
 
   const notification = userNotifications[newStatus];
   if (notification) {
@@ -76,15 +89,14 @@ export async function POST(request: NextRequest) {
       user_id: order.user_id,
       type: `order_${newStatus}`,
       title: notification.title,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      body: `${(order.service_packages as any)?.name}: ${notification.body}`,
+      body: `${pkg?.name || "Service"}: ${notification.body}`,
       action_url: `/dashboard/services/${order.package_id}`,
       target_segment: null,
     });
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("admin_audit_log").insert({
+  await (adminSupabase as any).from("admin_audit_log").insert({
     admin_id: user.id,
     action_type: "order_status_updated",
     target_user_id: order.user_id,
