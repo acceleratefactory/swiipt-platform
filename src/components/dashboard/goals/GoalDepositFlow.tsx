@@ -191,7 +191,7 @@ export default function GoalDepositFlow({
                 cursor: "pointer",
               }}
             >
-              I Have Sent the Money &#x2713;
+              I Have Sent the Money \u2713
             </button>
             <button
               onClick={async () => {
@@ -501,7 +501,7 @@ export default function GoalDepositFlow({
               cursor: "pointer",
             }}
           >
-            I Have Sent the Money &#x2713;
+            I Have Sent the Money \u2713
           </button>
 
           <button

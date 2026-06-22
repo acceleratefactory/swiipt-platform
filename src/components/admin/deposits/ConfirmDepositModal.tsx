@@ -17,9 +17,10 @@ interface ConfirmDepositModalProps {
   onConfirm: (notes: string) => void;
   onClose: () => void;
   loading: boolean;
+  error?: string;
 }
 
-export default function ConfirmDepositModal({ deposit, onConfirm, onClose, loading }: ConfirmDepositModalProps) {
+export default function ConfirmDepositModal({ deposit, onConfirm, onClose, loading, error }: ConfirmDepositModalProps) {
   const [notes, setNotes] = useState("");
 
   return (
@@ -54,6 +55,12 @@ export default function ConfirmDepositModal({ deposit, onConfirm, onClose, loadi
         <div style={{ background: '#FEF3C7', border: '1px solid #FDE68A', borderRadius: 'var(--radius-md)', padding: '0.75rem', marginBottom: '1rem', fontSize: '0.8125rem', color: '#92400E' }}>
           ⚠️ Verify this transfer in your bank app before confirming. Reference must match exactly. <strong>This cannot be undone.</strong>
         </div>
+
+        {error && (
+          <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-md)', padding: '0.75rem', marginBottom: '1rem', fontSize: '0.8125rem', color: 'var(--danger)' }}>
+            {error}
+          </div>
+        )}
 
         <div style={{ marginBottom: '1.25rem' }}>
           <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--midnight)', display: 'block', marginBottom: '0.375rem' }}>

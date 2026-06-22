@@ -24,6 +24,7 @@ export default function PendingDepositsTable({ initialDeposits, visaDepositIds }
   const [deposits, setDeposits] = useState<DepositWithUser[]>(initialDeposits);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [modalDeposit, setModalDeposit] = useState<DepositWithUser | null>(null);
+  const [confirmError, setConfirmError] = useState("");
   const supabase = createClient();
 
   useEffect(() => {
@@ -165,6 +166,7 @@ export default function PendingDepositsTable({ initialDeposits, visaDepositIds }
           deposit={modalDeposit}
           onConfirm={async (notes) => {
             setConfirmingId(modalDeposit.id);
+            setConfirmError("");
             const res = await fetch("/api/admin/deposits/confirm", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -173,11 +175,15 @@ export default function PendingDepositsTable({ initialDeposits, visaDepositIds }
             if (res.ok) {
               setDeposits(prev => prev.filter(d => d.id !== modalDeposit.id));
               setModalDeposit(null);
+            } else {
+              const data = await res.json().catch(() => ({}));
+              setConfirmError(data.error || "Confirm failed. Please try again.");
             }
             setConfirmingId(null);
           }}
-          onClose={() => setModalDeposit(null)}
+          onClose={() => { setModalDeposit(null); setConfirmError(""); }}
           loading={confirmingId === modalDeposit?.id}
+          error={confirmError}
         />
       )}
     </div>
