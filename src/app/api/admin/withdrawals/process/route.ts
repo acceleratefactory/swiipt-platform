@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
+  const adminSupabase = createServiceClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -41,13 +43,16 @@ export async function POST(request: NextRequest) {
 
     if (withdrawal.goal_id) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any)
+      const { error: updateError } = await (adminSupabase as any)
         .from("savings_goals")
         .update({
           current_balance: 0,
           status: withdrawal.is_early_exit ? "withdrawn" : "completed",
         })
         .eq("id", withdrawal.goal_id);
+      if (updateError) {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
