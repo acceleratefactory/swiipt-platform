@@ -21,10 +21,16 @@ BEGIN
       current_balance = current_balance + dep.amount
     WHERE id = dep.goal_id;
 
-    SELECT current_balance, target_amount INTO goal FROM savings_goals WHERE id = dep.goal_id;
+    SELECT current_balance, target_amount, is_locked INTO goal FROM savings_goals WHERE id = dep.goal_id;
     pct := (goal.current_balance / goal.target_amount) * 100;
 
     PERFORM check_and_unlock_milestones(dep.goal_id, dep.user_id, pct);
+
+    IF NOT goal.is_locked THEN
+      UPDATE wallets SET
+        balance_ngn = balance_ngn + COALESCE(dep.ngn_equivalent, dep.amount)
+      WHERE user_id = dep.user_id;
+    END IF;
   ELSE
     IF EXISTS (
       SELECT 1 FROM visa_redemptions
