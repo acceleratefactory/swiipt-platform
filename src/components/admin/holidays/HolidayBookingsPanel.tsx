@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 const statusColors: Record<string, { bg: string; color: string }> = {
   payment_pending: { bg: '#FEF3C7', color: '#B45309' },
@@ -12,6 +13,7 @@ const statusColors: Record<string, { bg: string; color: string }> = {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default function HolidayBookingsPanel({ bookings }: { bookings: any[] }) {
+  const router = useRouter();
   const [statusFilter, setStatusFilter] = useState("all");
 
   const filtered = statusFilter === "all" ? bookings : bookings.filter((b: any) => b.status === statusFilter);
@@ -57,7 +59,7 @@ export default function HolidayBookingsPanel({ bookings }: { bookings: any[] }) 
             {filtered.map((booking: any) => {
               const sc = statusColors[booking.status] || { bg: '#F3F4F6', color: '#6B7280' };
               return (
-                <tr key={booking.id} style={{ borderBottom: '1px solid var(--gray-100)' }}>
+                <tr key={booking.id} onClick={() => router.push(`/admin/holidays/bookings/${booking.id}`)} style={{ borderBottom: '1px solid var(--gray-100)', cursor: 'pointer' }}>
                   <td style={{ padding: '0.75rem 1rem' }}>
                     <p style={{ fontWeight: 600, color: 'var(--midnight)' }}>{booking.user?.full_name || 'N/A'}</p>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{booking.user?.email}</p>
