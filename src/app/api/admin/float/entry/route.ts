@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -6,8 +7,9 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const adminSupabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
+  const { data: role } = await (adminSupabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -19,7 +21,7 @@ export async function POST(request: Request) {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from("float_ledger").insert({
+  const { error } = await (adminSupabase as any).from("float_ledger").insert({
     entry_date,
     total_locked_ngn,
     tbill_allocation,
