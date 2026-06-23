@@ -67,6 +67,17 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (adminSupabase as any).from("service_orders").update(updateData).eq("id", orderId);
 
+  if (newStatus === "documents_received") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adminSupabase as any).from("document_requests")
+      .update({
+        status: "verified",
+        verified_at: new Date().toISOString(),
+        verified_by: user.id,
+      })
+      .eq("order_id", orderId);
+  }
+
   if (newStatus === "completed") {
     await supabase.rpc("increment_mobility_score", {
       user_id_input: order.user_id,
