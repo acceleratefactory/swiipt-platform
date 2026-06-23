@@ -46,7 +46,8 @@ export default async function AdminDocumentsPage() {
   const packageMap = new Map((packages || []).map((p: any) => [p.id, p.name]));
 
   const pendingDocs = (_pendingDocs || []).map((d: any) => {
-    const order = orderMap.get(d.order_id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = orderMap.get(d.order_id) as any;
     const pkgName = order ? packageMap.get(order.package_id) : null;
     return {
       ...d,
