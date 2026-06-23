@@ -465,6 +465,9 @@ export interface Database {
           currency: string
           total_price: number
           status: string
+          case_manager_notes: string | null
+          internal_notes: string | null
+          documents_requested_at: string | null
           created_at: string
           updated_at: string
         }
