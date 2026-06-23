@@ -56,6 +56,8 @@ export default async function DocumentsPage() {
       <DocumentRequestsList
         requestsByOrder={requestsByOrder}
         userId={user.id}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        vaultDocs={(vaultDocsRes.data || []).map((d: any) => d.event_data)}
       />
 
       <DocumentVault

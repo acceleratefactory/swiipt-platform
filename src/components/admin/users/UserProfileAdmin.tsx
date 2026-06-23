@@ -2,10 +2,10 @@
 import { useState } from "react";
 import AdminOverridePanel from "./AdminOverridePanel";
 
-const TABS = ["Overview", "Goals", "Deposits", "Orders", "Referrals", "Activity", "Audit Log"];
+const TABS = ["Overview", "Goals", "Deposits", "Orders", "Vault", "Referrals", "Activity", "Audit Log"];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function UserProfileAdmin({ profile, wallet, goals, deposits, withdrawals, orders, referrals, activityLog, adminAuditLog, adminId }: { profile: any; wallet: any; goals: any[]; deposits: any[]; withdrawals: any[]; orders: any[]; referrals: any[]; activityLog: any[]; adminAuditLog: any[]; adminId: string }) {
+export default function UserProfileAdmin({ profile, wallet, goals, deposits, withdrawals, orders, referrals, activityLog, adminAuditLog, vaultDocs, adminId }: { profile: any; wallet: any; goals: any[]; deposits: any[]; withdrawals: any[]; orders: any[]; referrals: any[]; activityLog: any[]; adminAuditLog: any[]; vaultDocs: any[]; adminId: string }) {
   const [tab, setTab] = useState("Overview");
 
   const totalDeposited = deposits.filter(d => d.status === "confirmed").reduce((s, d) => s + (d.ngn_equivalent || d.amount), 0);
@@ -171,6 +171,51 @@ export default function UserProfileAdmin({ profile, wallet, goals, deposits, wit
                 ))}
               </tbody>
             </table>
+          </div>
+        );
+
+      case "Vault":
+        return (
+          <div style={{ background: "white", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", overflow: "hidden" }}>
+            {vaultDocs.length === 0 ? (
+              <p style={{ padding: "1.5rem", fontSize: "0.8125rem", color: "var(--text-muted)", textAlign: "center" }}>
+                No vault documents found for this user.
+              </p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
+                  <thead>
+                    <tr style={{ background: "var(--gray-100)" }}>
+                      {["Document name", "Type", "Expiry date", "Uploaded at", "File path"].map(h => (
+                        <th key={h} style={{ padding: "0.625rem 1rem", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vaultDocs.map((vd: any, i: number) => {
+                      const expiryDate = vd.expiry_date ? new Date(vd.expiry_date) : null;
+                      const isExpired = expiryDate && expiryDate < new Date();
+                      const isSoon = expiryDate && !isExpired && expiryDate < new Date(Date.now() + 180 * 24 * 60 * 60 * 1000);
+                      return (
+                        <tr key={i} style={{ borderBottom: "1px solid var(--gray-100)" }}>
+                          <td style={{ padding: "0.625rem 1rem", fontWeight: 600, color: "var(--midnight)", whiteSpace: "nowrap" }}>{vd.document_name || "—"}</td>
+                          <td style={{ padding: "0.625rem 1rem", color: "var(--text-secondary)" }}>{vd.document_type || "—"}</td>
+                          <td style={{ padding: "0.625rem 1rem", color: isExpired ? "var(--danger)" : isSoon ? "#B45309" : "var(--text-muted)", fontWeight: isExpired || isSoon ? 600 : 400, whiteSpace: "nowrap" }}>
+                            {expiryDate ? expiryDate.toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+                            {isExpired && <span style={{ marginLeft: "0.375rem", fontSize: "0.65rem", fontWeight: 700, padding: "1px 6px", borderRadius: "20px", background: "#FEF2F2", color: "var(--danger)" }}>Expired</span>}
+                            {isSoon && <span style={{ marginLeft: "0.375rem", fontSize: "0.65rem", fontWeight: 700, padding: "1px 6px", borderRadius: "20px", background: "#FEF3C7", color: "#B45309" }}>Expiring soon</span>}
+                          </td>
+                          <td style={{ padding: "0.625rem 1rem", fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                            {vd.uploaded_at ? new Date(vd.uploaded_at).toLocaleDateString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
+                          </td>
+                          <td style={{ padding: "0.625rem 1rem", fontSize: "0.7rem", fontFamily: "monospace", color: "var(--text-secondary)", maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{vd.file_path || "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         );
 

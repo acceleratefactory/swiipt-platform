@@ -12,7 +12,7 @@ export default async function AdminUserProfilePage({ params }: { params: { id: s
 
   const userId = params.id;
 
-  const [profileRes, walletRes, goalsRes, depositsRes, withdrawalsRes, ordersRes, referralsRes, activityRes, auditRes] = await Promise.all([
+  const [profileRes, walletRes, goalsRes, depositsRes, withdrawalsRes, ordersRes, referralsRes, activityRes, auditRes, vaultDocsRes] = await Promise.all([
     supabase.from("users").select("*").eq("id", userId).single(),
     supabase.from("wallets").select("*").eq("user_id", userId).single(),
     supabase.from("savings_goals").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
@@ -26,6 +26,12 @@ export default async function AdminUserProfilePage({ params }: { params: { id: s
     supabase.from("activity_log").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(30),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("admin_audit_log").select("*").eq("target_user_id", userId).order("created_at", { ascending: false }).limit(20),
+    supabase
+      .from("activity_log")
+      .select("event_data, created_at")
+      .eq("user_id", userId)
+      .eq("event_type", "vault_document_uploaded")
+      .order("created_at", { ascending: false }),
   ]);
 
   return (
@@ -39,6 +45,7 @@ export default async function AdminUserProfilePage({ params }: { params: { id: s
       referrals={referralsRes.data || []}
       activityLog={activityRes.data || []}
       adminAuditLog={auditRes.data || []}
+      vaultDocs={(vaultDocsRes.data || []).map((d: any) => ({ ...d.event_data, uploaded_at: d.created_at }))}
       adminId={user.id}
     />
   );

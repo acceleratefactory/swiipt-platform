@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 
-  await supabase.from("activity_log").insert({
+  const { error: logError } = await supabase.from("activity_log").insert({
     user_id: user.id,
     event_type: "vault_document_uploaded",
     event_data: {
@@ -38,6 +38,10 @@ export async function POST(request: NextRequest) {
       expiry_date: expiryDate || null,
     },
   });
+
+  if (logError) {
+    return NextResponse.json({ error: "Failed to save document record" }, { status: 500 });
+  }
 
   if (documentType === "passport") {
     await supabase.rpc("increment_mobility_score", {

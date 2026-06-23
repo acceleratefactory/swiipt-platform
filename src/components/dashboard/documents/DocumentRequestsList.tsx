@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import DocumentUploadCard from "./DocumentUploadCard";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function DocumentRequestsList({ requestsByOrder, userId }: { requestsByOrder: any; userId: string }) {
+export default function DocumentRequestsList({ requestsByOrder, userId, vaultDocs }: { requestsByOrder: any; userId: string; vaultDocs: any[] }) {
   const [orders, setOrders] = useState(requestsByOrder);
   const supabase = createClient();
 
@@ -76,6 +76,7 @@ export default function DocumentRequestsList({ requestsByOrder, userId }: { requ
               key={doc.id}
               doc={doc}
               userId={userId}
+              vaultDocs={vaultDocs}
               onUploaded={(docId, filePath) => {
                 setOrders((prev: any) => {
                   const updated = { ...prev };
