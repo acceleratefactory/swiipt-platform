@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
+
+  const adminSupabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { data: role } = await (adminSupabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { key, value } = await request.json();
@@ -17,7 +23,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Get old value
-  const { data: existing } = await (supabase as any)
+  const { data: existing } = await (adminSupabase as any)
     .from("platform_settings")
     .select("value")
     .eq("key", key)
@@ -28,7 +34,7 @@ export async function POST(request: NextRequest) {
   const oldValue = existing.value;
 
   // Update
-  const { error: updateError } = await (supabase as any)
+  const { error: updateError } = await (adminSupabase as any)
     .from("platform_settings")
     .update({ value })
     .eq("key", key);
@@ -36,7 +42,7 @@ export async function POST(request: NextRequest) {
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
 
   // Log to admin_audit_log
-  await (supabase as any).from("admin_audit_log").insert({
+  await (adminSupabase as any).from("admin_audit_log").insert({
     admin_id: user.id,
     action: "setting_update",
     entity_type: "platform_settings",
