@@ -64,8 +64,14 @@ export async function POST(request: NextRequest) {
 
     const allVerified = allDocs?.every((d: { status: string }) => d.status === "verified");
     if (allVerified) {
+      // Polymorphic order_id — try both service_orders and holiday_bookings
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: orderUpdateError } = await (adminSupabase as any).from("service_orders")
+      await (adminSupabase as any).from("service_orders")
+        .update({ status: "documents_received" })
+        .eq("id", docRequest.order_id);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: orderUpdateError } = await (adminSupabase as any).from("holiday_bookings")
         .update({ status: "documents_received" })
         .eq("id", docRequest.order_id);
 
