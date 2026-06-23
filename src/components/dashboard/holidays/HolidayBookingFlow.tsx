@@ -15,6 +15,9 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
 
   const currencyKey = `price_per_person_${currency.toLowerCase()}`;
   const pricePerPerson = (pkg as any)[currencyKey] || pkg.price_per_person_ngn;
@@ -64,6 +67,23 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
   }
 
   if (result) {
+    if (confirmed) {
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎉</p>
+          <h3 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.75rem' }}>
+            Payment submitted!
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginBottom: '1.5rem' }}>
+            Thank you. Your booking reference <strong>{result.reference}</strong> has been submitted for verification. We will confirm within 24 hours.
+          </p>
+          <button onClick={onClose} style={{ padding: '0.75rem 1.5rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}>
+            Close
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
         <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>{result.type === "save" ? "🎯" : "🎉"}</p>
@@ -105,6 +125,33 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
                 </div>
               )}
             </div>
+
+            <button
+              onClick={async () => {
+                setConfirming(true);
+                setConfirmError("");
+                try {
+                  const res = await fetch("/api/holidays/confirm-payment", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ bookingId: result.bookingId }),
+                  });
+                  if (!res.ok) throw new Error("Failed to confirm payment");
+                  setConfirmed(true);
+                } catch (err: any) {
+                  setConfirmError(err.message || "Something went wrong");
+                } finally {
+                  setConfirming(false);
+                }
+              }}
+              disabled={confirming}
+              style={{ width: '100%', marginTop: '1rem', padding: '0.75rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, borderRadius: 'var(--radius-md)', border: 'none', cursor: confirming ? 'not-allowed' : 'pointer', opacity: confirming ? 0.6 : 1 }}
+            >
+              {confirming ? "Submitting..." : "I Have Transferred the Payment ✓"}
+            </button>
+            {confirmError && (
+              <p style={{ fontSize: '0.8125rem', color: '#EF4444', marginTop: '0.75rem' }}>{confirmError}</p>
+            )}
           </div>
         )}
 
