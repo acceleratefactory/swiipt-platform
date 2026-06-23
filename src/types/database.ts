@@ -455,6 +455,37 @@ export interface Database {
         Relationships: []
       }
 
+      holiday_bookings: {
+        Row: {
+          id: string
+          user_id: string
+          package_id: string
+          reference: string
+          travellers: number
+          currency: string
+          total_price: number
+          status: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["holiday_bookings"]["Row"], "id" | "created_at" | "updated_at" | "status">
+        Update: Partial<Database["public"]["Tables"]["holiday_bookings"]["Insert"]>
+        Relationships: [
+          {
+            foreignKeyName: "holiday_bookings_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "holiday_bookings_package_id_fkey"
+            columns: ["package_id"]
+            referencedRelation: "holiday_packages"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+
       leaderboard_entries: {
         Row: {
           id: string
