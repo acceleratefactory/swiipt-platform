@@ -1,7 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import HolidayPackagesTable from "@/components/admin/holidays/HolidayPackagesTable";
+import HolidayBookingsPanel from "@/components/admin/holidays/HolidayBookingsPanel";
 
 export default async function AdminHolidaysPage() {
   const supabase = createClient();
@@ -17,6 +19,33 @@ export default async function AdminHolidaysPage() {
     .select("id, title, destination, duration_nights, price_per_person_ngn, slots_available, is_active, is_featured")
     .order("is_featured", { ascending: false })
     .order("created_at", { ascending: false });
+
+  const serviceClient = createServiceClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: rawBookings } = await (serviceClient as any)
+    .from("holiday_bookings")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  const userIds = Array.from(new Set((rawBookings || []).map((b: any) => b.user_id).filter(Boolean)));
+  const packageIds = Array.from(new Set((rawBookings || []).map((b: any) => b.package_id).filter(Boolean)));
+
+  const [{ data: users }, { data: bookingPkgs }] = await Promise.all([
+    userIds.length ? (serviceClient as any).from("users").select("id, full_name, email").in("id", userIds) : { data: [] },
+    packageIds.length ? (serviceClient as any).from("holiday_packages").select("id, title").in("id", packageIds) : { data: [] },
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userMap = new Map((users || []).map((u: any) => [u.id, { full_name: u.full_name, email: u.email }]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pkgMap = new Map((bookingPkgs || []).map((p: any) => [p.id, p.title]));
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const bookings = (rawBookings || []).map((b: any) => ({
+    ...b,
+    user: userMap.get(b.user_id) || null,
+    package_title: pkgMap.get(b.package_id) || null,
+  }));
 
   return (
     <div>
@@ -34,6 +63,11 @@ export default async function AdminHolidaysPage() {
         </Link>
       </div>
       <HolidayPackagesTable packages={packages || []} />
+
+      <h2 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.25rem", fontWeight: 700, color: "var(--midnight)", marginTop: "2.5rem", marginBottom: "1rem" }}>
+        Booking Requests
+      </h2>
+      <HolidayBookingsPanel bookings={bookings} />
     </div>
   );
 }
