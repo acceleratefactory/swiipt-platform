@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -6,8 +7,9 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const adminSupabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
+  const { data: role } = await (adminSupabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -15,7 +17,7 @@ export async function POST(request: Request) {
   const { currencyId, code, ngn_exchange_rate, is_active } = await request.json();
 
   // Fetch current record for audit log
-  const { data: current } = await supabase
+  const { data: current } = await (adminSupabase as any)
     .from("currencies")
     .select("*")
     .eq("id", currencyId)
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
   if (is_active !== undefined) updateData.is_active = is_active;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any)
+  const { error } = await (adminSupabase as any)
     .from("currencies")
     .update(updateData)
     .eq("id", currencyId);
@@ -53,7 +55,7 @@ export async function POST(request: Request) {
 
   // Audit log
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("admin_audit_log").insert({
+  await (adminSupabase as any).from("admin_audit_log").insert({
     admin_id: user.id,
     action: "update_currency_rate",
     target_table: "currencies",

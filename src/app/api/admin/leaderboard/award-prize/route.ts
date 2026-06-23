@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const adminSupabase = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
+  const { data: role } = await (adminSupabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { leaderboardEntryId, periodKey } = await request.json();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: entry } = await (supabase as any)
+  const { data: entry } = await (adminSupabase as any)
     .from("leaderboard_entries")
     .select("*, users(full_name, email)")
     .eq("id", leaderboardEntryId)
@@ -22,7 +24,7 @@ export async function POST(request: NextRequest) {
   if (!entry) return NextResponse.json({ error: "Leaderboard entry not found" }, { status: 404 });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: prize } = await (supabase as any)
+  const { data: prize } = await (adminSupabase as any)
     .from("leaderboard_prizes")
     .select("*")
     .eq("rank_position", entry.rank)
@@ -33,10 +35,10 @@ export async function POST(request: NextRequest) {
   if (!prize) return NextResponse.json({ error: "No prize configured for this rank" }, { status: 404 });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("leaderboard_entries").update({ prize_awarded: true }).eq("id", leaderboardEntryId);
+  await (adminSupabase as any).from("leaderboard_entries").update({ prize_awarded: true }).eq("id", leaderboardEntryId);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("milestone_rewards").insert({
+  await (adminSupabase as any).from("milestone_rewards").insert({
     goal_id: null,
     user_id: entry.user_id,
     milestone_type: "leaderboard_winner",
@@ -56,7 +58,7 @@ export async function POST(request: NextRequest) {
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("admin_audit_log").insert({
+  await (adminSupabase as any).from("admin_audit_log").insert({
     admin_id: user.id,
     action_type: "leaderboard_prize_awarded",
     target_user_id: entry.user_id,
