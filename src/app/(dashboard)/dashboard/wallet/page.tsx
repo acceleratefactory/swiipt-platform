@@ -9,7 +9,7 @@ export default async function WalletPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [walletRes, depositsRes, withdrawalsRes, giftsRes, profileRes] = await Promise.all([
+  const [walletRes, depositsRes, withdrawalsRes, giftsRes, holidayBookingsRes, profileRes] = await Promise.all([
     supabase.from("wallets").select("*").eq("user_id", user.id).single(),
     supabase.from("deposits")
       .select("*, savings_goals(goal_name, currency)")
@@ -26,6 +26,13 @@ export default async function WalletPage() {
       .from("goal_gifts")
       .select("*, giver:giver_id(full_name), recipient:recipient_id(full_name), giver_goal:giver_goal_id(goal_name), recipient_goal:recipient_goal_id(goal_name)")
       .or(`giver_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      .order("created_at", { ascending: false }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .from("holiday_bookings")
+      .select("*, holiday_packages(title)")
+      .eq("user_id", user.id)
+      .in("status", ["payment_confirmed", "completed"])
       .order("created_at", { ascending: false }),
     supabase.from("users").select("preferred_currency, full_name").eq("id", user.id).single(),
   ]);
@@ -77,6 +84,19 @@ export default async function WalletPage() {
         ? g.recipient?.full_name
         : g.giver?.full_name,
       confirmed_at: g.created_at,
+    })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...(holidayBookingsRes.data || []).map((b: any) => ({
+      id: b.id,
+      type: "holiday_booking" as const,
+      amount: b.total_price,
+      currency: b.currency,
+      ngn_equivalent: b.total_price,
+      status: b.status,
+      date: b.created_at,
+      reference: b.reference || null,
+      goal_name: b.holiday_packages?.title || "Holiday booking",
+      confirmed_at: b.updated_at,
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
