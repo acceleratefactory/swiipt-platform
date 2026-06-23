@@ -33,7 +33,7 @@ export default async function DocumentsPage() {
   const docs = (docRequestsRes.data || []);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const orderIds = [...new Set(docs.map((d: any) => d.order_id).filter(Boolean))] as string[];
+  const orderIds = Array.from(new Set(docs.map((d: any) => d.order_id).filter(Boolean))) as string[];
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let serviceOrders: any[] = [];
