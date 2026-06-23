@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     .createSignedUrl(filePath, 60 * 60 * 24 * 7);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any)
+  const { error: updateError } = await (supabase as any)
     .from("document_requests")
     .update({
       status: "uploaded",
@@ -51,6 +51,10 @@ export async function POST(request: NextRequest) {
       uploaded_at: new Date().toISOString(),
     })
     .eq("id", documentRequestId);
+
+  if (updateError) {
+    return NextResponse.json({ error: "Failed to update document status" }, { status: 500 });
+  }
 
   await supabase.rpc("increment_mobility_score", {
     user_id_input: user.id,
