@@ -5,6 +5,7 @@ import { useState } from "react";
 export default function DocumentRequestForm({ orderId, existingDocs, onSubmit }: { orderId: string; existingDocs: any[]; onSubmit: () => void }) {
   const [rows, setRows] = useState([{ document_name: "", instructions: "" }]);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
 
   function addRow() {
     setRows(prev => [...prev, { document_name: "", instructions: "" }]);
@@ -26,20 +27,38 @@ export default function DocumentRequestForm({ orderId, existingDocs, onSubmit }:
     const valid = rows.filter(r => r.document_name.trim());
     if (valid.length === 0) return;
     setSubmitting(true);
+    setError("");
 
-    await fetch("/api/admin/orders/request-documents", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId, documents: valid }),
-    });
+    try {
+      const res = await fetch("/api/admin/orders/request-documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, documents: valid }),
+      });
 
-    setRows([{ document_name: "", instructions: "" }]);
-    setSubmitting(false);
-    onSubmit();
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        setError(err.error || "Failed to request documents");
+        setSubmitting(false);
+        return;
+      }
+
+      setRows([{ document_name: "", instructions: "" }]);
+      setSubmitting(false);
+      onSubmit();
+    } catch {
+      setError("Network error — please try again");
+      setSubmitting(false);
+    }
   }
 
   return (
     <div style={{ marginBottom: '1.5rem' }}>
+      {error && (
+        <div style={{ padding: '0.625rem 0.875rem', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 'var(--radius-sm)', color: '#B91C1C', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>
+          {error}
+        </div>
+      )}
       <h3 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '0.9375rem', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.75rem' }}>
         Request documents
       </h3>

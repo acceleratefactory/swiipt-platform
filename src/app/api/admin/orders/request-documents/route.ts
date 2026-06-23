@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
+  const adminSupabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any)
+  const { data: role } = await (adminSupabase as any)
     .from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -16,7 +22,7 @@ export async function POST(request: NextRequest) {
   const { orderId, documents } = await request.json();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: order } = await (supabase as any)
+  const { data: order } = await (adminSupabase as any)
     .from("service_orders")
     .select("user_id, service_packages(name)")
     .eq("id", orderId)
@@ -35,11 +41,11 @@ export async function POST(request: NextRequest) {
   }));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error } = await (supabase as any).from("document_requests").insert(docRecords);
+  const { error } = await (adminSupabase as any).from("document_requests").insert(docRecords);
   if (error) return NextResponse.json({ error: "Failed to create document requests" }, { status: 500 });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase as any).from("service_orders").update({
+  await (adminSupabase as any).from("service_orders").update({
     status: "documents_requested",
     documents_requested_at: new Date().toISOString(),
   }).eq("id", orderId);

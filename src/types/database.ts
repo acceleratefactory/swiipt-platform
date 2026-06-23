@@ -347,6 +347,8 @@ export interface Database {
           verified_at: string | null
           verified_by: string | null
           rejection_reason: string | null
+          instructions: string | null
+          is_required: boolean
           created_at: string
         }
         Insert: Omit<Database["public"]["Tables"]["document_requests"]["Row"], "id" | "created_at" | "status" | "uploaded_at" | "verified_at" | "verified_by">
