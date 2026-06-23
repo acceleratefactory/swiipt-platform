@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
+
+  const adminSupabase = createServiceClient();
+  const { data: role } = await (adminSupabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { promotion_type, title, description, prize_label, prize_value_ngn, trigger_type, trigger_value, trigger_category, quantity_cap, starts_at, ends_at, wheelSlots } = await request.json();
@@ -19,7 +21,7 @@ export async function POST(request: NextRequest) {
   const now = new Date().toISOString();
   const status = starts_at && new Date(starts_at) > new Date() ? "scheduled" : "active";
 
-  const { data, error } = await (supabase as any).from("promotions").insert({
+  const { data, error } = await (adminSupabase as any).from("promotions").insert({
     title,
     description: description || null,
     promotion_type: promotion_type || "custom",
