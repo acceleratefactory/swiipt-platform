@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: docRequest } = await (supabase as any)
     .from("document_requests")
-    .select("*, service_orders(id)")
+    .select("*")
     .eq("id", documentRequestId)
     .eq("user_id", user.id)
     .single();
