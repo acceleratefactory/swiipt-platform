@@ -1,13 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const adminSupabase = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: role } = await (supabase as any)
+  const { data: role } = await (adminSupabase as any)
     .from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || (role.role !== "admin" && role.role !== "case_manager")) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -16,7 +22,7 @@ export async function POST(request: NextRequest) {
   const { documentRequestId, action, rejectionReason } = await request.json();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: docRequest } = await (supabase as any)
+  const { data: docRequest } = await (adminSupabase as any)
     .from("document_requests")
     .select("user_id, document_name, order_id")
     .eq("id", documentRequestId)
@@ -26,11 +32,15 @@ export async function POST(request: NextRequest) {
 
   if (action === "approve") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("document_requests").update({
+    const { error: updateError } = await (adminSupabase as any).from("document_requests").update({
       status: "verified",
       verified_at: new Date().toISOString(),
       verified_by: user.id,
     }).eq("id", documentRequestId);
+
+    if (updateError) {
+      return NextResponse.json({ error: "Failed to verify document" }, { status: 500 });
+    }
 
     await supabase.rpc("increment_mobility_score", {
       user_id_input: docRequest.user_id,
@@ -47,7 +57,7 @@ export async function POST(request: NextRequest) {
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: allDocs } = await (supabase as any)
+    const { data: allDocs } = await (adminSupabase as any)
       .from("document_requests")
       .select("status")
       .eq("order_id", docRequest.order_id);
@@ -55,9 +65,13 @@ export async function POST(request: NextRequest) {
     const allVerified = allDocs?.every((d: { status: string }) => d.status === "verified");
     if (allVerified) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (supabase as any).from("service_orders")
+      const { error: orderUpdateError } = await (adminSupabase as any).from("service_orders")
         .update({ status: "documents_received" })
         .eq("id", docRequest.order_id);
+
+      if (orderUpdateError) {
+        return NextResponse.json({ error: "Failed to update order status" }, { status: 500 });
+      }
 
       await supabase.from("notifications").insert({
         user_id: docRequest.user_id,
@@ -71,11 +85,15 @@ export async function POST(request: NextRequest) {
 
   } else if (action === "reject") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from("document_requests").update({
+    const { error: updateError } = await (adminSupabase as any).from("document_requests").update({
       status: "rejected",
       rejection_reason: rejectionReason || "Document did not meet requirements.",
       verified_by: user.id,
     }).eq("id", documentRequestId);
+
+    if (updateError) {
+      return NextResponse.json({ error: "Failed to reject document" }, { status: 500 });
+    }
 
     await supabase.from("notifications").insert({
       user_id: docRequest.user_id,
