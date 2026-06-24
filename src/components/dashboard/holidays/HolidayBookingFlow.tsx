@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 const currencySymbols: Record<string, string> = {
@@ -17,7 +17,30 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [adminConfirmed, setAdminConfirmed] = useState(false);
   const [confirmError, setConfirmError] = useState("");
+
+  useEffect(() => {
+    if (!confirmed || !result?.bookingId) return;
+    const channel = supabase
+      .channel(`holiday_booking:${result.bookingId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "holiday_bookings",
+          filter: `id=eq.${result.bookingId}`,
+        },
+        (payload: any) => {
+          if (payload.new?.status === "payment_confirmed") {
+            setAdminConfirmed(true);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [confirmed, result?.bookingId, supabase]);
 
   const currencyKey = `price_per_person_${currency.toLowerCase()}`;
   const pricePerPerson = (pkg as any)[currencyKey] || pkg.price_per_person_ngn;
@@ -70,12 +93,16 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
     if (confirmed) {
       return (
         <div style={{ padding: '2rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>🎉</p>
+          <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>{adminConfirmed ? '✅' : '🎉'}</p>
           <h3 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.75rem' }}>
-            Payment submitted!
+            {adminConfirmed ? 'Payment confirmed!' : 'Payment submitted!'}
           </h3>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginBottom: '1.5rem' }}>
-            Thank you. Your booking reference <strong>{result.reference}</strong> has been submitted for verification. We will confirm within 24 hours.
+            {adminConfirmed ? (
+              <>Your booking reference <strong>{result.reference}</strong> has been confirmed. Get ready for your trip!</>
+            ) : (
+              <>Thank you. Your booking reference <strong>{result.reference}</strong> has been submitted for verification. We will confirm within 24 hours.</>
+            )}
           </p>
           <button onClick={onClose} style={{ padding: '0.75rem 1.5rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}>
             Close
