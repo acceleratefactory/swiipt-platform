@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
 import SubscribersManager from "@/components/admin/subscribers/SubscribersManager";
 
@@ -10,8 +11,9 @@ export default async function AdminSubscribersPage() {
   const { data: role } = await (supabase as any).from("user_roles").select("role").eq("user_id", user.id).single();
   if (!role || role.role !== "admin") redirect("/dashboard");
 
+  const serviceClient = createServiceClient();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: subscribers, count } = await (supabase as any)
+  const { data: subscribers, count } = await (serviceClient as any)
     .from("email_subscribers")
     .select("*", { count: "exact" })
     .order("created_at", { ascending: false });
