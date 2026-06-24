@@ -1,4 +1,6 @@
 "use client";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 const packages = [
   {
@@ -64,6 +66,21 @@ const packages = [
 ];
 
 export default function HolidayPackages() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [checked, setChecked] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session);
+      setChecked(true);
+    });
+  }, []);
+
+  function getHref(): string {
+    if (!checked) return "/signup?return=/dashboard/holidays";
+    return isLoggedIn ? "/dashboard/holidays" : "/signup?return=/dashboard/holidays";
+  }
   return (
     <section style={{ background: "white", padding: "5rem 0" }}>
       <div style={{ maxWidth: "1280px", margin: "0 auto", padding: "0 2rem" }}>
@@ -288,7 +305,7 @@ export default function HolidayPackages() {
                   }}
                 >
                   <button
-                    onClick={() => (window.location.href = "/signup")}
+                    onClick={() => (window.location.href = getHref())}
                     style={{
                       padding: "0.625rem",
                       background: "var(--teal-pale)",
@@ -303,7 +320,7 @@ export default function HolidayPackages() {
                     Save toward this
                   </button>
                   <button
-                    onClick={() => (window.location.href = "/signup")}
+                    onClick={() => (window.location.href = getHref())}
                     style={{
                       padding: "0.625rem",
                       background: "var(--midnight)",
