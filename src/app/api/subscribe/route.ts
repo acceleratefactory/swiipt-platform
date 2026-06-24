@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { sendWelcomeEmail } from "@/lib/resend"
+import { addContactToBrevo } from "@/lib/integrations/brevo"
 
 export async function POST(request: NextRequest) {
   const { email } = await request.json()
@@ -17,6 +18,10 @@ export async function POST(request: NextRequest) {
 
   if (error && error.code !== "23505") {
     return NextResponse.json({ error: "Subscription failed" }, { status: 500 })
+  }
+
+  if (process.env.BREVO_API_KEY) {
+    await addContactToBrevo({ email }).catch(() => {});
   }
 
   try {
