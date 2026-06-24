@@ -22,7 +22,7 @@ export default function SubscribersManager({ subscribers }: { subscribers: Subsc
       sourceFilter === "all" || s.source === sourceFilter
     );
 
-  const sources = ["all", ...new Set(subscribers.map(s => s.source || "landing_page").filter(Boolean))];
+  const sources = ["all", ...Array.from(new Set(subscribers.map(s => s.source || "landing_page").filter(Boolean)))];
 
   function exportCSV() {
     const headers = ["Email", "Source", "Destination Interest", "Subscribed Date"];
