@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { X, Layout, Crosshair, Search } from "lucide-react";
+import { X, Layout, Crosshair, Search, Mail } from "lucide-react";
 import {
   LayoutDashboard,
   ArrowDownCircle,
@@ -42,6 +42,7 @@ const navItems: Array<{
   { href: "/admin/leaderboard", label: "Leaderboard", icon: <Trophy size={16} /> },
   { href: "/admin/promotions", label: "Promotions", icon: <Tag size={16} /> },
   { href: "/admin/notifications", label: "Notifications", icon: <Bell size={16} /> },
+  { href: "/admin/subscribers", label: "Subscribers", icon: <Mail size={16} /> },
   { href: "/admin/corporate", label: "Corporate", icon: <Building2 size={16} /> },
   { href: "/admin/float", label: "Float Ledger", icon: <TrendingUp size={16} /> },
   { href: "/admin/settings", label: "Settings", icon: <Settings size={16} /> },
