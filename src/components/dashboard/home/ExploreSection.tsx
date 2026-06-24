@@ -23,8 +23,8 @@ export default function ExploreSection({
                   ? "Canada Express Entry draw: min CRS 491"
                   : "Latest visa policy updates for your destinations"}
             </p>
-            <a href="/dashboard/resources" style={{ fontSize: "0.8125rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
-              Read update →
+            <a href="/resources" target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.8125rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
+              Read update ↗
             </a>
           </div>
         </div>
