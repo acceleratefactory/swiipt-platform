@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState } from "react";
 import HolidayBookingFlow from "./HolidayBookingFlow";
+import CreateGroupBuyModal from "@/components/dashboard/groups/CreateGroupBuyModal";
 
 function getGradient(destination: string): string {
   const gradients: Record<string, string> = {
@@ -31,6 +32,7 @@ export default function HolidayGrid({ packages, preferredCurrency, activeGoals, 
   const [destination, setDestination] = useState("all");
   const [duration, setDuration] = useState("all");
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
+  const [groupBuyPackage, setGroupBuyPackage] = useState<any>(null);
 
   const destinationSet = Array.from(new Set(packages.map(p => p.destination)));
   const destinations = ["all", ...destinationSet];
@@ -124,6 +126,13 @@ export default function HolidayGrid({ packages, preferredCurrency, activeGoals, 
                   Book directly
                 </button>
               </div>
+
+              <button
+                onClick={e => { e.stopPropagation(); setGroupBuyPackage(pkg); }}
+                style={{ width: '100%', padding: '0.625rem', background: 'var(--off-white)', color: 'var(--midnight)', fontWeight: 600, fontSize: '0.8125rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', cursor: 'pointer', marginTop: '0.5rem' }}
+              >
+                👥 Create group — save up to 30%
+              </button>
             </div>
           </div>
         ))}
@@ -149,6 +158,16 @@ export default function HolidayGrid({ packages, preferredCurrency, activeGoals, 
             />
           </div>
         </div>
+      )}
+
+      {groupBuyPackage && (
+        <CreateGroupBuyModal
+          itemType="holiday_package"
+          itemId={groupBuyPackage.id}
+          itemTitle={groupBuyPackage.title}
+          originalPrice={groupBuyPackage.price_per_person_ngn}
+          onClose={() => setGroupBuyPackage(null)}
+        />
       )}
     </>
   );

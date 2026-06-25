@@ -32,6 +32,7 @@ interface ServiceCardProps {
   existingOrder?: ExistingOrder;
   activeGoals: ActiveGoal[];
   onSelect: () => void;
+  onGroupBuy?: () => void;
 }
 
 const currencySymbols: Record<string, string> = {
@@ -49,7 +50,7 @@ const categoryColors: Record<string, string> = {
   diaspora_services: '#374151',
 };
 
-export default function ServiceCard({ pkg, preferredCurrency, existingOrder, activeGoals, onSelect }: ServiceCardProps) {
+export default function ServiceCard({ pkg, preferredCurrency, existingOrder, activeGoals, onSelect, onGroupBuy }: ServiceCardProps) {
   const currencyKey = `price_${preferredCurrency.toLowerCase()}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const price = (pkg as any)[currencyKey] || pkg.price_ngn;
@@ -140,12 +141,22 @@ export default function ServiceCard({ pkg, preferredCurrency, existingOrder, act
             View order status →
           </a>
         ) : (
-          <button
-            onClick={onSelect}
-            style={{ width: '100%', padding: '0.625rem', background: color, color: 'white', fontWeight: 700, fontSize: '0.875rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
-          >
-            Order this service →
-          </button>
+          <>
+            <button
+              onClick={onSelect}
+              style={{ width: '100%', padding: '0.625rem', background: color, color: 'white', fontWeight: 700, fontSize: '0.875rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
+            >
+              Order this service →
+            </button>
+            {onGroupBuy && (
+              <button
+                onClick={onGroupBuy}
+                style={{ width: '100%', padding: '0.625rem', background: 'var(--off-white)', color: 'var(--midnight)', fontWeight: 600, fontSize: '0.8125rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', cursor: 'pointer', marginTop: '0.5rem' }}
+              >
+                👥 Create group — save up to 30%
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>

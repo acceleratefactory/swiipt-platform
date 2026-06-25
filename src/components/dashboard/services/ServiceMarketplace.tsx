@@ -3,6 +3,7 @@
 import { useState } from "react";
 import ServiceCard from "./ServiceCard";
 import OrderFlow from "./OrderFlow";
+import CreateGroupBuyModal from "@/components/dashboard/groups/CreateGroupBuyModal";
 
 interface ServicePackage {
   id: string;
@@ -71,6 +72,7 @@ export default function ServiceMarketplace({
 }: ServiceMarketplaceProps) {
   const [activeCategory, setActiveCategory] = useState("all");
   const [selectedPackage, setSelectedPackage] = useState<ServicePackage | null>(null);
+  const [groupBuyPackage, setGroupBuyPackage] = useState<ServicePackage | null>(null);
 
   const filtered = activeCategory === "all"
     ? packages
@@ -122,6 +124,7 @@ export default function ServiceMarketplace({
               existingOrder={existingOrder}
               activeGoals={activeGoals}
               onSelect={() => setSelectedPackage(pkg)}
+              onGroupBuy={() => setGroupBuyPackage(pkg)}
             />
           );
         })}
@@ -139,6 +142,16 @@ export default function ServiceMarketplace({
             setSelectedPackage(null);
             window.location.reload();
           }}
+        />
+      )}
+
+      {groupBuyPackage && (
+        <CreateGroupBuyModal
+          itemType="service"
+          itemId={groupBuyPackage.id}
+          itemTitle={groupBuyPackage.name}
+          originalPrice={groupBuyPackage.price_ngn}
+          onClose={() => setGroupBuyPackage(null)}
         />
       )}
     </div>

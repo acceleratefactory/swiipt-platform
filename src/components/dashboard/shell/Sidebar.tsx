@@ -16,6 +16,7 @@ const navItems = [
   { href: "/dashboard/services", label: "Services", icon: Globe },
   { href: "/dashboard/flights", label: "Flights", icon: Plane },
   { href: "/dashboard/holidays", label: "Holidays", icon: Umbrella },
+  { href: "/dashboard/groups", label: "Groups", icon: Users },
   { href: "/dashboard/documents", label: "Documents", icon: FileText },
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
   { href: "/dashboard/refer", label: "Refer & Earn", icon: Users },
