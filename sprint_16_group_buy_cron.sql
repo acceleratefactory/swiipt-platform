@@ -18,8 +18,8 @@
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- Remove existing schedule if re-running
-SELECT cron.unschedule('group-buy-expiry');
+-- Remove existing schedule if re-running (safe if job doesn't exist yet)
+DO $$ BEGIN PERFORM cron.unschedule('group-buy-expiry'); EXCEPTION WHEN OTHERS THEN END; $$;
 
 -- Schedule the cron job
 SELECT cron.schedule(
@@ -90,8 +90,8 @@ BEGIN
 END;
 $$;
 
--- Remove existing schedule if re-running
-SELECT cron.unschedule('group-buy-payment-expiry');
+-- Remove existing schedule if re-running (safe if job doesn't exist yet)
+DO $$ BEGIN PERFORM cron.unschedule('group-buy-payment-expiry'); EXCEPTION WHEN OTHERS THEN END; $$;
 
 -- Schedule payment deadline expiry every 30 minutes
 SELECT cron.schedule(
