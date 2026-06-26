@@ -61,6 +61,43 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (serviceClient as any).from("holiday_bookings").update(updateData).eq("id", bookingId);
 
+  // Sync group_buy_members if this booking is linked to a group buy
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: gbMember } = await (serviceClient as any)
+    .from("group_buy_members")
+    .select("id, group_buy_id")
+    .eq("booking_id", bookingId)
+    .maybeSingle();
+
+  if (gbMember) {
+    if (newStatus === "payment_confirmed") {
+      await (serviceClient as any)
+        .from("group_buy_members")
+        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .eq("id", gbMember.id);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: allMembers } = await (serviceClient as any)
+        .from("group_buy_members")
+        .select("status")
+        .eq("group_buy_id", gbMember.group_buy_id);
+
+      if (allMembers?.every((m: any) => m.status === "paid")) {
+        await (serviceClient as any)
+          .from("group_buys")
+          .update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("id", gbMember.group_buy_id);
+      }
+    }
+
+    if (newStatus === "cancelled") {
+      await (serviceClient as any)
+        .from("group_buy_members")
+        .update({ status: "committed", booking_id: null, payment_reference: null, user_confirmed_at: null })
+        .eq("id", gbMember.id);
+    }
+  }
+
   if (newStatus === "completed") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (serviceClient as any).rpc("increment_mobility_score", {

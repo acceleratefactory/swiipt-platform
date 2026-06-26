@@ -72,6 +72,11 @@ export default function OrdersTable({ orders }: { orders: any[] }) {
                   <td style={{ padding: '0.75rem 1rem' }}>
                     <p style={{ color: 'var(--midnight)' }}>{order.payment_method || '-'}</p>
                     <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{order.price_paid ? `${order.currency || 'NGN'} ${Number(order.price_paid).toLocaleString()}` : '-'}</p>
+                    {order.group_buy && (
+                      <span style={{ display: 'inline-block', marginTop: '0.25rem', fontSize: '0.65rem', fontWeight: 700, padding: '2px 6px', borderRadius: '20px', background: '#DBEAFE', color: '#1D4ED8' }}>
+                        Group Buy — {order.group_buy.member_status.replace(/_/g, ' ')}
+                      </span>
+                    )}
                   </td>
                   <td style={{ padding: '0.75rem 1rem' }}>
                     <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: sc.bg, color: sc.color }}>

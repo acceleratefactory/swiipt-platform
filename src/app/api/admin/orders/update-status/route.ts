@@ -67,6 +67,43 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (adminSupabase as any).from("service_orders").update(updateData).eq("id", orderId);
 
+  // Sync group_buy_members if this order is linked to a group buy
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: gbMember } = await (adminSupabase as any)
+    .from("group_buy_members")
+    .select("id, group_buy_id")
+    .eq("order_id", orderId)
+    .maybeSingle();
+
+  if (gbMember) {
+    if (newStatus === "payment_confirmed") {
+      await (adminSupabase as any)
+        .from("group_buy_members")
+        .update({ status: "paid", paid_at: new Date().toISOString() })
+        .eq("id", gbMember.id);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: allMembers } = await (adminSupabase as any)
+        .from("group_buy_members")
+        .select("status")
+        .eq("group_buy_id", gbMember.group_buy_id);
+
+      if (allMembers?.every((m: any) => m.status === "paid")) {
+        await (adminSupabase as any)
+          .from("group_buys")
+          .update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("id", gbMember.group_buy_id);
+      }
+    }
+
+    if (newStatus === "cancelled") {
+      await (adminSupabase as any)
+        .from("group_buy_members")
+        .update({ status: "committed", order_id: null, payment_reference: null, user_confirmed_at: null })
+        .eq("id", gbMember.id);
+    }
+  }
+
   if (newStatus === "documents_received") {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (adminSupabase as any).from("document_requests")

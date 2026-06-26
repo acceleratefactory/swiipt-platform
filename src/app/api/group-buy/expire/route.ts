@@ -37,13 +37,13 @@ export async function POST(request: NextRequest) {
   }
 
   // --- Cleanup abandoned/expired pending_payment memberships ---
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const seventyTwoHoursAgo = new Date(Date.now() - 72 * 60 * 60 * 1000).toISOString();
 
   const { data: staleMembers } = await (serviceClient as any)
     .from("group_buy_members")
     .select("id, order_id, booking_id, group_buy_id")
     .eq("status", "pending_payment")
-    .or(`user_confirmed_at.is.null,user_confirmed_at.lt.${twentyFourHoursAgo}`);
+    .or(`user_confirmed_at.is.null,user_confirmed_at.lt.${seventyTwoHoursAgo}`);
 
   if (staleMembers) {
     for (const member of staleMembers) {
