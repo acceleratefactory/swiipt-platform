@@ -118,6 +118,27 @@ export default function GroupDetailActions({
         </div>
       )}
 
+      {groupStatus === "filled" && membershipStatus === "pending_payment" && (
+        <div style={{ marginBottom: "1.5rem" }}>
+          <button
+            onClick={handlePayClick}
+            style={{
+              width: "100%",
+              padding: "1rem",
+              background: "#FEF3C7",
+              color: "#92400E",
+              fontWeight: 700,
+              fontSize: "1rem",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid #FDE68A",
+              cursor: "pointer",
+            }}
+          >
+            Continue payment → (₦{groupData.group_price_ngn.toLocaleString()})
+          </button>
+        </div>
+      )}
+
       <div style={{ background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "1rem", marginBottom: "1.5rem" }}>
         <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.5rem" }}>Share invite link</p>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
@@ -179,6 +200,7 @@ export default function GroupDetailActions({
           walletCredits={walletCredits}
           preferredCurrency={preferredCurrency}
           userId={currentUserId}
+          isResuming={membershipStatus === "pending_payment"}
           onClose={() => setShowPaymentModal(false)}
           onPaymentComplete={() => {
             setShowPaymentModal(false);

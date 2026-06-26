@@ -136,8 +136,9 @@ export async function POST(request: NextRequest) {
     }
 
     const membershipStatus = paymentMethod === "goal_redemption" ? "paid" : "pending_payment";
-    const memberUpdate: any = { status: membershipStatus, booking_id: booking.id };
+    const memberUpdate: any = { status: membershipStatus, booking_id: booking.id, payment_reference: ref };
     if (paymentMethod === "goal_redemption") memberUpdate.paid_at = new Date().toISOString();
+    if (paymentMethod === "direct_payment") memberUpdate.user_confirmed_at = null;
     await (serviceClient as any)
       .from("group_buy_members")
       .update(memberUpdate)
@@ -238,8 +239,9 @@ export async function POST(request: NextRequest) {
     }
 
     const membershipStatus = paymentMethod === "goal_redemption" ? "paid" : "pending_payment";
-    const memberUpdate: any = { status: membershipStatus, order_id: order.id };
+    const memberUpdate: any = { status: membershipStatus, order_id: order.id, payment_reference: ref };
     if (paymentMethod === "goal_redemption") memberUpdate.paid_at = new Date().toISOString();
+    if (paymentMethod === "direct_payment") memberUpdate.user_confirmed_at = null;
     await (serviceClient as any)
       .from("group_buy_members")
       .update(memberUpdate)

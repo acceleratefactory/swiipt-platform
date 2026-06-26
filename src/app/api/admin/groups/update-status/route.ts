@@ -12,7 +12,7 @@ const validGroupTransitions: Record<string, string[]> = {
 
 const validMemberStatusTransitions: Record<string, string[]> = {
   committed: ["withdrawn"],
-  pending_payment: ["paid", "withdrawn"],
+  pending_payment: ["paid", "withdrawn", "committed"],
   paid: [],
   withdrawn: [],
 };
@@ -128,6 +128,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (newMemberStatus === "committed") {
+      if (member.order_id) {
+        await (adminSupabase as any)
+          .from("service_orders")
+          .update({ status: "cancelled" })
+          .eq("id", member.order_id);
+      }
+      if (member.booking_id) {
+        await (adminSupabase as any)
+          .from("holiday_bookings")
+          .update({ status: "cancelled" })
+          .eq("id", member.booking_id);
+      }
+      await (adminSupabase as any)
+        .from("group_buy_members")
+        .update({ order_id: null, booking_id: null, payment_reference: null, user_confirmed_at: null })
+        .eq("id", memberId);
+    }
+
     if (newMemberStatus === "paid") {
       await (adminSupabase as any)
         .from("group_buy_members")
@@ -173,9 +192,11 @@ export async function POST(request: NextRequest) {
 
     const memberNotificationTitles: Record<string, string> = {
       paid: "Payment confirmed ✓",
+      committed: "Payment reverted",
     };
     const memberNotificationBodies: Record<string, string> = {
       paid: "Your group buy payment has been confirmed by an admin.",
+      committed: "Your payment was reset by an admin. You can choose a payment method again.",
     };
 
     await (adminSupabase as any).from("notifications").insert({

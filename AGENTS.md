@@ -79,6 +79,25 @@ On every new `auth.users` insert, `handle_new_user()` trigger:
 - `get_total_aum()` — Sums `total_locked_ngn` across all wallets
 - `get_signups_by_day()` — Daily signup counts for analytics
 
+### Payment Recovery Pattern (Critical UX Gap)
+The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery mechanism that **no other payment flow** on the platform implements:
+
+1. **State discrimination** — `deposits` tracks `user_confirmed_at` column: `NULL` = user hasn't confirmed sending yet (resumable), `NOT NULL` = user confirmed, entered admin-waiting state
+2. **Detection on mount** — `useEffect` calls `GET /api/goals/deposit/initiate?goalId=X` to check for existing pending deposits
+3. **Resume UI** — "Resume pending deposit" screen shows saved bank details + two actions: "I Have Sent" or "Cancel & start new"
+4. **POST handler also checks** — the initiate endpoint checks for existing pending deposits and returns `resumed: true`
+5. **Cron cleanup** — abandons deposits after 48h (never confirmed) or expires after 24h (confirmed but admin didn't act)
+
+**Group buy direct payment is missing all of this.** When a user closes the payment modal after seeing bank details:
+- Membership is set to `pending_payment` immediately on modal open (in the `DirectPaymentStep` `useEffect`)
+- "Pay now" button only renders for `committed` status — so it disappears
+- No "Continue Payment" button exists for `pending_payment`
+- No cancel mechanism exists for the user
+- Cron only expires `open` groups — never touches `pending_payment` memberships
+- The only escape is contacting an admin to set `withdrawn` or `paid`
+
+**Root cause:** The `POST /api/group-buy/pay` route eagerly sets `pending_payment` when `DirectPaymentStep` mounts (before the user confirms intent). A fix needs to either defer the status change or provide recovery. See `reports/payment_recovery_implementation_plan.md`.
+
 ### Design Conventions
 - CSS variables only — no hardcoded hex values in components
 - Mobile-first (test at 375px)
@@ -337,7 +356,7 @@ On every new `auth.users` insert, `handle_new_user()` trigger:
 - Dashboard groups list + detail with member management
 - **System 2 — Trade Show Groups:** 3 new tables (`trade_shows`, `trade_show_groups`, `trade_show_group_members`), SME group savings toward trade show attendance, linked savings goals
 - **System 3 — Readiness Score:** 0-100 scale, `calculate_readiness_score()` RPC, SVG circular progress on dashboard home, fire-and-forget triggers in deposit/order/document APIs
-- **Note:** Sprint 16 investigation identified 4 priorities — Priority 1 (admin groups page) already built. Remaining: Priority 2 (goal/credit payment options), Priority 3 (travel credit + Realtime), Priority 4 (goal-based holiday payment).
+- **Note:** Sprint 16 investigation identified 4 priorities — Priority 1 (admin groups page) already built. Priority 2 (goal/credit payment options) was implemented in Session 5, but a critical UX gap was found post-implementation: **no payment recovery if user closes modal** after selecting "Direct Bank Transfer". See `reports/payment_recovery_implementation_plan.md`. Remaining: Priority 3 (travel credit + Realtime), Priority 4 (goal-based holiday payment).
 
 ## 8. API ROUTES — COMPLETE INDEX
 
@@ -372,6 +391,8 @@ On every new `auth.users` insert, `handle_new_user()` trigger:
 - `POST /api/group-buy/pay` — Initiate payment for filled group
 - `POST /api/group-buy/expire` — Cron: expire stale groups
 - `POST /api/trade-shows/create-group` / `join-group`
+- `GET /api/group-buy/payment-status` — Check for existing pending payment (resumable)
+- `POST /api/group-buy/cancel-payment` — Cancel pending payment and revert to `committed`
 
 ### Rewards & Referrals
 - `POST /api/rewards/convert` — Convert reward to locked credit
@@ -441,6 +462,7 @@ On every new `auth.users` insert, `handle_new_user()` trigger:
 | `docs/movenaija_claude_code_direction_v2.md` | Master direction document (1933 lines) |
 | `reports/sprint_16_investigation_report.md` | Sprint 16 investigation with 4 priorities |
 | `reports/admin_api_rls_audit.md` | Audit of 33 admin API routes (22 broken) |
+| `reports/payment_recovery_implementation_plan.md` | Plan to add payment resume/cancel for group buy direct payment |
 
 ## 10. SESSION HISTORY — COMPLETED WORK
 
@@ -487,6 +509,27 @@ On every new `auth.users` insert, `handle_new_user()` trigger:
 | 8 | `reports/group_buy_payment_flow_investigation.md` | Modify — link to implementation plan | Done |
 
 - **Key deviation from plan (improvement):** Section C credit handling — avoided double-reduction by following the live services pattern (order created at full price → RPC deducts → `remainingToPay` becomes final price)
+
+### Session 6 — Payment Recovery Gap Investigation & Plan (Completed)
+- User reported: after selecting "Direct Bank Transfer" and closing the modal, there's no way to recover the payment or see bank details again
+- Investigated the deposit resume flow (`GoalDepositFlow.tsx`, `deposits/initiate/route.ts`) as the reference pattern
+- Confirmed the group buy flow eagerly sets `pending_payment` on modal open (in `DirectPaymentStep` `useEffect`)
+- "Pay now" button only renders for `committed` status — disappears when status becomes `pending_payment`
+- No resume UI, no cancel mechanism, no cron cleanup for `pending_payment` memberships
+- Created full implementation plan at `reports/payment_recovery_implementation_plan.md` proposing:
+  - `POST /api/group-buy/cancel-payment` — user can cancel pending payment and revert to `committed`
+  - `GET /api/group-buy/payment-status` — check for existing pending payment
+  - `user_confirmed_at` column on `group_buy_members` (mirrors `deposits` pattern)
+  - "Continue Payment" button on group detail page for `pending_payment` status
+  - "Resume" step in payment modal showing saved bank details
+  - `pending_payment → committed` transition for admin revert
+  - Cron cleanup for abandoned/expired pending payments
+- Updated AGENTS.md with the recovery gap documented in section 5
+
+### Session 7 — Payment Recovery: Step 1 SQL Migration (Completed)
+- Created `sprint_16_group_buy_payment_recovery.sql` adding `user_confirmed_at TIMESTAMPTZ` to `group_buy_members`
+- Mirrors the `deposits` table pattern: `NULL` = resumable, `NOT NULL` = user confirmed
+- Ready for next step: `GET /api/group-buy/payment-status` route
 
 ## 11. VERIFICATION SCRIPTS
 
