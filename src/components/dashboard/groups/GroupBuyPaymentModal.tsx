@@ -272,10 +272,12 @@ export default function GroupBuyPaymentModal({
             price={price}
             preferredCurrency={preferredCurrency}
             onComplete={(result) => {
+              setError("");
               setOrderResult(result);
               setStep("confirmation");
             }}
             onCancel={async () => {
+              setError("");
               const res = await fetch("/api/group-buy/cancel-payment", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -285,6 +287,7 @@ export default function GroupBuyPaymentModal({
               else { const d = await res.json(); setError(d.error); }
             }}
             onSwitchToGoal={async () => {
+              setError("");
               const res = await fetch("/api/group-buy/cancel-payment", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -293,7 +296,6 @@ export default function GroupBuyPaymentModal({
               if (res.ok) { setOrderResult(null); setStep("choose_payment"); }
               else { const d = await res.json(); setError(d.error); }
             }}
-            onError={(msg) => setError(msg)}
           />
         )}
 
@@ -405,7 +407,6 @@ function ResumeDirectPaymentStep({
   onComplete,
   onCancel,
   onSwitchToGoal,
-  onError,
 }: {
   orderData: any;
   groupId: string;
@@ -414,7 +415,6 @@ function ResumeDirectPaymentStep({
   onComplete: (result: any) => void;
   onCancel: () => void;
   onSwitchToGoal: () => void;
-  onError: (msg: string) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -481,13 +481,7 @@ function ResumeDirectPaymentStep({
       <button
         onClick={async () => {
           setSwitching(true);
-          const res = await fetch("/api/group-buy/cancel-payment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ groupBuyId: groupId }),
-          });
-          if (res.ok) onSwitchToGoal();
-          else { const d = await res.json(); onError(d.error); }
+          await onSwitchToGoal();
           setSwitching(false);
         }}
         disabled={switching}

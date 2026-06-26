@@ -30,14 +30,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ hasPending: false });
   }
 
+  let reference = membership.payment_reference;
   let totalPrice = 0;
   if (membership.booking_id) {
     const { data: booking } = await (serviceClient as any)
       .from("holiday_bookings")
-      .select("total_price")
+      .select("total_price, reference")
       .eq("id", membership.booking_id)
       .single();
-    if (booking) totalPrice = booking.total_price;
+    if (booking) {
+      totalPrice = booking.total_price;
+      if (!reference) reference = booking.reference;
+    }
   } else if (membership.order_id) {
     const { data: order } = await (serviceClient as any)
       .from("service_orders")
@@ -56,7 +60,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     hasPending: true,
-    reference: membership.payment_reference || null,
+    reference: reference || null,
     totalPrice,
     finalPrice: totalPrice,
     bankDetails,
