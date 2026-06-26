@@ -81,12 +81,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to create group." }, { status: 500 });
   }
 
-  await (serviceClient as any).from("group_buy_members").insert({
+  await (serviceClient as any).from("users").upsert({
+    id: user.id,
+    email: user.email,
+    full_name: user.user_metadata?.full_name || user.email,
+    preferred_currency: "NGN",
+  }, { onConflict: "id" });
+
+  const { error: memberError } = await (serviceClient as any).from("group_buy_members").insert({
     group_buy_id: groupBuy.id,
     user_id: user.id,
     role: "creator",
     status: "committed",
   });
+
+  if (memberError) {
+    await (serviceClient as any).from("group_buys").delete().eq("id", groupBuy.id);
+    return NextResponse.json({ error: "Failed to add you to the group." }, { status: 500 });
+  }
 
   return NextResponse.json({
     groupBuyId: groupBuy.id,
