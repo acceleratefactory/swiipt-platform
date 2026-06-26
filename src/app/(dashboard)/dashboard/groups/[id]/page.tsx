@@ -112,6 +112,7 @@ export default async function GroupDetailPage({ params }: { params: { id: string
             inviteCode={group.invite_code}
             inviteUrl={`${process.env.NEXT_PUBLIC_APP_URL}/join/${group.invite_code}`}
             groupTitle={group.title}
+            expiresAt={group.expires_at}
           />
 
           <div>

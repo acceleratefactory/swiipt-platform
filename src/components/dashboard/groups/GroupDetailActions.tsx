@@ -14,6 +14,7 @@ interface GroupDetailActionsProps {
   inviteCode: string;
   inviteUrl: string;
   groupTitle: string;
+  expiresAt: string;
 }
 
 export default function GroupDetailActions({
@@ -26,6 +27,7 @@ export default function GroupDetailActions({
   inviteCode,
   inviteUrl,
   groupTitle: _groupTitle,
+  expiresAt,
 }: GroupDetailActionsProps) {
   const router = useRouter();
   const [paying, setPaying] = useState(false);
@@ -133,7 +135,7 @@ export default function GroupDetailActions({
       {groupStatus === "open" && (
         <div style={{ marginBottom: "1.5rem" }}>
           <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--midnight)", marginBottom: "0.5rem" }}>Time remaining to join</p>
-          <CountdownTimer expiresAt={""} />
+          <CountdownTimer expiresAt={expiresAt} />
         </div>
       )}
 

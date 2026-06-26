@@ -7,7 +7,9 @@ export default function CountdownTimer({ expiresAt }: { expiresAt: string }) {
 
   useEffect(() => {
     function calculate() {
-      const diff = new Date(expiresAt).getTime() - Date.now();
+      const target = new Date(expiresAt).getTime();
+      if (isNaN(target)) return { hours: 0, minutes: 0, seconds: 0 };
+      const diff = target - Date.now();
       if (diff <= 0) return { hours: 0, minutes: 0, seconds: 0 };
       return {
         hours: Math.floor(diff / (1000 * 60 * 60)),
