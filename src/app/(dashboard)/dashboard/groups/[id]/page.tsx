@@ -16,6 +16,13 @@ export default async function GroupDetailPage({ params }: { params: { id: string
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const { data: profile } = await supabase
+    .from("users")
+    .select("preferred_currency")
+    .eq("id", user.id)
+    .single();
+  const preferredCurrency = profile?.preferred_currency || "NGN";
+
   const serviceClient = createServiceClient();
 
   const { data: group } = await (serviceClient as any)
@@ -39,6 +46,19 @@ export default async function GroupDetailPage({ params }: { params: { id: string
   const spotsLeft = group.target_size - group.current_size;
 
   const itemLabel = group.item_type === "holiday_package" ? "Holiday package" : "Service";
+
+  const { data: activeGoals } = await (serviceClient as any)
+    .from("savings_goals")
+    .select("id, goal_name, current_balance, currency, milestone_100_unlocked, status")
+    .eq("user_id", user.id)
+    .eq("status", "active");
+
+  const { data: wallet } = await (serviceClient as any)
+    .from("wallets")
+    .select("total_credits_ngn")
+    .eq("user_id", user.id)
+    .single();
+  const walletCredits = wallet?.total_credits_ngn || 0;
 
   return (
     <div style={{ maxWidth: "640px", margin: "0 auto" }}>
@@ -113,6 +133,10 @@ export default async function GroupDetailPage({ params }: { params: { id: string
             inviteUrl={`${process.env.NEXT_PUBLIC_APP_URL}/join/${group.invite_code}`}
             groupTitle={group.title}
             expiresAt={group.expires_at}
+            groupData={group}
+            activeGoals={activeGoals || []}
+            walletCredits={walletCredits}
+            preferredCurrency={preferredCurrency}
           />
 
           <div>

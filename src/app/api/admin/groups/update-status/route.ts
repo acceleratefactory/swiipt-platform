@@ -12,7 +12,7 @@ const validGroupTransitions: Record<string, string[]> = {
 
 const validMemberStatusTransitions: Record<string, string[]> = {
   committed: ["withdrawn"],
-  pending_payment: ["withdrawn"],
+  pending_payment: ["paid", "withdrawn"],
   paid: [],
   withdrawn: [],
 };
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
   if (memberId && newMemberStatus) {
     const { data: member } = await (adminSupabase as any)
       .from("group_buy_members")
-      .select("status, user_id, group_buy_id")
+      .select("status, user_id, group_buy_id, order_id, booking_id")
       .eq("id", memberId)
       .single();
 
@@ -128,6 +128,39 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (newMemberStatus === "paid") {
+      await (adminSupabase as any)
+        .from("group_buy_members")
+        .update({ paid_at: new Date().toISOString() })
+        .eq("id", memberId);
+
+      const { data: allMembers } = await (adminSupabase as any)
+        .from("group_buy_members")
+        .select("status")
+        .eq("group_buy_id", member.group_buy_id);
+
+      const allPaid = allMembers?.every((m: any) => m.status === "paid");
+      if (allPaid) {
+        await (adminSupabase as any)
+          .from("group_buys")
+          .update({ status: "completed", updated_at: new Date().toISOString() })
+          .eq("id", member.group_buy_id);
+      }
+
+      if (member.order_id) {
+        await (adminSupabase as any)
+          .from("service_orders")
+          .update({ status: "payment_confirmed" })
+          .eq("id", member.order_id);
+      }
+      if (member.booking_id) {
+        await (adminSupabase as any)
+          .from("holiday_bookings")
+          .update({ status: "confirmed" })
+          .eq("id", member.booking_id);
+      }
+    }
+
     await (adminSupabase as any).from("admin_audit_log").insert({
       admin_id: user.id,
       action_type: `member_${newMemberStatus}`,
@@ -138,11 +171,18 @@ export async function POST(request: NextRequest) {
       new_value: newMemberStatus,
     });
 
+    const memberNotificationTitles: Record<string, string> = {
+      paid: "Payment confirmed ✓",
+    };
+    const memberNotificationBodies: Record<string, string> = {
+      paid: "Your group buy payment has been confirmed by an admin.",
+    };
+
     await (adminSupabase as any).from("notifications").insert({
       user_id: member.user_id,
       type: `member_${newMemberStatus}`,
-      title: "Membership updated",
-      body: `Your membership in the group has been updated to ${newMemberStatus.replace(/_/g, " ")} by an admin.`,
+      title: memberNotificationTitles[newMemberStatus] || "Membership updated",
+      body: memberNotificationBodies[newMemberStatus] || `Your membership in the group has been updated to ${newMemberStatus.replace(/_/g, " ")} by an admin.`,
       action_url: "/dashboard/groups",
     });
 

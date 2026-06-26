@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import CountdownTimer from "./CountdownTimer";
+import GroupBuyPaymentModal from "./GroupBuyPaymentModal";
 
 interface GroupDetailActionsProps {
   groupId: string;
@@ -15,12 +16,30 @@ interface GroupDetailActionsProps {
   inviteUrl: string;
   groupTitle: string;
   expiresAt: string;
+  groupData: {
+    id: string;
+    item_type: "holiday_package" | "service";
+    group_price_ngn: number;
+    original_price_ngn: number;
+    title: string;
+    status: string;
+  };
+  activeGoals: Array<{
+    id: string;
+    goal_name: string;
+    current_balance: number;
+    currency: string;
+    milestone_100_unlocked: boolean;
+    status: string;
+  }>;
+  walletCredits: number;
+  preferredCurrency: string;
 }
 
 export default function GroupDetailActions({
   groupId,
   groupStatus,
-  currentUserId: _currentUserId,
+  currentUserId,
   creatorId: _creatorId,
   membershipRole,
   membershipStatus,
@@ -28,32 +47,19 @@ export default function GroupDetailActions({
   inviteUrl,
   groupTitle: _groupTitle,
   expiresAt,
+  groupData,
+  activeGoals,
+  walletCredits,
+  preferredCurrency,
 }: GroupDetailActionsProps) {
   const router = useRouter();
-  const [paying, setPaying] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [payResult, setPayResult] = useState<any>(null);
-  const [payError, setPayError] = useState("");
   const [leaveError, setLeaveError] = useState("");
 
-  async function handlePay() {
-    setPaying(true);
-    setPayError("");
-    try {
-      const res = await fetch("/api/group-buy/pay", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groupBuyId: groupId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to process payment");
-      setPayResult(data);
-    } catch (err: any) {
-      setPayError(err.message || "Something went wrong");
-    } finally {
-      setPaying(false);
-    }
+  function handlePayClick() {
+    setShowPaymentModal(true);
   }
 
   async function handleLeave() {
@@ -82,54 +88,6 @@ export default function GroupDetailActions({
     setTimeout(() => setCopied(false), 2000);
   }
 
-  if (payResult) {
-    return (
-      <div style={{ background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "1.25rem", marginBottom: "1.5rem" }}>
-        <p style={{ fontSize: "1.5rem", marginBottom: "0.75rem", textAlign: "center" }}>🎉</p>
-        <h3 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontWeight: 700, color: "var(--midnight)", marginBottom: "0.5rem", textAlign: "center" }}>
-          Payment initiated
-        </h3>
-        <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginBottom: "1rem", textAlign: "center" }}>
-          Transfer the total amount to the bank details below to complete your group purchase.
-        </p>
-        <div style={{ display: "grid", gap: "0.5rem", marginBottom: "1rem" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "0.375rem 0", borderBottom: "1px solid var(--gray-100)" }}>
-            <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Reference</span>
-            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--midnight)" }}>{payResult.reference}</span>
-          </div>
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "0.375rem 0", borderBottom: "1px solid var(--gray-100)" }}>
-            <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Total</span>
-            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--midnight)" }}>₦{payResult.totalPrice?.toLocaleString()}</span>
-          </div>
-          {payResult.bankDetails?.bank_name && (
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "0.375rem 0", borderBottom: "1px solid var(--gray-100)" }}>
-              <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Bank</span>
-              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--midnight)" }}>{payResult.bankDetails.bank_name}</span>
-            </div>
-          )}
-          {payResult.bankDetails?.bank_account_name && (
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "0.375rem 0", borderBottom: "1px solid var(--gray-100)" }}>
-              <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Account name</span>
-              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--midnight)" }}>{payResult.bankDetails.bank_account_name}</span>
-            </div>
-          )}
-          {payResult.bankDetails?.bank_account_number && (
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "0.375rem 0", borderBottom: "1px solid var(--gray-100)" }}>
-              <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Account number</span>
-              <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--midnight)" }}>{payResult.bankDetails.bank_account_number}</span>
-            </div>
-          )}
-        </div>
-        <a
-          href="/dashboard/groups"
-          style={{ display: "block", padding: "0.75rem", background: "var(--midnight)", color: "white", fontWeight: 700, fontSize: "0.875rem", borderRadius: "var(--radius-md)", textDecoration: "none", textAlign: "center" }}
-        >
-          Back to groups →
-        </a>
-      </div>
-    );
-  }
-
   return (
     <div>
       {groupStatus === "open" && (
@@ -141,25 +99,21 @@ export default function GroupDetailActions({
 
       {groupStatus === "filled" && membershipStatus === "committed" && (
         <div style={{ marginBottom: "1.5rem" }}>
-          {payError && (
-            <p style={{ fontSize: "0.8125rem", color: "#EF4444", marginBottom: "0.75rem" }}>{payError}</p>
-          )}
           <button
-            onClick={handlePay}
-            disabled={paying}
+            onClick={handlePayClick}
             style={{
               width: "100%",
               padding: "1rem",
-              background: paying ? "var(--gray-300)" : "var(--teal)",
-              color: paying ? "var(--text-muted)" : "var(--midnight)",
+              background: "var(--teal)",
+              color: "var(--midnight)",
               fontWeight: 700,
               fontSize: "1rem",
               borderRadius: "var(--radius-md)",
               border: "none",
-              cursor: paying ? "not-allowed" : "pointer",
+              cursor: "pointer",
             }}
           >
-            {paying ? "Processing..." : "Pay now — ₦ group price"}
+            Pay now — ₦{groupData.group_price_ngn.toLocaleString()} →
           </button>
         </div>
       )}
@@ -216,6 +170,21 @@ export default function GroupDetailActions({
             {leaving ? "Leaving..." : "Leave group"}
           </button>
         </div>
+      )}
+
+      {showPaymentModal && (
+        <GroupBuyPaymentModal
+          group={groupData}
+          activeGoals={activeGoals}
+          walletCredits={walletCredits}
+          preferredCurrency={preferredCurrency}
+          userId={currentUserId}
+          onClose={() => setShowPaymentModal(false)}
+          onPaymentComplete={() => {
+            setShowPaymentModal(false);
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );
