@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { redirect, notFound } from "next/navigation";
 import GroupDetailActions from "@/components/dashboard/groups/GroupDetailActions";
 
@@ -15,7 +16,9 @@ export default async function GroupDetailPage({ params }: { params: { id: string
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: group } = await (supabase as any)
+  const serviceClient = createServiceClient();
+
+  const { data: group } = await (serviceClient as any)
     .from("group_buys")
     .select("*")
     .eq("id", params.id)
@@ -23,7 +26,7 @@ export default async function GroupDetailPage({ params }: { params: { id: string
 
   if (!group) notFound();
 
-  const { data: members } = await (supabase as any)
+  const { data: members } = await (serviceClient as any)
     .from("group_buy_members")
     .select("*, users(full_name)")
     .eq("group_buy_id", params.id)

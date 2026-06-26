@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
 
 const statusColors: Record<string, string> = {
@@ -30,7 +31,9 @@ export default async function GroupsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: memberships } = await (supabase as any)
+  const serviceClient = createServiceClient();
+
+  const { data: memberships } = await (serviceClient as any)
     .from("group_buy_members")
     .select("*, group_buys(*)")
     .eq("user_id", user.id)
