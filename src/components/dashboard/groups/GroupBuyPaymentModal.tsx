@@ -296,6 +296,7 @@ export default function GroupBuyPaymentModal({
               if (res.ok) { setOrderResult(null); setStep("choose_payment"); }
               else { const d = await res.json(); setError(d.error); }
             }}
+            onError={(msg) => setError(msg)}
           />
         )}
 
@@ -382,12 +383,13 @@ function DirectPaymentStep({
       <button
         onClick={async () => {
           setConfirming(true);
-          await fetch("/api/group-buy/confirm-payment", {
+          const res = await fetch("/api/group-buy/confirm-payment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ groupBuyId: groupId }),
           });
-          onComplete(orderData);
+          if (res.ok) onComplete(orderData);
+          else { const d = await res.json(); onError(d.error || "Failed to confirm payment"); }
           setConfirming(false);
         }}
         disabled={confirming}
@@ -407,6 +409,7 @@ function ResumeDirectPaymentStep({
   onComplete,
   onCancel,
   onSwitchToGoal,
+  onError,
 }: {
   orderData: any;
   groupId: string;
@@ -415,6 +418,7 @@ function ResumeDirectPaymentStep({
   onComplete: (result: any) => void;
   onCancel: () => void;
   onSwitchToGoal: () => void;
+  onError: (msg: string) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [switching, setSwitching] = useState(false);
@@ -464,12 +468,13 @@ function ResumeDirectPaymentStep({
       <button
         onClick={async () => {
           setConfirming(true);
-          await fetch("/api/group-buy/confirm-payment", {
+          const res = await fetch("/api/group-buy/confirm-payment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ groupBuyId: groupId }),
           });
-          onComplete(orderData);
+          if (res.ok) onComplete(orderData);
+          else { const d = await res.json(); onError(d.error || "Failed to confirm payment"); }
           setConfirming(false);
         }}
         disabled={confirming}

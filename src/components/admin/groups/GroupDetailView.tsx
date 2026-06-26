@@ -26,7 +26,7 @@ const validAdminTransitions: Record<string, string[]> = {
 
 const memberStatusTransitions: Record<string, string[]> = {
   committed: ["withdrawn"],
-  pending_payment: ["withdrawn"],
+  pending_payment: ["paid", "committed", "withdrawn"],
   paid: [],
   withdrawn: [],
 };
@@ -60,12 +60,13 @@ export default function GroupDetailView({ group, members, adminId: _adminId }: {
   async function handleUpdateMemberStatus() {
     if (!selectedMemberId || !memberNewStatus) return;
     setUpdatingMember(true);
-    await fetch("/api/admin/groups/update-status", {
+    const res = await fetch("/api/admin/groups/update-status", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ groupId: group.id, memberId: selectedMemberId, newMemberStatus: memberNewStatus }),
     });
-    window.location.reload();
+    if (res.ok) window.location.reload();
+    setUpdatingMember(false);
   }
 
   return (

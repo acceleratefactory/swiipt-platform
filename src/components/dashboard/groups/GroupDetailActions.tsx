@@ -12,6 +12,7 @@ interface GroupDetailActionsProps {
   creatorId: string;
   membershipRole: string;
   membershipStatus: string;
+  userConfirmedAt: string | null;
   inviteCode: string;
   inviteUrl: string;
   groupTitle: string;
@@ -43,6 +44,7 @@ export default function GroupDetailActions({
   creatorId: _creatorId,
   membershipRole,
   membershipStatus,
+  userConfirmedAt,
   inviteCode,
   inviteUrl,
   groupTitle: _groupTitle,
@@ -118,7 +120,7 @@ export default function GroupDetailActions({
         </div>
       )}
 
-      {groupStatus === "filled" && membershipStatus === "pending_payment" && (
+      {groupStatus === "filled" && membershipStatus === "pending_payment" && !userConfirmedAt && (
         <div style={{ marginBottom: "1.5rem" }}>
           <button
             onClick={handlePayClick}
@@ -136,6 +138,17 @@ export default function GroupDetailActions({
           >
             Continue payment → (₦{groupData.group_price_ngn.toLocaleString()})
           </button>
+        </div>
+      )}
+
+      {groupStatus === "filled" && membershipStatus === "pending_payment" && userConfirmedAt && (
+        <div style={{ marginBottom: "1.5rem", padding: "1rem", background: "var(--teal-pale)", borderRadius: "var(--radius-md)", border: "1px solid var(--teal)" }}>
+          <p style={{ fontWeight: 700, color: "var(--teal)", fontSize: "0.9375rem", marginBottom: "0.25rem" }}>
+            ✓ Payment submitted
+          </p>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+            Awaiting admin confirmation. This usually takes 24–48 hours.
+          </p>
         </div>
       )}
 

@@ -129,6 +129,7 @@ export default async function GroupDetailPage({ params }: { params: { id: string
             creatorId={group.creator_id}
             membershipRole={myMembership.role}
             membershipStatus={myMembership.status}
+            userConfirmedAt={myMembership.user_confirmed_at || null}
             inviteCode={group.invite_code}
             inviteUrl={`${process.env.NEXT_PUBLIC_APP_URL}/join/${group.invite_code}`}
             groupTitle={group.title}
