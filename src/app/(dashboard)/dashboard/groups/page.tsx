@@ -52,6 +52,7 @@ export default async function GroupsPage() {
 
   return (
     <div>
+      <style>{`.group-card:hover { box-shadow: var(--shadow-md) !important; }`}</style>
       <h1 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.5rem", fontWeight: 800, color: "var(--midnight)", marginBottom: "0.5rem" }}>
         My Groups
       </h1>
@@ -77,17 +78,14 @@ export default async function GroupsPage() {
               href={`/dashboard/groups/${group.id}`}
               style={{ textDecoration: "none", display: "block" }}
             >
-              <div style={{
+              <div className="group-card" style={{
                 background: "white",
                 borderRadius: "var(--radius-lg)",
                 border: "1px solid var(--border)",
                 padding: "1.25rem",
                 transition: "box-shadow 0.15s",
                 cursor: "pointer",
-              }}
-                onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-md)"}
-                onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = "none"}
-              >
+              }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "0.75rem" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <h3 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1rem", fontWeight: 700, color: "var(--midnight)", marginBottom: "0.25rem" }}>
