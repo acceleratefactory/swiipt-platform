@@ -79,24 +79,18 @@ On every new `auth.users` insert, `handle_new_user()` trigger:
 - `get_total_aum()` — Sums `total_locked_ngn` across all wallets
 - `get_signups_by_day()` — Daily signup counts for analytics
 
-### Payment Recovery Pattern (Critical UX Gap)
-The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery mechanism that **no other payment flow** on the platform implements:
+### Payment Recovery Pattern
+The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery mechanism. The **group buy direct payment flow** now mirrors this pattern (implemented in Sessions 5–8):
 
-1. **State discrimination** — `deposits` tracks `user_confirmed_at` column: `NULL` = user hasn't confirmed sending yet (resumable), `NOT NULL` = user confirmed, entered admin-waiting state
-2. **Detection on mount** — `useEffect` calls `GET /api/goals/deposit/initiate?goalId=X` to check for existing pending deposits
-3. **Resume UI** — "Resume pending deposit" screen shows saved bank details + two actions: "I Have Sent" or "Cancel & start new"
-4. **POST handler also checks** — the initiate endpoint checks for existing pending deposits and returns `resumed: true`
-5. **Cron cleanup** — abandons deposits after 48h (never confirmed) or expires after 24h (confirmed but admin didn't act)
+1. **State discrimination** — `group_buy_members` tracks `user_confirmed_at` column: `NULL` = user hasn't confirmed sending yet (resumable), `NOT NULL` = user confirmed, entered admin-waiting state
+2. **Detection on mount** — `useEffect` calls `GET /api/group-buy/payment-status?groupBuyId=X` to check for existing pending payments
+3. **Resume UI** — "Continue Payment →" button on group detail page for `pending_payment` with `user_confirmed_at IS NULL`; modal shows saved bank details + "I Have Transferred" or "Cancel"
+4. **Cancel mechanism** — `POST /api/group-buy/cancel-payment` reverts membership to `committed`, cancels linked order/booking
+5. **Cron cleanup** — `POST /api/group-buy/expire` resets abandoned (unconfirmed) and expired (72h post-confirm) pending_payment memberships
 
-**Group buy direct payment is missing all of this.** When a user closes the payment modal after seeing bank details:
-- Membership is set to `pending_payment` immediately on modal open (in the `DirectPaymentStep` `useEffect`)
-- "Pay now" button only renders for `committed` status — so it disappears
-- No "Continue Payment" button exists for `pending_payment`
-- No cancel mechanism exists for the user
-- Cron only expires `open` groups — never touches `pending_payment` memberships
-- The only escape is contacting an admin to set `withdrawn` or `paid`
+**Admin confirmation sync (Critical):** When admin confirms a group buy order from the Orders page (`POST /api/admin/orders/update-status`) or Holidays page (`POST /api/admin/holidays/update-booking-status`), the routes now check if the order/booking is linked to a `group_buy_members` row and sync the membership status accordingly. Without this, admin confirmations from the Orders/Holidays page would leave members stuck at `pending_payment`.
 
-**Root cause:** The `POST /api/group-buy/pay` route eagerly sets `pending_payment` when `DirectPaymentStep` mounts (before the user confirms intent). A fix needs to either defer the status change or provide recovery. See `reports/payment_recovery_implementation_plan.md`.
+**Service payment flow has the same gap** — `service_orders` has no `reference` column, no resume mechanism, no `user_confirmed_at`. See `reports/findings/service-vs-group-buy-payment-flows.md`.
 
 ### Design Conventions
 - CSS variables only — no hardcoded hex values in components
@@ -162,14 +156,14 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `community_replies` | Thread replies (text-only MVP) |
 
 ### Group Buy & Trade Shows (Sprint 16)
-| Table | Purpose |
-|-------|---------|
-| `group_buys` | Group purchase commitments (2-10 people, 72h expiry) |
-| `group_buy_members` | Member status (committed/paid/withdrawn) |
-| `trade_shows` | Admin-managed trade show catalog |
-| `trade_show_groups` | Group savings toward trade shows |
-| `trade_show_group_members` | Member savings tracking |
-| `readiness_score_log` | Score change audit trail |
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `group_buys` | Group purchase commitments (2-10 people, 72h expiry) | creator_id, item_type, holiday_package_id/service_package_id, target_size, current_size, group_price_ngn, group_discount_pct, invite_code, payment_deadline |
+| `group_buy_members` | Member status tracking | user_confirmed_at, payment_reference, order_id, booking_id, paid_at |
+| `trade_shows` | Admin-managed trade show catalog | |
+| `trade_show_groups` | Group savings toward trade shows | |
+| `trade_show_group_members` | Member savings tracking | |
+| `readiness_score_log` | Score change audit trail | |
 
 ### Rewards & Referrals (Sprint 0 + Sprint 9)
 | Table | Purpose |
@@ -354,9 +348,10 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - Group buy creates holiday_bookings or service_orders on pay
 - Public invite page `/join/[code]` with price comparison + countdown
 - Dashboard groups list + detail with member management
+- **Priority 2 (Sprint 16) — Group Buy Payment Flow (Sessions 5–8):** Full payment modal with goal redemption, direct bank transfer, travel credit auto-apply, Realtime subscription, payment recovery (resume/cancel), admin confirmation sync from all admin paths
 - **System 2 — Trade Show Groups:** 3 new tables (`trade_shows`, `trade_show_groups`, `trade_show_group_members`), SME group savings toward trade show attendance, linked savings goals
 - **System 3 — Readiness Score:** 0-100 scale, `calculate_readiness_score()` RPC, SVG circular progress on dashboard home, fire-and-forget triggers in deposit/order/document APIs
-- **Note:** Sprint 16 investigation identified 4 priorities — Priority 1 (admin groups page) already built. Priority 2 (goal/credit payment options) was implemented in Session 5, but a critical UX gap was found post-implementation: **no payment recovery if user closes modal** after selecting "Direct Bank Transfer". See `reports/payment_recovery_implementation_plan.md`. Remaining: Priority 3 (travel credit + Realtime), Priority 4 (goal-based holiday payment).
+- **Remaining:** Priority 3 (travel credit + Realtime for group buy), Priority 4 (goal-based holiday payment)
 
 ## 8. API ROUTES — COMPLETE INDEX
 
@@ -463,6 +458,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `reports/sprint_16_investigation_report.md` | Sprint 16 investigation with 4 priorities |
 | `reports/admin_api_rls_audit.md` | Audit of 33 admin API routes (22 broken) |
 | `reports/payment_recovery_implementation_plan.md` | Plan to add payment resume/cancel for group buy direct payment |
+| `reports/findings/group-buy-payment-status-inconsistency.md` | Root cause analysis: admin confirmation from Orders/Holidays page doesn't sync group_buy_members |
+| `reports/findings/service-vs-group-buy-payment-flows.md` | Comparison: service flow has same recovery gap as group buy (unfixed) |
 
 ## 10. SESSION HISTORY — COMPLETED WORK
 
@@ -526,10 +523,43 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
   - Cron cleanup for abandoned/expired pending payments
 - Updated AGENTS.md with the recovery gap documented in section 5
 
-### Session 7 — Payment Recovery: Step 1 SQL Migration (Completed)
-- Created `sprint_16_group_buy_payment_recovery.sql` adding `user_confirmed_at TIMESTAMPTZ` to `group_buy_members`
-- Mirrors the `deposits` table pattern: `NULL` = resumable, `NOT NULL` = user confirmed
-- Ready for next step: `GET /api/group-buy/payment-status` route
+### Session 6 — Payment Recovery: Implementation (Completed)
+- Implemented all 9 steps of payment recovery for group buy direct payment:
+
+| # | File | Action | Status |
+|---|------|--------|--------|
+| 1 | `sprint_16_group_buy_payment_recovery.sql` | Create — adds `user_confirmed_at` + `payment_reference` columns | Done |
+| 2 | `src/app/api/group-buy/payment-status/route.ts` | Create — check for resumable pending payment | Done |
+| 3 | `src/app/api/group-buy/cancel-payment/route.ts` | Create — cancel and revert to committed | Done |
+| 4 | `src/app/api/group-buy/confirm-payment/route.ts` | Modify — set `user_confirmed_at` on confirm | Done |
+| 5 | `src/app/api/group-buy/pay/route.ts` | Modify — store `payment_reference`, set `user_confirmed_at: null` | Done |
+| 6 | `src/components/dashboard/groups/GroupBuyPaymentModal.tsx` | Modify — add `isResuming` prop, `direct_payment_resume` step, `ResumeDirectPaymentStep` | Done |
+| 7 | `src/components/dashboard/groups/GroupDetailActions.tsx` | Modify — amber "Continue Payment →" button for `pending_payment` | Done |
+| 8 | `src/app/api/admin/groups/update-status/route.ts` | Modify — `pending_payment → ["paid", "committed", "withdrawn"]` + notification | Done |
+| 9 | `src/app/api/group-buy/expire/route.ts` | Modify — cron cleanup for abandoned/expired payments | Done |
+
+- SQL migration confirmed run in Supabase (columns exist)
+- Deployed to production via GitHub
+
+### Session 7 — Payment Recovery: Bug Fixes (Completed)
+- Fixed double cancel: "Switch to goal payment" button called cancel-payment in onClick AND parent's onSwitchToGoal also called it — removed direct fetch from button onClick
+- Fixed payment_reference fallback: `payment-status` route falls back to `holiday_bookings.reference` when `payment_reference` is null
+- Fixed error state not clearing: added `setError("")` to `onComplete`, `onCancel`, `onSwitchToGoal`
+- Added `committed` to admin dropdown transitions for `pending_payment` members
+- Added `res.ok` check before `window.location.reload()` in admin GroupDetailView
+- Fixed `DirectPaymentStep` and `ResumeDirectPaymentStep` to check `confirm-payment` response before showing success
+- Added `userConfirmedAt` prop to `GroupDetailActions` — hides "Continue Payment" when `user_confirmed_at` is set, shows teal "✓ Payment submitted — Awaiting admin confirmation" instead
+- **Deployed:** Commit `2e2ad48` (bug fixes) + `8c11b22` (5 surgical fixes)
+
+### Session 8 — Group Buy Status Sync Fix (Completed)
+- **Root cause found:** Admin had 3 places to confirm payment (Groups page member dropdown, Orders page, Holidays page) but only the Groups page updated `group_buy_members.status`. Confirming from Orders/Holidays page left members stuck at `pending_payment`.
+- **Fix 1a:** `POST /api/admin/orders/update-status` — after updating order, checks if linked to `group_buy_members` and syncs status (paid on confirm, committed on cancel) + all-paid auto-complete check
+- **Fix 1b:** `POST /api/admin/holidays/update-booking-status` — same pattern for holiday bookings
+- **Fix 2a:** Admin orders page query now joins `group_buy_members` to attach group buy info
+- **Fix 2b:** `OrdersTable` shows blue "Group Buy — {status}" badge for linked orders
+- **Fix 3:** Cron expire timeout extended from 24h to 72h for admin processing time
+- **Deployed:** Commit `b078b96`
+- **Investigation reports saved:** `reports/findings/group-buy-payment-status-inconsistency.md`, `reports/findings/service-vs-group-buy-payment-flows.md`
 
 ## 11. VERIFICATION SCRIPTS
 
