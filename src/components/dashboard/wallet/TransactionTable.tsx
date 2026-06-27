@@ -18,6 +18,7 @@ export default function TransactionTable({ transactions, userId: _userId }: { tr
     gift_sent: "🎁",
     gift_received: "🎁",
     holiday_booking: "✈️",
+    service_payment: "🛠️",
   };
 
   const typeColors: Record<string, string> = {
@@ -26,6 +27,7 @@ export default function TransactionTable({ transactions, userId: _userId }: { tr
     gift_sent: "#1D4ED8",
     gift_received: "#6D28D9",
     holiday_booking: "#0891B2",
+    service_payment: "#7C3AED",
   };
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,7 +57,7 @@ export default function TransactionTable({ transactions, userId: _userId }: { tr
       <div style={{ padding: "1rem 1.25rem", borderBottom: "1px solid var(--border)", display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap", alignItems: "center" }}>
           <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, marginRight: "0.25rem" }}>Type:</span>
-          {["all", "deposit", "withdrawal", "gift_sent", "gift_received", "holiday_booking"].map(t => (
+          {["all", "deposit", "withdrawal", "gift_sent", "gift_received", "holiday_booking", "service_payment"].map(t => (
             <button
               key={t}
               onClick={() => setTypeFilter(t)}
@@ -122,7 +124,7 @@ export default function TransactionTable({ transactions, userId: _userId }: { tr
                   </td>
                   <td style={{ padding: "0.625rem 1rem" }}>
                     <span style={{ color: typeColors[t.type] || "var(--text-muted)", fontWeight: 600 }}>
-                      {typeIcons[t.type] || ""} {t.type === "gift_sent" ? "Gift sent" : t.type === "gift_received" ? "Gift received" : t.type === "holiday_booking" ? "Holiday booking" : t.type.charAt(0).toUpperCase() + t.type.slice(1)}
+                      {typeIcons[t.type] || ""} {t.type === "gift_sent" ? "Gift sent" : t.type === "gift_received" ? "Gift received" : t.type === "holiday_booking" ? "Holiday booking" : t.type === "service_payment" ? "Service payment" : t.type.charAt(0).toUpperCase() + t.type.slice(1)}
                     </span>
                   </td>
                   <td style={{ padding: "0.625rem 1rem", color: "var(--text-secondary)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -162,7 +164,7 @@ export default function TransactionTable({ transactions, userId: _userId }: { tr
             <div key={t.id} style={{ padding: "0.875rem 1.25rem", borderBottom: "1px solid var(--gray-100)", background: rowBg(t) }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.375rem" }}>
                 <span style={{ color: typeColors[t.type] || "var(--text-muted)", fontWeight: 600, fontSize: "0.8125rem" }}>
-                  {typeIcons[t.type] || ""} {t.type === "gift_sent" ? "Gift sent" : t.type === "gift_received" ? "Gift received" : t.type === "holiday_booking" ? "Holiday booking" : t.type.charAt(0).toUpperCase() + t.type.slice(1)}
+                  {typeIcons[t.type] || ""} {t.type === "gift_sent" ? "Gift sent" : t.type === "gift_received" ? "Gift received" : t.type === "holiday_booking" ? "Holiday booking" : t.type === "service_payment" ? "Service payment" : t.type.charAt(0).toUpperCase() + t.type.slice(1)}
                 </span>
                 <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
                   {new Date(t.date).toLocaleDateString("en-NG", { day: "numeric", month: "short" })}

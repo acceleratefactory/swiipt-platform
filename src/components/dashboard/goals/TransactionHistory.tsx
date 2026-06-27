@@ -29,11 +29,14 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 export default function TransactionHistory({
   deposits,
   gifts,
+  serviceOrders,
   goalCurrency: _goalCurrency,
   userId,
 }: {
   deposits: Deposit[];
   gifts: Gift[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  serviceOrders: any[];
   goalCurrency: string;
   userId: string;
 }) {
@@ -59,6 +62,18 @@ export default function TransactionHistory({
       reference: null as string | null,
       confirmedAt: g.created_at,
       fromTo: g.giver?.full_name || g.recipient?.full_name || null,
+    })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...serviceOrders.map((o: any) => ({
+      id: o.id,
+      type: "service_payment" as const,
+      amount: o.final_price,
+      currency: o.payment_currency || "NGN",
+      status: o.status,
+      date: o.created_at,
+      reference: null as string | null,
+      confirmedAt: o.updated_at || o.created_at,
+      fromTo: o.service_packages?.name || "Service payment",
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -104,6 +119,7 @@ export default function TransactionHistory({
               bg: "var(--gray-100)",
             };
           const isGiftReceived = tx.type === "gift_received";
+          const isServicePayment = tx.type === "service_payment";
           return (
             <div
               key={tx.id}
@@ -120,7 +136,7 @@ export default function TransactionHistory({
                   width: 36,
                   height: 36,
                   borderRadius: "50%",
-                  background: isGiftReceived ? "#EDE9FE" : "var(--teal-pale)",
+                  background: isGiftReceived ? "#EDE9FE" : isServicePayment ? "#EDE9FE" : "var(--teal-pale)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -128,7 +144,7 @@ export default function TransactionHistory({
                   flexShrink: 0,
                 }}
               >
-                {tx.type === "deposit" ? "↓" : "🎁"}
+                {tx.type === "deposit" ? "↓" : tx.type === "service_payment" ? "🛠️" : "🎁"}
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -143,7 +159,9 @@ export default function TransactionHistory({
                     ? "Deposit"
                     : tx.type === "gift_sent"
                       ? "Gift sent"
-                      : "Gift received"}
+                      : tx.type === "service_payment"
+                        ? "Service payment"
+                        : "Gift received"}
                   {tx.fromTo && (
                     <span
                       style={{
@@ -176,7 +194,7 @@ export default function TransactionHistory({
                     color: isGiftReceived ? "#6D28D9" : "var(--midnight)",
                   }}
                 >
-                  + {tx.currency} {tx.amount.toLocaleString()}
+                  {tx.type === "deposit" || tx.type === "gift_received" ? "+" : "-"} {tx.currency} {tx.amount.toLocaleString()}
                 </p>
                 <span
                   style={{

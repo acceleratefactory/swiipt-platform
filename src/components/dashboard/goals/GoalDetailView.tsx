@@ -65,6 +65,7 @@ export default function GoalDetailView({
   deposits,
   milestoneRewards,
   gifts,
+  serviceOrders,
   userId,
   preferredCurrency: _preferredCurrency,
 }: {
@@ -72,6 +73,8 @@ export default function GoalDetailView({
   deposits: Deposit[];
   milestoneRewards: MilestoneReward[];
   gifts: Gift[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  serviceOrders: any[];
   userId: string;
   preferredCurrency: string;
 }) {
@@ -378,6 +381,7 @@ export default function GoalDetailView({
       <TransactionHistory
         deposits={deposits}
         gifts={gifts}
+        serviceOrders={serviceOrders}
         goalCurrency={goal.currency}
         userId={userId}
       />

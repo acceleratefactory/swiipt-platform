@@ -94,6 +94,15 @@ export async function POST(request: NextRequest) {
       goal_id_input: goalId,
       amount_input: finalPrice,
     });
+
+    await supabase.from("notifications").insert({
+      user_id: user.id,
+      type: "goal_redemption",
+      title: "Goal used for service payment",
+      body: `${pkg.name} — ${currency} ${Number(finalPrice).toLocaleString()} deducted from your goal.`,
+      action_url: `/dashboard/goals/${goalId}`,
+      target_segment: null,
+    });
   }
 
   let bankDetails = null;
