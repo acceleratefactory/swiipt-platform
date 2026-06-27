@@ -608,7 +608,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Session 11c — Realtime Guard Fix:** Root cause: `GroupDetailActions` Realtime subscription had `!userConfirmedAt` guard that prevented activation because `userConfirmedAt` is null until modal sets it post-page-load (parent never re-renders while modal is open). Fix: removed `!userConfirmedAt` from guard — subscribe whenever `membershipStatus === "pending_payment"`.
 - **Session 11d — Realtime Stability Fix:** Root cause: `router` in useEffect dependency array caused subscription to be torn down and re-created on every router reference change, creating windows where events were missed. Also `createClient()` was inside useEffect causing new client on every re-run. Fix: moved `createClient()` outside useEffect, removed `router` from deps (matches GoalDetailView pattern exactly).
 - **Session 11e — Polling Fallback:** Replaced `window.location.reload()` with `router.refresh()` in Realtime callback (proven working from manual "Back to groups" button). Added 5-second polling fallback that queries `group_buy_members.status` directly via Supabase, ensuring auto-close works even if Realtime event is missed.
-- **Deployed:** Commits `5804ac4`, `29a65eb`, `d97f86b`, `8c414bc`, `592e204`
+- **Session 11f — Modal Auto-Close Fix:** Root cause: `router.refresh()` only re-renders server components — client state (`showPaymentModal`) is preserved, so modal stays open. Goal deposit uses `window.location.reload()` which destroys ALL client state. Fix: added `setShowPaymentModal(false)` before `router.refresh()` in both Realtime and polling callbacks, matching the "Back to groups" button pattern. Investigation: `reports/findings/modal-auto-close-investigation.md`.
+- **Deployed:** Commits `5804ac4`, `29a65eb`, `d97f86b`, `8c414bc`, `592e204`, `92736a8`, `c167e3d`
 
 ## 11. VERIFICATION SCRIPTS
 
