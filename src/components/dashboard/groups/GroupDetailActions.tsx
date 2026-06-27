@@ -76,6 +76,7 @@ export default function GroupDetailActions({
         },
         (payload) => {
           if ((payload.new as any).user_id === currentUserId && (payload.new as any).status === "paid") {
+            setShowPaymentModal(false);
             router.refresh();
           }
         }
@@ -95,6 +96,7 @@ export default function GroupDetailActions({
         .maybeSingle();
       const rec = data as { status: string } | null;
       if (rec?.status === "paid") {
+        setShowPaymentModal(false);
         router.refresh();
       }
     }, 5000);
