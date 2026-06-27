@@ -77,7 +77,7 @@ export default function GroupDetailActions({
         },
         (payload) => {
           if ((payload.new as any).user_id === currentUserId && (payload.new as any).status === "paid") {
-            router.refresh();
+            window.location.reload();
           }
         }
       )

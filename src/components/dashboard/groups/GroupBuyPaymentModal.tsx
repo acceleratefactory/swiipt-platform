@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 interface GroupBuyPaymentModalProps {
   group: {
@@ -76,7 +75,7 @@ export default function GroupBuyPaymentModal({
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50 }} />
+      <div onClick={step === "confirmation" ? undefined : onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 50, cursor: step === "confirmation" ? "default" : "pointer" }} />
       <div style={{
         position: "fixed", top: "50%", left: "50%",
         transform: "translate(-50%, -50%)",
@@ -85,10 +84,15 @@ export default function GroupBuyPaymentModal({
         zIndex: 51, boxShadow: "var(--shadow-lg)",
         maxHeight: "90vh", overflowY: "auto",
       }}>
-        <div style={{ marginBottom: "1.5rem", paddingBottom: "1.5rem", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ marginBottom: "1.5rem", paddingBottom: "1.5rem", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <h2 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.125rem", fontWeight: 700, color: "var(--midnight)" }}>
             {group.title}
           </h2>
+          {step !== "confirmation" && (
+            <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "1.25rem", lineHeight: 1 }}>
+              &times;
+            </button>
+          )}
         </div>
 
         {error && (
@@ -304,8 +308,6 @@ export default function GroupBuyPaymentModal({
           <ConfirmationStep
             orderResult={orderResult}
             symbol={symbol}
-            groupId={group.id}
-            userId={userId}
             onDone={onPaymentComplete}
           />
         )}
@@ -508,77 +510,68 @@ function ResumeDirectPaymentStep({
 function ConfirmationStep({
   orderResult,
   symbol,
-  groupId,
-  userId,
   onDone,
 }: {
   orderResult: any;
   symbol: string;
-  groupId: string;
-  userId: string;
   onDone: () => void;
 }) {
-  const [adminConfirmed, setAdminConfirmed] = useState(false);
-  const supabase = createClient();
-
-  useEffect(() => {
-    if (orderResult?.paymentMethod === "goal_redemption") return;
-
-    const channel = supabase
-      .channel(`group_buy_member:${groupId}:${userId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "group_buy_members",
-          filter: `group_buy_id=eq.${groupId}`,
-        },
-        (payload) => {
-          if ((payload.new as any).status === "paid" && (payload.new as any).user_id === userId) {
-            setAdminConfirmed(true);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
   const isGoalRedemption = orderResult?.paymentMethod === "goal_redemption";
+
+  if (isGoalRedemption) {
+    return (
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>&#x1F389;</div>
+        <h3 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.25rem", fontWeight: 700, color: "var(--midnight)", marginBottom: "0.5rem" }}>
+          Payment successful!
+        </h3>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.9375rem", marginBottom: "1.5rem", lineHeight: 1.5 }}>
+          Payment deducted from your goal.
+        </p>
+        {orderResult?.creditApplied > 0 && (
+          <div style={{ background: "var(--teal-pale)", borderRadius: "var(--radius-md)", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+            <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--teal)" }}>
+              &#x2713; {symbol}{orderResult.creditApplied.toLocaleString()} travel credit applied to this order
+            </p>
+          </div>
+        )}
+        <button
+          onClick={onDone}
+          style={{ width: "100%", padding: "0.875rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, borderRadius: "var(--radius-md)", border: "none", cursor: "pointer" }}
+        >
+          Back to groups &#x2192;
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div style={{ textAlign: "center" }}>
-      <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🎉</div>
-      <h3 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.25rem", fontWeight: 700, color: "var(--midnight)", marginBottom: "0.5rem" }}>
-        {isGoalRedemption ? "Payment successful!" : "Payment initiated!"}
+      <div style={{ width: 64, height: 64, borderRadius: "50%", background: "var(--teal-pale)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 1rem", fontSize: "2rem" }}>
+        &#x23F1;
+      </div>
+      <h3 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.125rem", fontWeight: 700, color: "var(--midnight)", marginBottom: "0.5rem" }}>
+        Payment pending confirmation
       </h3>
-      <p style={{ color: "var(--text-muted)", fontSize: "0.9375rem", marginBottom: "1.5rem", lineHeight: 1.5 }}>
-        {isGoalRedemption
-          ? "Payment deducted from your goal."
-          : "Transfer the total amount to the bank details above to complete your group purchase."}
+      <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", lineHeight: 1.6, marginBottom: "1rem" }}>
+        We will confirm your transfer and update your order within 1&#x2013;4 business hours
+        (9am&#x2013;6pm WAT, Monday&#x2013;Saturday). If not confirmed within 24 hours, contact <strong>support@swiipt.com</strong>.
       </p>
       {orderResult?.creditApplied > 0 && (
         <div style={{ background: "var(--teal-pale)", borderRadius: "var(--radius-md)", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
           <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--teal)" }}>
-            ✓ {symbol}{orderResult.creditApplied.toLocaleString()} travel credit applied to this order
+            &#x2713; {symbol}{orderResult.creditApplied.toLocaleString()} travel credit applied to this order
           </p>
         </div>
       )}
-      {adminConfirmed && (
-        <div style={{ background: "var(--teal-pale)", borderRadius: "var(--radius-md)", padding: "0.75rem 1rem", marginBottom: "1rem", border: "1px solid var(--teal)" }}>
-          <p style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--teal)" }}>
-            ✓ Payment confirmed by admin
-          </p>
-        </div>
-      )}
+      <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", background: "var(--off-white)", borderRadius: "var(--radius-md)", padding: "0.625rem 1rem", display: "inline-block", marginBottom: "1.5rem" }}>
+        Reference: <strong style={{ color: "var(--midnight)" }}>{orderResult?.reference}</strong>
+      </p>
       <button
         onClick={onDone}
-        style={{ width: "100%", padding: "0.875rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 700, borderRadius: "var(--radius-md)", border: "none", cursor: "pointer" }}
+        style={{ width: "100%", padding: "0.875rem", background: "var(--midnight)", color: "white", fontWeight: 700, borderRadius: "var(--radius-md)", border: "none", cursor: "pointer" }}
       >
-        Back to groups →
+        Back to groups &#x2192;
       </button>
     </div>
   );

@@ -471,6 +471,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `reports/findings/service-vs-group-buy-payment-flows.md` | Comparison: service flow has same recovery gap as group buy (unfixed) |
 | `reports/findings/realtime-payment-confirmation-pattern.md` | Realtime payment confirmation pattern: goal deposit vs group buy vs service |
 | `reports/realtime-payment-confirmation-implementation-plan.md` | Implementation plan for Realtime payment confirmation across all 3 flows |
+| `reports/findings/goal-deposit-modal-pattern-investigation.md` | Investigation: goal deposit "pending" modal pattern (no X, overlay disabled, hard reload) |
 | `sprint_16_group_buy_payment_recovery.sql` | SQL migration: adds `user_confirmed_at` + `payment_reference` to `group_buy_members` |
 | `sprint_16_group_buy_tables.sql` | SQL migration: creates `group_buys` + `group_buy_members` tables |
 | `reports/priority_2_migration.sql` | SQL: enables Realtime on `group_buy_members` |
@@ -598,11 +599,12 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 
 ### Session 11 — Realtime Payment Confirmation (Completed)
 - **Root cause found:** Goal deposit flow has a working Realtime subscription in `GoalDetailView.tsx` (parent component) that auto-refreshes the page when admin confirms. Group buy, holiday booking, and service flows lack this pattern — user must manually refresh after admin confirmation.
-- **Investigation reports:** `reports/findings/realtime-payment-confirmation-pattern.md`, `reports/realtime-payment-confirmation-implementation-plan.md`
-- **Fix 1 — Group Buy:** Added Realtime subscription to `GroupDetailActions.tsx` — listens for `group_buy_members` status changes filtered by group, calls `router.refresh()` when `status === "paid"`. Only activates when `membershipStatus === "pending_payment"` and `userConfirmedAt` is set.
+- **Investigation reports:** `reports/findings/realtime-payment-confirmation-pattern.md`, `reports/findings/realtime-payment-confirmation-implementation-plan.md`, `reports/findings/goal-deposit-modal-pattern-investigation.md`
+- **Fix 1 — Group Buy:** Added Realtime subscription to `GroupDetailActions.tsx` — listens for `group_buy_members` status changes filtered by group, calls `window.location.reload()` when `status === "paid"`. Only activates when `membershipStatus === "pending_payment"` and `userConfirmedAt` is set.
 - **Fix 2 — Holiday Booking:** Added server-side query in `holidays/[id]/page.tsx` to fetch existing pending/submitted booking. Added Realtime subscription to `HolidayDetailView.tsx` — listens for `holiday_bookings` status changes, shows teal/amber booking status card, hides "Book directly" when existing booking exists.
 - **Fix 3 — Service:** Added `id` to `OrderRecord` interface in `ActiveOrderTracker.tsx` (data already queried, just not typed). Added Realtime subscription on `service_orders` table filtered by order ID — any admin status update triggers `router.refresh()`.
-- **Pattern:** All 3 fixes mirror the proven `GoalDetailView` Realtime pattern — subscribe in parent/component, filter by record, listen for UPDATE, `router.refresh()` on confirmation.
+- **Pattern:** All 3 fixes mirror the proven `GoalDetailView` Realtime pattern — subscribe in parent/component, filter by record, listen for UPDATE, `window.location.reload()` on confirmation.
+- **Session 11b — Group Buy Modal Fix:** Investigated goal deposit modal pattern (`reports/findings/goal-deposit-modal-pattern-investigation.md`). Key finding: goal deposit "pending" step has no X button, overlay click disabled, Realtime in parent calls `window.location.reload()` (hard reload). Applied to group buy: `GroupBuyPaymentModal.tsx` ConfirmationStep now shows ⏱ clock icon + "Payment pending confirmation" text, X button hidden, overlay click disabled during confirmation. Removed redundant Realtime from ConfirmationStep (parent has it). `GroupDetailActions.tsx` changed from `router.refresh()` to `window.location.reload()`.
 - **Deployed:** Pending push
 
 ## 11. VERIFICATION SCRIPTS
