@@ -38,7 +38,7 @@ export default function GroupBuyPaymentModal({
   activeGoals,
   walletCredits = 0,
   preferredCurrency,
-  userId,
+  userId: _userId,
   isResuming,
   onClose,
   onPaymentComplete,
