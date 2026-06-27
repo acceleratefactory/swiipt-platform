@@ -339,6 +339,10 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Bug 3:** No sign out — added to TopBar dropdown, Sidebar, AdminShell (3 surfaces)
 - **Bug 4:** Pending payments never expire — `expires_at` column, cron job at 06:00 UTC, x-internal-secret protection
 - **Bug 5:** Cannot edit/delete goals — edit modal (name + target), soft delete (status=cancelled, balance=0 required)
+- **Admin service client fixes:** 12+ commits fixing blank admin pages by switching from anon to service-role client across all admin routes (settings, currencies, promotions, notifications, corporate, float, calculator, eligibility, goal templates, services, holidays)
+- **Visa redemption fixes:** resume flow for abandoned payments, admin visibility, cron cleanup, error logging, dynamic hotel booking fee
+- **Brevo email marketing integration:** optional, gated by env var
+- **Admin subscribers page:** email subscriber management with service client
 - SEO/GEO: Google Search Console, Bing Webmaster, IndexNow, Google Business Profile
 - Backlink strategy (8 platforms), LLM training data (Quora, Reddit, tech pubs)
 - Root layout metadata: `metadataBase`, title template `"%s — Swiipt"`, keywords, OG/Twitter
@@ -458,8 +462,19 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `reports/sprint_16_investigation_report.md` | Sprint 16 investigation with 4 priorities |
 | `reports/admin_api_rls_audit.md` | Audit of 33 admin API routes (22 broken) |
 | `reports/payment_recovery_implementation_plan.md` | Plan to add payment resume/cancel for group buy direct payment |
+| `reports/holiday_booking_flow_investigation.md` | End-to-end investigation of broken holiday booking flow |
+| `reports/holiday_booking_fix_plan.md` | 6-step fix plan for holiday booking persistence |
+| `reports/holiday_booking_admin_workflow_plan.md` | Admin workflow plan for holiday bookings |
+| `reports/holiday_booking_testing_walkthrough.md` | Testing walkthrough for holiday booking flow |
+| `reports/priority_2_implementation_plan.md` | Group buy payment flow implementation plan (Sprint 16 Priority 2) |
 | `reports/findings/group-buy-payment-status-inconsistency.md` | Root cause analysis: admin confirmation from Orders/Holidays page doesn't sync group_buy_members |
 | `reports/findings/service-vs-group-buy-payment-flows.md` | Comparison: service flow has same recovery gap as group buy (unfixed) |
+| `reports/findings/realtime-payment-confirmation-pattern.md` | Realtime payment confirmation pattern: goal deposit vs group buy vs service |
+| `sprint_16_group_buy_payment_recovery.sql` | SQL migration: adds `user_confirmed_at` + `payment_reference` to `group_buy_members` |
+| `sprint_16_group_buy_tables.sql` | SQL migration: creates `group_buys` + `group_buy_members` tables |
+| `reports/priority_2_migration.sql` | SQL: enables Realtime on `group_buy_members` |
+| `reports/holiday_bookings_migration.sql` | SQL migration: creates `holiday_bookings` table |
+| `docs/history/` | Sprint history files (Sprint 10, Sprint 12 phases) |
 
 ## 10. SESSION HISTORY — COMPLETED WORK
 
@@ -507,7 +522,26 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 
 - **Key deviation from plan (improvement):** Section C credit handling — avoided double-reduction by following the live services pattern (order created at full price → RPC deducts → `remainingToPay` becomes final price)
 
-### Session 6 — Payment Recovery Gap Investigation & Plan (Completed)
+### Session 6 — Holiday Booking Flow Fix (Completed)
+- Investigated holiday "Book directly" flow — found critical gap: `POST /api/holidays/book` generated reference but never persisted a booking record
+- Created `holiday_bookings` table type in `src/types/database.ts` + migration SQL (`reports/holiday_bookings_migration.sql`)
+- Added "I Have Transferred the Payment" button to `HolidayBookingFlow.tsx`
+- Created `POST /api/holidays/confirm-payment` endpoint (sets `payment_submitted` status)
+- Added admin Holiday Bookings panel to `/admin/holidays` page
+- Created admin booking detail page with status update + document request
+- Created `POST /api/admin/holidays/update-booking-status` endpoint
+- Created `POST /api/admin/holidays/request-documents` endpoint
+- Added holiday bookings to wallet transaction history
+- Added Realtime subscription for holiday booking admin confirmation
+- Fixed document verification to update `holiday_bookings` status when all docs verified
+- Fixed holiday booking rows clickable in admin
+- Investigation report: `reports/holiday_booking_flow_investigation.md`
+- Fix plan: `reports/holiday_booking_fix_plan.md`
+- Admin workflow plan: `reports/holiday_booking_admin_workflow_plan.md`
+- Testing walkthrough: `reports/holiday_booking_testing_walkthrough.md`
+- **Deployed:** 12 commits from `26cead3` to `2bcc96f`
+
+### Session 7 — Payment Recovery Gap Investigation & Plan (Completed)
 - User reported: after selecting "Direct Bank Transfer" and closing the modal, there's no way to recover the payment or see bank details again
 - Investigated the deposit resume flow (`GoalDepositFlow.tsx`, `deposits/initiate/route.ts`) as the reference pattern
 - Confirmed the group buy flow eagerly sets `pending_payment` on modal open (in `DirectPaymentStep` `useEffect`)
@@ -523,7 +557,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
   - Cron cleanup for abandoned/expired pending payments
 - Updated AGENTS.md with the recovery gap documented in section 5
 
-### Session 6 — Payment Recovery: Implementation (Completed)
+### Session 8 — Payment Recovery: Implementation (Completed)
 - Implemented all 9 steps of payment recovery for group buy direct payment:
 
 | # | File | Action | Status |
@@ -541,7 +575,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - SQL migration confirmed run in Supabase (columns exist)
 - Deployed to production via GitHub
 
-### Session 7 — Payment Recovery: Bug Fixes (Completed)
+### Session 9 — Payment Recovery: Bug Fixes (Completed)
 - Fixed double cancel: "Switch to goal payment" button called cancel-payment in onClick AND parent's onSwitchToGoal also called it — removed direct fetch from button onClick
 - Fixed payment_reference fallback: `payment-status` route falls back to `holiday_bookings.reference` when `payment_reference` is null
 - Fixed error state not clearing: added `setError("")` to `onComplete`, `onCancel`, `onSwitchToGoal`
@@ -551,7 +585,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - Added `userConfirmedAt` prop to `GroupDetailActions` — hides "Continue Payment" when `user_confirmed_at` is set, shows teal "✓ Payment submitted — Awaiting admin confirmation" instead
 - **Deployed:** Commit `2e2ad48` (bug fixes) + `8c11b22` (5 surgical fixes)
 
-### Session 8 — Group Buy Status Sync Fix (Completed)
+### Session 10 — Group Buy Status Sync Fix (Completed)
 - **Root cause found:** Admin had 3 places to confirm payment (Groups page member dropdown, Orders page, Holidays page) but only the Groups page updated `group_buy_members.status`. Confirming from Orders/Holidays page left members stuck at `pending_payment`.
 - **Fix 1a:** `POST /api/admin/orders/update-status` — after updating order, checks if linked to `group_buy_members` and syncs status (paid on confirm, committed on cancel) + all-paid auto-complete check
 - **Fix 1b:** `POST /api/admin/holidays/update-booking-status` — same pattern for holiday bookings
