@@ -76,13 +76,30 @@ export default function GroupDetailActions({
         },
         (payload) => {
           if ((payload.new as any).user_id === currentUserId && (payload.new as any).status === "paid") {
-            window.location.reload();
+            router.refresh();
           }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [groupId, currentUserId, supabase]);
+
+  // Polling fallback: check every 5s in case Realtime missed an event
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("group_buy_members")
+        .select("status")
+        .eq("group_buy_id", groupId)
+        .eq("user_id", currentUserId)
+        .maybeSingle();
+      const rec = data as { status: string } | null;
+      if (rec?.status === "paid") {
+        router.refresh();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [groupId, currentUserId, supabase, router]);
 
   function handlePayClick() {
     setShowPaymentModal(true);
