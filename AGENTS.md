@@ -605,7 +605,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Fix 3 — Service:** Added `id` to `OrderRecord` interface in `ActiveOrderTracker.tsx` (data already queried, just not typed). Added Realtime subscription on `service_orders` table filtered by order ID — any admin status update triggers `router.refresh()`.
 - **Pattern:** All 3 fixes mirror the proven `GoalDetailView` Realtime pattern — subscribe in parent/component, filter by record, listen for UPDATE, `window.location.reload()` on confirmation.
 - **Session 11b — Group Buy Modal Fix:** Investigated goal deposit modal pattern (`reports/findings/goal-deposit-modal-pattern-investigation.md`). Key finding: goal deposit "pending" step has no X button, overlay click disabled, Realtime in parent calls `window.location.reload()` (hard reload). Applied to group buy: `GroupBuyPaymentModal.tsx` ConfirmationStep now shows ⏱ clock icon + "Payment pending confirmation" text, X button hidden, overlay click disabled during confirmation. Removed redundant Realtime from ConfirmationStep (parent has it). `GroupDetailActions.tsx` changed from `router.refresh()` to `window.location.reload()`.
-- **Deployed:** Pending push
+- **Session 11c — Realtime Guard Fix:** Root cause: `GroupDetailActions` Realtime subscription had `!userConfirmedAt` guard that prevented activation because `userConfirmedAt` is null until modal sets it post-page-load (parent never re-renders while modal is open). Fix: removed `!userConfirmedAt` from guard — subscribe whenever `membershipStatus === "pending_payment"`.
+- **Deployed:** Commits `5804ac4`, `29a65eb`, `d97f86b`
 
 ## 11. VERIFICATION SCRIPTS
 
