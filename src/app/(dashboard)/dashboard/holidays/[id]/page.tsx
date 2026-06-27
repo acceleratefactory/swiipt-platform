@@ -30,6 +30,17 @@ export default async function HolidayDetailPage({ params }: { params: { id: stri
     .eq("user_id", user.id)
     .eq("status", "active");
 
+  // Check for existing active booking by this user for this package
+  const { data: existingBooking } = await supabase
+    .from("holiday_bookings")
+    .select("id, status, reference, total_price, currency, travellers, created_at")
+    .eq("user_id", user.id)
+    .eq("package_id", params.id)
+    .in("status", ["payment_pending", "payment_submitted"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   return (
     <div>
       <a href="/dashboard/holidays" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '1.5rem' }}>
@@ -40,6 +51,7 @@ export default async function HolidayDetailPage({ params }: { params: { id: stri
         preferredCurrency={profile?.preferred_currency || "NGN"}
         activeGoals={goals || []}
         userId={user.id}
+        existingBooking={existingBooking}
       />
     </div>
   );

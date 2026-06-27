@@ -1,6 +1,8 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import HolidayBookingFlow from "./HolidayBookingFlow";
 
 function getGradient(destination: string): string {
@@ -21,8 +23,33 @@ const _currencySymbols: Record<string, string> = {
   NGN: '₦', USD: '$', AED: 'AED ', GBP: '£', EUR: '€', QAR: 'QAR ', CAD: 'CA$',
 };
 
-export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals, userId }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string }) {
+export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals, userId, existingBooking }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingBooking: any }) {
+  const router = useRouter();
   const [showBooking, setShowBooking] = useState(false);
+
+  // Realtime: auto-refresh when admin confirms booking
+  useEffect(() => {
+    if (!existingBooking) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`holiday_booking:${existingBooking.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "holiday_bookings",
+          filter: `id=eq.${existingBooking.id}`,
+        },
+        (payload) => {
+          if ((payload.new as any).status === "payment_confirmed") {
+            router.refresh();
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [existingBooking?.id, router]);
 
   const prices = [
     { currency: 'NGN', value: pkg.price_per_person_ngn, symbol: '₦' },
@@ -80,19 +107,34 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+        {existingBooking && (
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: existingBooking.status === 'payment_submitted' ? 'var(--teal-pale)' : '#FEF3C7', borderRadius: 'var(--radius-md)', border: `1px solid ${existingBooking.status === 'payment_submitted' ? 'var(--teal)' : '#FDE68A'}` }}>
+            <p style={{ fontWeight: 700, color: existingBooking.status === 'payment_submitted' ? 'var(--teal)' : '#92400E', fontSize: '0.9375rem', marginBottom: '0.25rem' }}>
+              {existingBooking.status === 'payment_submitted' ? '✓ Payment submitted' : 'Payment pending'}
+            </p>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              {existingBooking.status === 'payment_submitted'
+                ? 'Awaiting admin confirmation. This usually takes 24–48 hours.'
+                : 'Complete your payment to proceed.'}
+            </p>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: existingBooking ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
           <button
             onClick={() => setShowBooking(true)}
             style={{ padding: '0.75rem', background: 'var(--teal-pale)', color: 'var(--teal)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
           >
             Save toward this
           </button>
-          <button
-            onClick={() => setShowBooking(true)}
-            style={{ padding: '0.75rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
-          >
-            Book directly
-          </button>
+          {!existingBooking && (
+            <button
+              onClick={() => setShowBooking(true)}
+              style={{ padding: '0.75rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
+            >
+              Book directly
+            </button>
+          )}
         </div>
       </div>
 

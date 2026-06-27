@@ -1,6 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
 interface OrderRecord {
+  id: string;
   status: string;
   case_manager_notes: string | null;
 }
@@ -22,7 +27,28 @@ const statusSteps = [
 ];
 
 export default function ActiveOrderTracker({ order }: ActiveOrderTrackerProps) {
+  const router = useRouter();
   const currentIndex = statusSteps.findIndex(s => s.key === order.status);
+
+  // Realtime: auto-refresh when admin confirms payment or updates status
+  useEffect(() => {
+    if (!order.id) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`service_order:${order.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "service_orders",
+          filter: `id=eq.${order.id}`,
+        },
+        () => { router.refresh(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [order.id, router]);
 
   return (
     <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '1.5rem', border: '1px solid var(--border)' }}>

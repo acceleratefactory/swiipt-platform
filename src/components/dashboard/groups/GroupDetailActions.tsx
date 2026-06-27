@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import CountdownTimer from "./CountdownTimer";
 import GroupBuyPaymentModal from "./GroupBuyPaymentModal";
 
@@ -59,6 +60,30 @@ export default function GroupDetailActions({
   const [leaving, setLeaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [leaveError, setLeaveError] = useState("");
+
+  // Realtime: auto-refresh when admin confirms payment
+  useEffect(() => {
+    if (membershipStatus !== "pending_payment" || !userConfirmedAt) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`group_buy_member:${groupId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "group_buy_members",
+          filter: `group_buy_id=eq.${groupId}`,
+        },
+        (payload) => {
+          if ((payload.new as any).user_id === currentUserId && (payload.new as any).status === "paid") {
+            router.refresh();
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [groupId, currentUserId, membershipStatus, userConfirmedAt, router]);
 
   function handlePayClick() {
     setShowPaymentModal(true);
