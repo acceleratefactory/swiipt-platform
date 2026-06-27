@@ -64,7 +64,6 @@ export default function GroupDetailActions({
 
   // Realtime: auto-refresh when admin confirms payment
   useEffect(() => {
-    if (membershipStatus !== "pending_payment") return;
     const channel = supabase
       .channel(`group_buy_member:${groupId}`)
       .on(
@@ -83,7 +82,7 @@ export default function GroupDetailActions({
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [groupId, currentUserId, membershipStatus, supabase]);
+  }, [groupId, currentUserId, supabase]);
 
   function handlePayClick() {
     setShowPaymentModal(true);
