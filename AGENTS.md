@@ -630,7 +630,14 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Build verified:** `npm run build` — zero TS errors
 - **Caveat (Fix 1):** If `balance_ngn` is lower than the deduction amount, it could go slightly negative — this is a pre-existing edge case, not introduced by the fix. The original code never deducted from `balance_ngn` at all.
 
-- **Build:** `npm run build` — pass with zero TS errors
+### Session 13b — Credit Double-Deduction Fix (Completed)
+- **Finding:** When goal_redemption + credit are both used, the goal was deducted by the pre-credit amount (187,000) instead of the credit-reduced amount (172,000). Credit was consumed from wallet AND the credit value was also deducted from the goal — effectively double-counted.
+- **Root cause:** In `services/order/route.ts`, credit application code ran AFTER goal deduction. `deduct_goal_balance(goalId, finalPrice)` used the pre-credit `finalPrice` (187,000), then credit reduced `finalPrice` to 172,000 — too late. The transaction history showed 172,000 (read from DB after credit updated it), but the actual goal balance reflected 187,000.
+- **Fix:** Reordered three blocks in `services/order/route.ts`: bank details → credit application → goal deduction. Goal deduction now uses the credit-reduced `finalPrice`. Added `&& finalPrice > 0` guard to skip deduction if credit fully covers the cost. No SQL changes needed.
+- **Investigation report:** `reports/findings/service-credit-double-deduction.md`
+- **Build verified:** `npm run build` — zero TS errors
+
+## 11. VERIFICATION SCRIPTS
 - **Dev:** `npm run dev` — start without errors
 - **Lint:** `npm run lint`
 - No test framework installed — would need Jest/Vitest/Playwright setup from scratch

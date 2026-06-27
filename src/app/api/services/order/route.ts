@@ -88,23 +88,6 @@ export async function POST(request: NextRequest) {
 
   if (error) return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
 
-  if (paymentMethod === "goal_redemption" && goalId) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).rpc("deduct_goal_balance", {
-      goal_id_input: goalId,
-      amount_input: finalPrice,
-    });
-
-    await supabase.from("notifications").insert({
-      user_id: user.id,
-      type: "goal_redemption",
-      title: "Goal used for service payment",
-      body: `${pkg.name} — ${currency} ${Number(finalPrice).toLocaleString()} deducted from your goal.`,
-      action_url: `/dashboard/goals/${goalId}`,
-      target_segment: null,
-    });
-  }
-
   let bankDetails = null;
   if (paymentMethod === "direct_payment") {
     const { data: settings } = await supabaseAny
@@ -138,6 +121,23 @@ export async function POST(request: NextRequest) {
       await (supabase as any).from("service_orders").update({ status: "payment_confirmed" }).eq("id", order.id);
       order.status = "payment_confirmed";
     }
+  }
+
+  if (paymentMethod === "goal_redemption" && goalId && finalPrice > 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).rpc("deduct_goal_balance", {
+      goal_id_input: goalId,
+      amount_input: finalPrice,
+    });
+
+    await supabase.from("notifications").insert({
+      user_id: user.id,
+      type: "goal_redemption",
+      title: "Goal used for service payment",
+      body: `${pkg.name} — ${currency} ${Number(finalPrice).toLocaleString()} deducted from your goal.`,
+      action_url: `/dashboard/goals/${goalId}`,
+      target_segment: null,
+    });
   }
 
   await supabase.from("notifications").insert({
