@@ -83,7 +83,7 @@ export default function OrderDetailView({ order, documents, adminId: _adminId }:
               <div><span style={{ color: 'var(--text-muted)' }}>Service:</span> <span style={{ fontWeight: 600, color: 'var(--midnight)' }}>{order.service_packages?.name}</span></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Destination:</span> <span style={{ fontWeight: 600, color: 'var(--midnight)' }}>{order.service_packages?.destination}</span></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Payment:</span> <span style={{ fontWeight: 600, color: 'var(--midnight)' }}>{order.payment_method || '-'}</span></div>
-              <div><span style={{ color: 'var(--text-muted)' }}>Amount:</span> <span style={{ fontWeight: 600, color: 'var(--midnight)' }}>{order.price_paid ? `${order.currency || 'NGN'} ${Number(order.price_paid).toLocaleString()}` : '-'}</span></div>
+              <div><span style={{ color: 'var(--text-muted)' }}>Amount:</span> <span style={{ fontWeight: 600, color: 'var(--midnight)' }}>{order.final_price ? `${order.payment_currency || 'NGN'} ${Number(order.final_price).toLocaleString()}` : '-'}</span></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Order date:</span> <span style={{ fontWeight: 600, color: 'var(--midnight)' }}>{new Date(order.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
               <div><span style={{ color: 'var(--text-muted)' }}>Status:</span> <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: sc.bg, color: sc.color, marginLeft: '0.25rem' }}>{order.status.replace(/_/g, ' ')}</span></div>
             </div>

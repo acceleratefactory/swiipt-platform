@@ -611,6 +611,14 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Session 11f — Modal Auto-Close Fix:** Root cause: `router.refresh()` only re-renders server components — client state (`showPaymentModal`) is preserved, so modal stays open. Goal deposit uses `window.location.reload()` which destroys ALL client state. Fix: added `setShowPaymentModal(false)` before `router.refresh()` in both Realtime and polling callbacks, matching the "Back to groups" button pattern. Investigation: `reports/findings/modal-auto-close-investigation.md`.
 - **Deployed:** Commits `5804ac4`, `29a65eb`, `d97f86b`, `8c414bc`, `592e204`, `92736a8`, `c167e3d`
 
+### Session 12 — Admin Order Amount Display Fix (Completed)
+- **Finding:** Admin Orders detail page and Orders table show "Amount: -" for every order because the component references `order.price_paid` — a column that does not exist in the `service_orders` table (never created in any migration or type definition)
+- **Root cause:** Typo/bug in display code — `price_paid` was used instead of `final_price` (the actual column that stores the charged amount after discounts/credits). Same for `currency` → `payment_currency`
+- **Fix:** Replaced `price_paid` with `final_price` and `currency` with `payment_currency` in both `OrderDetailView.tsx:86` and `OrdersTable.tsx:74`
+- **No DB changes needed** — `final_price` and `payment_currency` already exist and are correctly populated for every order
+- **Investigation report:** `reports/findings/admin-order-amount-missing.md`
+- **Build verified:** `npm run build` — zero TS errors
+
 ## 11. VERIFICATION SCRIPTS
 
 - **Build:** `npm run build` — pass with zero TS errors
