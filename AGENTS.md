@@ -638,6 +638,6 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Build verified:** `npm run build` — zero TS errors
 
 ## 11. VERIFICATION SCRIPTS
-- **Dev:** `npm run dev` — start without errors
+- **Build:** `npm run build` — pass with zero TS errors
 - **Lint:** `npm run lint`
 - No test framework installed — would need Jest/Vitest/Playwright setup from scratch
