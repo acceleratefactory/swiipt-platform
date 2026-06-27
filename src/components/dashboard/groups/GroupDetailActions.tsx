@@ -60,11 +60,11 @@ export default function GroupDetailActions({
   const [leaving, setLeaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [leaveError, setLeaveError] = useState("");
+  const supabase = createClient();
 
   // Realtime: auto-refresh when admin confirms payment
   useEffect(() => {
     if (membershipStatus !== "pending_payment") return;
-    const supabase = createClient();
     const channel = supabase
       .channel(`group_buy_member:${groupId}`)
       .on(
@@ -83,7 +83,7 @@ export default function GroupDetailActions({
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [groupId, currentUserId, membershipStatus, router]);
+  }, [groupId, currentUserId, membershipStatus, supabase]);
 
   function handlePayClick() {
     setShowPaymentModal(true);
