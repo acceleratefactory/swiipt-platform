@@ -7,7 +7,7 @@ const currencySymbols: Record<string, string> = {
   NGN: '₦', USD: '$', AED: 'AED ', GBP: '£', EUR: '€',
 };
 
-export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, onClose }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; onClose: () => void }) {
+export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, existingGoal, onClose }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingGoal?: any; onClose: () => void }) {
   const supabase = createClient();
   const [action, setAction] = useState<"save" | "book" | null>(null);
   const [travellers, setTravellers] = useState(1);
@@ -51,6 +51,26 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
     setLoading(true);
     setError("");
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existingGoal } = await (supabase as any)
+        .from("savings_goals")
+        .select("id, goal_name, current_balance, target_amount")
+        .eq("linked_holiday_package_id", pkg.id)
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (existingGoal) {
+        setResult({
+          type: "existing_goal",
+          goalId: existingGoal.id,
+          goalName: existingGoal.goal_name,
+          message: `You already have a savings goal "${existingGoal.goal_name}" for this trip. Continue saving or book directly.`,
+        });
+        setLoading(false);
+        return;
+      }
+
       const { error: insertError } = await (supabase as any).from("savings_goals").insert({
         user_id: userId,
         goal_name: pkg.title,
@@ -60,6 +80,7 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
         target_amount: totalPrice,
         status: "active",
         is_locked: false,
+        linked_holiday_package_id: pkg.id,
       });
       if (insertError) throw insertError;
       setResult({ type: "save", message: `Savings goal "${pkg.title}" created! Start saving toward your trip.` });
@@ -89,6 +110,34 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
     }
   }
 
+  async function handlePayFromGoal() {
+    if (!existingGoal) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/holidays/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          packageId: pkg.id,
+          travellers,
+          currency,
+          goalId: existingGoal.id,
+          paymentMethod: "goal_redemption",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Payment failed");
+      setResult({ type: "goal_payment", ...data });
+      setConfirmed(true);
+      setAdminConfirmed(true);
+    } catch (err: any) {
+      setError(err.message || "Payment failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   if (result) {
     if (confirmed) {
       return (
@@ -111,13 +160,19 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
       );
     }
 
-    return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>{result.type === "save" ? "🎯" : "🎉"}</p>
-        <h3 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.75rem' }}>
-          {result.type === "save" ? "Goal created!" : "Booking initiated!"}
-        </h3>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginBottom: '1.5rem' }}>{result.message}</p>
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center' }}>
+          <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>{result.type === "save" ? "🎯" : result.type === "existing_goal" ? "💡" : "🎉"}</p>
+          <h3 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.75rem' }}>
+            {result.type === "save" ? "Goal created!" : result.type === "existing_goal" ? "Goal already exists" : "Booking initiated!"}
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginBottom: '1.5rem' }}>{result.message}</p>
+
+          {result.type === "existing_goal" && (
+            <a href={`/dashboard/goals/${result.goalId}`} style={{ display: 'inline-block', padding: '0.75rem 1.5rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, borderRadius: 'var(--radius-md)', textDecoration: 'none', marginBottom: '0.75rem' }}>
+              View goal →
+            </a>
+          )}
 
         {result.type === "book" && (
           <div style={{ background: 'var(--off-white)', borderRadius: 'var(--radius-md)', padding: '1.25rem', marginBottom: '1.5rem', textAlign: 'left' }}>
@@ -278,6 +333,24 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
         >
           {loading ? "Creating goal..." : `🎯 Save ₦${totalPrice?.toLocaleString()} toward this trip`}
         </button>
+      ) : existingGoal && existingGoal.current_balance >= totalPrice ? (
+        <div style={{ display: 'grid', gap: '0.75rem' }}>
+          <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>Choose payment method</p>
+          <button
+            onClick={handlePayFromGoal}
+            disabled={loading}
+            style={{ width: '100%', padding: '0.75rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}
+          >
+            {loading ? "Processing..." : `🎯 Pay from ${existingGoal.goal_name} — ${symbol}${Number(existingGoal.current_balance).toLocaleString()}`}
+          </button>
+          <button
+            onClick={handleBook}
+            disabled={loading}
+            style={{ width: '100%', padding: '0.75rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}
+          >
+            {loading ? "Processing..." : `✈️ Pay ${symbol}${totalPrice?.toLocaleString()} via bank transfer`}
+          </button>
+        </div>
       ) : (
         <button
           onClick={handleBook}

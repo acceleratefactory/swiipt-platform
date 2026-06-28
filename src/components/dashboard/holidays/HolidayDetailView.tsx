@@ -23,7 +23,7 @@ const _currencySymbols: Record<string, string> = {
   NGN: '₦', USD: '$', AED: 'AED ', GBP: '£', EUR: '€', QAR: 'QAR ', CAD: 'CA$',
 };
 
-export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals, userId, existingBooking }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingBooking: any }) {
+export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals, userId, existingBooking, existingGoal }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingBooking: any; existingGoal: any }) {
   const router = useRouter();
   const [showBooking, setShowBooking] = useState(false);
 
@@ -120,13 +120,36 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: existingBooking ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
-          <button
-            onClick={() => setShowBooking(true)}
-            style={{ padding: '0.75rem', background: 'var(--teal-pale)', color: 'var(--teal)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
-          >
-            Save toward this
-          </button>
+        {existingGoal && (
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--teal-pale)', borderRadius: 'var(--radius-md)', border: '1px solid var(--teal)' }}>
+            <p style={{ fontWeight: 700, color: 'var(--teal)', fontSize: '0.9375rem', marginBottom: '0.25rem' }}>
+              🎯 Saving for this trip
+            </p>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-secondary)', marginBottom: '0.375rem' }}>
+              {existingGoal.goal_name}
+            </p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--midnight)', fontWeight: 600 }}>
+              ₦{Number(existingGoal.current_balance).toLocaleString()} / ₦{Number(existingGoal.target_amount).toLocaleString()}
+            </p>
+          </div>
+        )}
+
+        <div style={{ display: 'grid', gridTemplateColumns: existingBooking || (existingGoal && existingGoal.current_balance >= (pkg.price_per_person_ngn || 0)) ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+          {existingGoal ? (
+            <a
+              href={`/dashboard/goals/${existingGoal.id}`}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem', background: 'var(--teal-pale)', color: 'var(--teal)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', textDecoration: 'none' }}
+            >
+              Continue saving →
+            </a>
+          ) : (
+            <button
+              onClick={() => setShowBooking(true)}
+              style={{ padding: '0.75rem', background: 'var(--teal-pale)', color: 'var(--teal)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
+            >
+              Save toward this
+            </button>
+          )}
           {!existingBooking && (
             <button
               onClick={() => setShowBooking(true)}
@@ -148,6 +171,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
               preferredCurrency={preferredCurrency}
               activeGoals={activeGoals}
               userId={userId}
+              existingGoal={existingGoal}
               onClose={() => setShowBooking(false)}
             />
           </div>

@@ -355,7 +355,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Priority 2 (Sprint 16) — Group Buy Payment Flow (Sessions 5–8):** Full payment modal with goal redemption, direct bank transfer, travel credit auto-apply, Realtime subscription, payment recovery (resume/cancel), admin confirmation sync from all admin paths
 - **System 2 — Trade Show Groups:** 3 new tables (`trade_shows`, `trade_show_groups`, `trade_show_group_members`), SME group savings toward trade show attendance, linked savings goals
 - **System 3 — Readiness Score:** 0-100 scale, `calculate_readiness_score()` RPC, SVG circular progress on dashboard home, fire-and-forget triggers in deposit/order/document APIs
-- **Remaining:** Priority 3 (travel credit + Realtime for group buy), Priority 4 (goal-based holiday payment)
+- **Priority 4 — Goal-based holiday payment (Sessions 14-15):** Phase 1: linked_holiday_package_id on savings_goals, duplicate goal prevention, existing goal detection on detail page. Phase 2: goal_id on holiday_bookings, goal_redemption support in booking API, payment method selection UI, admin cancel reverts goal balance.
 
 ## 8. API ROUTES — COMPLETE INDEX
 
@@ -635,6 +635,22 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Root cause:** In `services/order/route.ts`, credit application code ran AFTER goal deduction. `deduct_goal_balance(goalId, finalPrice)` used the pre-credit `finalPrice` (187,000), then credit reduced `finalPrice` to 172,000 — too late. The transaction history showed 172,000 (read from DB after credit updated it), but the actual goal balance reflected 187,000.
 - **Fix:** Reordered three blocks in `services/order/route.ts`: bank details → credit application → goal deduction. Goal deduction now uses the credit-reduced `finalPrice`. Added `&& finalPrice > 0` guard to skip deduction if credit fully covers the cost. No SQL changes needed.
 - **Investigation report:** `reports/findings/service-credit-double-deduction.md`
+- **Build verified:** `npm run build` — zero TS errors
+
+### Session 14 — Holiday Goal Linking (Phase 1) (Completed)
+- **Goal:** Remember existing savings goals created for a trip, show them on holiday detail page, prevent duplicate goal creation.
+- **Step 1 — SQL + types:** ALTER TABLE `savings_goals` ADD COLUMN `linked_holiday_package_id UUID REFERENCES holiday_packages(id) ON DELETE SET NULL`. Updated Row type in `database.ts`. Migration SQL: `fix_holiday_goal_linking_step1.sql`.
+- **Step 2 — Duplicate check + populate link:** In `HolidayBookingFlow.handleSave()`, checks for existing goal via `linked_holiday_package_id` before inserting. Sets `linked_holiday_package_id: pkg.id` on new goals. Shows "Goal already exists" card with "View goal →" link if found.
+- **Step 3 — Detect existing goal on detail page:** Server page (`holidays/[id]/page.tsx`) queries for existing goal with `linked_holiday_package_id`. `HolidayDetailView` shows "🎯 Saving for this trip" card with progress + "Continue saving →" link. Replaces "Save toward this" button when goal exists.
+
+### Session 15 — Holiday Goal Redemption (Phase 2) (Completed)
+- **Goal:** Allow users to pay for holiday bookings using goal savings (goal_redemption), with admin cancel reverting goal balance.
+- **Step 4 — SQL + types:** ALTER TABLE `holiday_bookings` ADD COLUMN `goal_id UUID REFERENCES savings_goals(id) ON DELETE SET NULL`. Updated Row type in `database.ts`. Migration SQL: `fix_holiday_goal_redemption_step4.sql`.
+- **Step 5 — Goal redemption in booking API:** Rewrote `POST /api/holidays/book/route.ts` to accept `goalId` + `paymentMethod`. Handles milestone discount, credit auto-apply (manual wallet update), `deduct_goal_balance`, user notification. Direct payment path unchanged.
+- **Step 6 — Goal selection UI in `HolidayBookingFlow.tsx`:** When user has a funded goal (balance ≥ total price), shows two payment buttons: "🎯 Pay from {goal_name}" and "✈️ Pay via bank transfer". Goal_redemption calls `handlePayFromGoal` → immediately `payment_confirmed` (no admin confirmation needed). Added `existingGoal?` optional prop for `HolidayGrid.tsx` usage.
+- **Step 7 — Admin cancellation reverts goal balance:** `POST /api/admin/holidays/update-booking-status` now fetches `goal_id` + `total_price`. When cancelled with `goal_id`, restores `savings_goals.current_balance` (+ `wallets.balance_ngn` for unlocked goals).
+- **Key decision:** Holiday booking credit handled via manual wallet update (not RPC) since `apply_credit_to_order` is hardcoded to `service_orders`.
+- **Key decision:** `existingGoal` prop is optional in `HolidayBookingFlow` — `HolidayGrid.tsx` doesn't have existing goal data for grid packages.
 - **Build verified:** `npm run build` — zero TS errors
 
 ## 11. VERIFICATION SCRIPTS

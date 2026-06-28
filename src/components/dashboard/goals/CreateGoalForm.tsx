@@ -110,6 +110,7 @@ export default function CreateGoalForm({
         early_exit_penalty_rate: 0.03,
         status: "active",
         linked_service_package_id: null,
+        linked_holiday_package_id: null,
       })
       .select()
       .single();

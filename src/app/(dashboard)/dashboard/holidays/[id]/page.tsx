@@ -26,9 +26,18 @@ export default async function HolidayDetailPage({ params }: { params: { id: stri
 
   const { data: goals } = await supabase
     .from("savings_goals")
-    .select("id, goal_name, current_balance, currency, status")
+    .select("id, goal_name, current_balance, currency, status, target_amount")
     .eq("user_id", user.id)
     .eq("status", "active");
+
+  // Find a goal linked to this holiday package
+  const { data: existingGoal } = await supabase
+    .from("savings_goals")
+    .select("id, goal_name, current_balance, target_amount, currency, status")
+    .eq("linked_holiday_package_id", params.id)
+    .eq("user_id", user.id)
+    .eq("status", "active")
+    .maybeSingle();
 
   // Check for existing active booking by this user for this package
   const { data: existingBooking } = await supabase
@@ -52,6 +61,7 @@ export default async function HolidayDetailPage({ params }: { params: { id: stri
         activeGoals={goals || []}
         userId={user.id}
         existingBooking={existingBooking}
+        existingGoal={existingGoal}
       />
     </div>
   );

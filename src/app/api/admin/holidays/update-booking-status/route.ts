@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: booking } = await (serviceClient as any)
     .from("holiday_bookings")
-    .select("status, user_id, package_id")
+    .select("status, user_id, package_id, goal_id, total_price")
     .eq("id", bookingId)
     .single();
 
@@ -95,6 +95,38 @@ export async function POST(request: NextRequest) {
         .from("group_buy_members")
         .update({ status: "committed", booking_id: null, payment_reference: null, user_confirmed_at: null })
         .eq("id", gbMember.id);
+    }
+  }
+
+  // Restore goal balance if a goal_redemption booking is cancelled
+  if (booking.goal_id && newStatus === "cancelled") {
+    const { data: goal } = await (serviceClient as any)
+      .from("savings_goals")
+      .select("current_balance, is_locked")
+      .eq("id", booking.goal_id)
+      .single();
+
+    if (goal) {
+      const amount = booking.total_price;
+      await (serviceClient as any)
+        .from("savings_goals")
+        .update({ current_balance: goal.current_balance + amount })
+        .eq("id", booking.goal_id);
+
+      if (!goal.is_locked) {
+        const { data: wallet } = await (serviceClient as any)
+          .from("wallets")
+          .select("balance_ngn")
+          .eq("user_id", booking.user_id)
+          .single();
+
+        if (wallet) {
+          await (serviceClient as any)
+            .from("wallets")
+            .update({ balance_ngn: wallet.balance_ngn + amount })
+            .eq("user_id", booking.user_id);
+        }
+      }
     }
   }
 

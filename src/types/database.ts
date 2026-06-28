@@ -82,6 +82,7 @@ export interface Database {
           milestone_75_unlocked: boolean
           milestone_100_unlocked: boolean
           linked_service_package_id: string | null
+          linked_holiday_package_id: string | null
           created_at: string
         }
         Insert: Omit<Database["public"]["Tables"]["savings_goals"]["Row"], "id" | "created_at" | "current_balance" | "milestone_25_unlocked" | "milestone_50_unlocked" | "milestone_75_unlocked" | "milestone_100_unlocked">
@@ -465,6 +466,7 @@ export interface Database {
           currency: string
           total_price: number
           status: string
+          goal_id: string | null
           case_manager_notes: string | null
           internal_notes: string | null
           documents_requested_at: string | null
