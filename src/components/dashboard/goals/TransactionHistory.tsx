@@ -30,6 +30,7 @@ export default function TransactionHistory({
   deposits,
   gifts,
   serviceOrders,
+  holidayBookings,
   goalCurrency: _goalCurrency,
   userId,
 }: {
@@ -37,6 +38,8 @@ export default function TransactionHistory({
   gifts: Gift[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   serviceOrders: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  holidayBookings: any[];
   goalCurrency: string;
   userId: string;
 }) {
@@ -74,6 +77,18 @@ export default function TransactionHistory({
       reference: null as string | null,
       confirmedAt: o.updated_at || o.created_at,
       fromTo: o.service_packages?.name || "Service payment",
+    })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...holidayBookings.map((b: any) => ({
+      id: b.id,
+      type: "holiday_payment" as const,
+      amount: b.total_price,
+      currency: b.currency,
+      status: b.status,
+      date: b.created_at,
+      reference: null as string | null,
+      confirmedAt: b.updated_at || b.created_at,
+      fromTo: b.holiday_packages?.title || "Holiday payment",
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
@@ -120,6 +135,7 @@ export default function TransactionHistory({
             };
           const isGiftReceived = tx.type === "gift_received";
           const isServicePayment = tx.type === "service_payment";
+          const isHolidayPayment = tx.type === "holiday_payment";
           return (
             <div
               key={tx.id}
@@ -136,7 +152,7 @@ export default function TransactionHistory({
                   width: 36,
                   height: 36,
                   borderRadius: "50%",
-                  background: isGiftReceived ? "#EDE9FE" : isServicePayment ? "#EDE9FE" : "var(--teal-pale)",
+                  background: isGiftReceived ? "#EDE9FE" : isServicePayment || isHolidayPayment ? "#EDE9FE" : "var(--teal-pale)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -144,7 +160,7 @@ export default function TransactionHistory({
                   flexShrink: 0,
                 }}
               >
-                {tx.type === "deposit" ? "↓" : tx.type === "service_payment" ? "🛠️" : "🎁"}
+                {tx.type === "deposit" ? "↓" : tx.type === "service_payment" ? "🛠️" : tx.type === "holiday_payment" ? "🌍" : "🎁"}
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -161,7 +177,9 @@ export default function TransactionHistory({
                       ? "Gift sent"
                       : tx.type === "service_payment"
                         ? "Service payment"
-                        : "Gift received"}
+                        : tx.type === "holiday_payment"
+                          ? "Holiday payment"
+                          : "Gift received"}
                   {tx.fromTo && (
                     <span
                       style={{

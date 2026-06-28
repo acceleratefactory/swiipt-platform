@@ -66,6 +66,7 @@ export default function GoalDetailView({
   milestoneRewards,
   gifts,
   serviceOrders,
+  holidayBookings,
   userId,
   preferredCurrency: _preferredCurrency,
 }: {
@@ -75,6 +76,8 @@ export default function GoalDetailView({
   gifts: Gift[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   serviceOrders: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  holidayBookings: any[];
   userId: string;
   preferredCurrency: string;
 }) {
@@ -382,6 +385,7 @@ export default function GoalDetailView({
         deposits={deposits}
         gifts={gifts}
         serviceOrders={serviceOrders}
+        holidayBookings={holidayBookings}
         goalCurrency={goal.currency}
         userId={userId}
       />

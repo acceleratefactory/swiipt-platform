@@ -48,6 +48,13 @@ export default async function GoalDetailPage({
     .eq("goal_id", params.id)
     .order("created_at", { ascending: false });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: holidayBookings } = await (supabase as any)
+    .from("holiday_bookings")
+    .select("*, holiday_packages(title)")
+    .eq("goal_id", params.id)
+    .order("created_at", { ascending: false });
+
   const { data: profile } = await supabase
     .from("users")
     .select("preferred_currency, mobility_score")
@@ -61,6 +68,7 @@ export default async function GoalDetailPage({
       milestoneRewards={milestoneRewards || []}
       gifts={gifts || []}
       serviceOrders={serviceOrders || []}
+      holidayBookings={holidayBookings || []}
       userId={user.id}
       preferredCurrency={profile?.preferred_currency || "NGN"}
     />
