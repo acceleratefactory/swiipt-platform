@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const currencySymbols: Record<string, string> = {
@@ -9,6 +10,7 @@ const currencySymbols: Record<string, string> = {
 
 export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, existingGoal, onClose }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingGoal?: any; onClose: () => void }) {
   const supabase = createClient();
+  const router = useRouter();
   const [action, setAction] = useState<"save" | "book" | null>(null);
   const [travellers, setTravellers] = useState(1);
   const [currency, setCurrency] = useState(preferredCurrency);
@@ -19,6 +21,7 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
   const [confirmed, setConfirmed] = useState(false);
   const [adminConfirmed, setAdminConfirmed] = useState(false);
   const [confirmError, setConfirmError] = useState("");
+  const [detectedGoal, setDetectedGoal] = useState<any>(null);
 
   useEffect(() => {
     if (!confirmed || !result?.bookingId) return;
@@ -61,6 +64,7 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
         .maybeSingle();
 
       if (existingGoal) {
+        setDetectedGoal(existingGoal);
         setResult({
           type: "existing_goal",
           goalId: existingGoal.id,
@@ -84,6 +88,7 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
       });
       if (insertError) throw insertError;
       setResult({ type: "save", message: `Savings goal "${pkg.title}" created! Start saving toward your trip.` });
+      router.refresh();
     } catch (err: any) {
       setError(err.message || "Failed to create savings goal");
     } finally {
@@ -111,7 +116,8 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
   }
 
   async function handlePayFromGoal() {
-    if (!existingGoal) return;
+    const activeGoal = existingGoal || detectedGoal;
+    if (!activeGoal) return;
     setLoading(true);
     setError("");
     try {
@@ -122,7 +128,7 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
           packageId: pkg.id,
           travellers,
           currency,
-          goalId: existingGoal.id,
+          goalId: activeGoal.id,
           paymentMethod: "goal_redemption",
         }),
       });
@@ -169,9 +175,14 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginBottom: '1.5rem' }}>{result.message}</p>
 
           {result.type === "existing_goal" && (
-            <a href={`/dashboard/goals/${result.goalId}`} style={{ display: 'inline-block', padding: '0.75rem 1.5rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, borderRadius: 'var(--radius-md)', textDecoration: 'none', marginBottom: '0.75rem' }}>
-              View goal →
-            </a>
+            <>
+              <a href={`/dashboard/goals/${result.goalId}`} style={{ display: 'inline-block', padding: '0.75rem 1.5rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, borderRadius: 'var(--radius-md)', textDecoration: 'none', marginBottom: '0.75rem' }}>
+                View goal →
+              </a>
+              <button onClick={() => { setResult(null); setAction("book"); }} style={{ display: 'block', width: '100%', padding: '0.75rem 1.5rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}>
+                ✈️ Book directly from this goal
+              </button>
+            </>
           )}
 
         {result.type === "book" && (
@@ -333,16 +344,28 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
         >
           {loading ? "Creating goal..." : `🎯 Save ₦${totalPrice?.toLocaleString()} toward this trip`}
         </button>
-      ) : existingGoal && existingGoal.current_balance >= totalPrice ? (
-        <div style={{ display: 'grid', gap: '0.75rem' }}>
-          <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>Choose payment method</p>
-          <button
-            onClick={handlePayFromGoal}
-            disabled={loading}
-            style={{ width: '100%', padding: '0.75rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}
-          >
-            {loading ? "Processing..." : `🎯 Pay from ${existingGoal.goal_name} — ${symbol}${Number(existingGoal.current_balance).toLocaleString()}`}
-          </button>
+      ) : (() => {
+        const activeGoal = existingGoal || detectedGoal;
+        const hasFundedGoal = activeGoal && activeGoal.current_balance >= totalPrice;
+        return hasFundedGoal ? (
+          <div style={{ display: 'grid', gap: '0.75rem' }}>
+            <p style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>Choose payment method</p>
+            <button
+              onClick={handlePayFromGoal}
+              disabled={loading}
+              style={{ width: '100%', padding: '0.75rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}
+            >
+              {loading ? "Processing..." : `🎯 Pay from ${activeGoal.goal_name} — ${symbol}${Number(activeGoal.current_balance).toLocaleString()}`}
+            </button>
+            <button
+              onClick={handleBook}
+              disabled={loading}
+              style={{ width: '100%', padding: '0.75rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}
+            >
+              {loading ? "Processing..." : `✈️ Pay ${symbol}${totalPrice?.toLocaleString()} via bank transfer`}
+            </button>
+          </div>
+        ) : (
           <button
             onClick={handleBook}
             disabled={loading}
@@ -350,16 +373,8 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
           >
             {loading ? "Processing..." : `✈️ Pay ${symbol}${totalPrice?.toLocaleString()} via bank transfer`}
           </button>
-        </div>
-      ) : (
-        <button
-          onClick={handleBook}
-          disabled={loading}
-          style={{ width: '100%', padding: '0.75rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1 }}
-        >
-          {loading ? "Processing..." : `✈️ Pay ${symbol}${totalPrice?.toLocaleString()} via bank transfer`}
-        </button>
-      )}
+        );
+      })()}
 
       <button onClick={onClose} style={{ width: '100%', marginTop: '0.75rem', padding: '0.75rem', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', cursor: 'pointer' }}>
         Cancel
