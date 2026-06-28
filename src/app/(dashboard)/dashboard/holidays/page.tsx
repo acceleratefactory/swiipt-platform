@@ -11,7 +11,7 @@ export default async function HolidaysPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any).from("holiday_packages").select("*").eq("is_active", true).order("is_featured", { ascending: false }),
     supabase.from("users").select("preferred_currency").eq("id", user.id).single(),
-    supabase.from("savings_goals").select("id, goal_name, current_balance, currency, status").eq("user_id", user.id).eq("status", "active"),
+    supabase.from("savings_goals").select("id, goal_name, current_balance, currency, status, linked_holiday_package_id").eq("user_id", user.id).eq("status", "active"),
   ]);
 
   return (

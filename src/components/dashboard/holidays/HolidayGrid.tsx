@@ -47,6 +47,10 @@ export default function HolidayGrid({ packages, preferredCurrency, activeGoals, 
       return true;
     });
 
+  const linkedGoal = selectedPackage
+    ? activeGoals.find((g: any) => g.linked_holiday_package_id === selectedPackage.id)
+    : null;
+
   return (
     <>
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -154,6 +158,8 @@ export default function HolidayGrid({ packages, preferredCurrency, activeGoals, 
               preferredCurrency={preferredCurrency}
               activeGoals={activeGoals}
               userId={userId}
+              existingGoal={linkedGoal}
+              initialAction={linkedGoal?.current_balance >= selectedPackage.price_per_person_ngn ? "book" : undefined}
               onClose={() => setSelectedPackage(null)}
             />
           </div>
