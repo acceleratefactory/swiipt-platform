@@ -26,6 +26,7 @@ const _currencySymbols: Record<string, string> = {
 export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals, userId, existingBooking, existingGoal }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingBooking: any; existingGoal: any }) {
   const router = useRouter();
   const [showBooking, setShowBooking] = useState(false);
+  const [initialAction, setInitialAction] = useState<"book" | null>(null);
 
   // Realtime: auto-refresh when admin confirms booking
   useEffect(() => {
@@ -134,8 +135,15 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: existingBooking || (existingGoal && existingGoal.current_balance >= (pkg.price_per_person_ngn || 0)) ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
-          {existingGoal ? (
+        <div style={{ display: 'grid', gridTemplateColumns: existingBooking ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+          {existingGoal && existingGoal.current_balance >= (pkg.price_per_person_ngn || 0) ? (
+            <button
+              onClick={() => { setShowBooking(true); setInitialAction("book"); }}
+              style={{ padding: '0.75rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
+            >
+              🎯 Pay with savings — ₦{Number(existingGoal.current_balance).toLocaleString()}
+            </button>
+          ) : existingGoal ? (
             <a
               href={`/dashboard/goals/${existingGoal.id}`}
               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.75rem', background: 'var(--teal-pale)', color: 'var(--teal)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', textDecoration: 'none' }}
@@ -144,7 +152,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
             </a>
           ) : (
             <button
-              onClick={() => setShowBooking(true)}
+              onClick={() => { setShowBooking(true); setInitialAction(null); }}
               style={{ padding: '0.75rem', background: 'var(--teal-pale)', color: 'var(--teal)', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
             >
               Save toward this
@@ -152,7 +160,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
           )}
           {!existingBooking && (
             <button
-              onClick={() => setShowBooking(true)}
+              onClick={() => { setShowBooking(true); setInitialAction(null); }}
               style={{ padding: '0.75rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, fontSize: '0.9375rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
             >
               Book directly
@@ -172,7 +180,8 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
               activeGoals={activeGoals}
               userId={userId}
               existingGoal={existingGoal}
-              onClose={() => setShowBooking(false)}
+              initialAction={initialAction}
+              onClose={() => { setShowBooking(false); setInitialAction(null); }}
             />
           </div>
         </div>

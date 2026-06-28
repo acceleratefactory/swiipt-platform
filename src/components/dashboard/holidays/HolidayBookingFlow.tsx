@@ -8,10 +8,10 @@ const currencySymbols: Record<string, string> = {
   NGN: '₦', USD: '$', AED: 'AED ', GBP: '£', EUR: '€',
 };
 
-export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, existingGoal, onClose }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingGoal?: any; onClose: () => void }) {
+export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, existingGoal, initialAction, onClose }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingGoal?: any; initialAction?: "book" | null; onClose: () => void }) {
   const supabase = createClient();
   const router = useRouter();
-  const [action, setAction] = useState<"save" | "book" | null>(null);
+  const [action, setAction] = useState<"save" | "book" | null>(initialAction || null);
   const [travellers, setTravellers] = useState(1);
   const [currency, setCurrency] = useState(preferredCurrency);
   const [loading, setLoading] = useState(false);
