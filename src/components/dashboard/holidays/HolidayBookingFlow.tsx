@@ -8,7 +8,7 @@ const currencySymbols: Record<string, string> = {
   NGN: '₦', USD: '$', AED: 'AED ', GBP: '£', EUR: '€',
 };
 
-export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, existingGoal, initialAction, onClose, onPendingChange, onAdminConfirmed }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingGoal?: any; initialAction?: "book" | null; onClose: () => void; onPendingChange?: (pending: boolean) => void; onAdminConfirmed?: () => void }) {
+export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, existingGoal, initialAction, onClose, onPendingChange, onAdminConfirmed, onBookingCreated }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingGoal?: any; initialAction?: "book" | null; onClose: () => void; onPendingChange?: (pending: boolean) => void; onAdminConfirmed?: () => void; onBookingCreated?: (bookingId: string) => void }) {
   const supabase = createClient();
   const router = useRouter();
   const [action, setAction] = useState<"save" | "book" | null>(initialAction || null);
@@ -49,6 +49,28 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
   useEffect(() => {
     onPendingChange?.(confirmed && !adminConfirmed);
   }, [confirmed, adminConfirmed, onPendingChange]);
+
+  useEffect(() => {
+    if (result?.bookingId) {
+      onBookingCreated?.(result.bookingId);
+    }
+  }, [result?.bookingId, onBookingCreated]);
+
+  useEffect(() => {
+    if (!confirmed || adminConfirmed || !result?.bookingId) return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("holiday_bookings")
+        .select("status")
+        .eq("id", result.bookingId)
+        .single();
+      if (data?.status === "payment_confirmed") {
+        setAdminConfirmed(true);
+        onAdminConfirmed?.();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [confirmed, adminConfirmed, result?.bookingId, supabase, onAdminConfirmed]);
 
   const currencyKey = `price_per_person_${currency.toLowerCase()}`;
   const pricePerPerson = (pkg as any)[currencyKey] || pkg.price_per_person_ngn;

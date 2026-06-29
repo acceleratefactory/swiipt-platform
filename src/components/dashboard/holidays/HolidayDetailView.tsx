@@ -28,6 +28,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
   const [showBooking, setShowBooking] = useState(false);
   const [initialAction, setInitialAction] = useState<"book" | null>(null);
   const [bookingPending, setBookingPending] = useState(false);
+  const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
 
   // Realtime: auto-refresh when admin confirms booking
   useEffect(() => {
@@ -52,6 +53,30 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [existingBooking?.id, router]);
+
+  // Realtime: catch admin confirmation for newly created bookings
+  useEffect(() => {
+    if (!currentBookingId) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`holiday_booking_live:${currentBookingId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "holiday_bookings",
+          filter: `id=eq.${currentBookingId}`,
+        },
+        (payload) => {
+          if ((payload.new as any).status === "payment_confirmed") {
+            router.refresh();
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentBookingId, router]);
 
   const prices = [
     { currency: 'NGN', value: pkg.price_per_person_ngn, symbol: '₦' },
@@ -182,9 +207,10 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
               userId={userId}
               existingGoal={existingGoal}
               initialAction={initialAction}
-              onClose={() => { setShowBooking(false); setInitialAction(null); }}
+              onClose={() => { setShowBooking(false); setInitialAction(null); setCurrentBookingId(null); }}
               onPendingChange={setBookingPending}
               onAdminConfirmed={() => { setShowBooking(false); router.refresh(); }}
+              onBookingCreated={setCurrentBookingId}
             />
           </div>
         </div>
