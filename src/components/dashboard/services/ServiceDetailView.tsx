@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import OrderFlow from "./OrderFlow";
 import ActiveOrderTracker from "./ActiveOrderTracker";
@@ -63,10 +64,7 @@ export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals,
   const [showOrder, setShowOrder] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const trackerRef = useRef<HTMLDivElement>(null);
-  const handleAdminConfirmed = useCallback(() => {
-    setShowOrder(false);
-    window.location.reload();
-  }, []);
+  const router = useRouter();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const price = (pkg as any)[`price_${preferredCurrency.toLowerCase()}`] || pkg.price_ngn;
   const symbol = currencySymbols[preferredCurrency] || '₦';
@@ -93,7 +91,7 @@ export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals,
         },
         (payload) => {
           if ((payload.new as any).status === "payment_confirmed") {
-            window.location.reload();
+            router.refresh();
           }
         }
       )
@@ -181,7 +179,7 @@ export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals,
           walletCredits={walletCredits}
           onClose={() => setShowOrder(false)}
           onOrderPlaced={() => window.location.reload()}
-          onAdminConfirmed={handleAdminConfirmed}
+          onAdminConfirmed={() => { setShowOrder(false); router.refresh(); }}
           onOrderCreated={setCurrentOrderId}
         />
       )}

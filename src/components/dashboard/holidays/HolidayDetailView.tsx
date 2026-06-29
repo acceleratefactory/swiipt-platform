@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useCallback, useEffect, useState } from "react";
-
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import HolidayBookingFlow from "./HolidayBookingFlow";
 
@@ -28,10 +28,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
   const [initialAction, setInitialAction] = useState<"book" | null>(null);
   const [bookingPending, setBookingPending] = useState(false);
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
-  const handleAdminConfirmed = useCallback(() => {
-    setShowBooking(false);
-    window.location.reload();
-  }, []);
+  const router = useRouter();
 
   // Realtime: auto-refresh when admin confirms booking
   useEffect(() => {
@@ -49,7 +46,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
         },
         (payload) => {
           if ((payload.new as any).status === "payment_confirmed") {
-            window.location.reload();
+            router.refresh();
           }
         }
       )
@@ -73,7 +70,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
         },
         (payload) => {
           if ((payload.new as any).status === "payment_confirmed") {
-            window.location.reload();
+            router.refresh();
           }
         }
       )
@@ -212,7 +209,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
               initialAction={initialAction}
               onClose={() => { setShowBooking(false); setInitialAction(null); setCurrentBookingId(null); }}
               onPendingChange={setBookingPending}
-              onAdminConfirmed={handleAdminConfirmed}
+               onAdminConfirmed={() => { setShowBooking(false); router.refresh(); }}
               onBookingCreated={setCurrentBookingId}
             />
           </div>
