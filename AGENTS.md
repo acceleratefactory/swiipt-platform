@@ -777,6 +777,17 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Build verified:** `npm run build` — zero TS errors, zero new lint warnings across all phases
 - **Deployed:** Pushed to `main` for Vercel deployment
 
+### Session 24 — Post-Deploy: `confirm_deposit` ambiguous error + `goal_id` missing in select (Completed)
+- **Problem 1:** After Sprint 16 deploy, admin got `column reference "deposit_id" is ambiguous` when confirming any deposit. Root cause: `confirm_deposit` RPC had 3 `visa_redemptions` subqueries using `deposit_id = deposit_id` where both sides could resolve to either the column or the function parameter. Previously masked by older PostgreSQL version or cached plan.
+- **Fix 1:** `sprint_16_fix_ambiguous_deposit_id.sql` — qualified as `visa_redemptions.deposit_id = confirm_deposit.deposit_id` in all 3 locations. Preserved all Sprint 16 additions.
+- **Problem 2 (masked by Problem 1):** After Fix 1, admin got `column "status" does not exist`. Root cause: `calculate_readiness_score` (Sprint 16 System 3) queries `referrals` with `status = 'completed'` but the column is `commission_status`.
+- **Fix 2:** `sprint_16_fix_referrals_column.sql` — changed `status` → `commission_status` in `calculate_readiness_score`.
+- **Problem 3 (separate):** Trade show group deposit confirmed successfully but goal `current_balance` was not credited; deposit appeared in wallet history but not goal history. Root cause: `groups/[groupId]/page.tsx:32` selected `savings_goals(goal_name, target_amount, current_balance)` — **missing `id`**. So `myGoal.id` was `undefined`, deposit created with `goal_id: null`, `confirm_deposit` entered ELSE branch (wallet credit) instead of IF branch (goal credit).
+- **Fix 3:** `groups/[groupId]/page.tsx:32` — added `id` to select: `savings_goals(id, goal_name, target_amount, current_balance)`.
+- **Reports written:** `reports/sprint_16_confirm_deposit_status_fix_plan.md`, `reports/sprint_16_trade_show_deposit_unlinked_goal.md`
+- **SQL files created:** `swiipt/sprint_16_fix_ambiguous_deposit_id.sql`, `swiipt/sprint_16_fix_referrals_column.sql`
+- **Deployed:** Commits to `main`
+
 ## 11. PENDING / FUTURE BUILD
 
 ### Group Buy ⏱→✅ Transition

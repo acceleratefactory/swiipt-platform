@@ -29,7 +29,7 @@ export default async function TradeShowGroupDetailPage({ params }: { params: { g
 
   const { data: members } = await (adminSupabase as any)
     .from("trade_show_group_members")
-    .select("*, savings_goals(goal_name, target_amount, current_balance)")
+    .select("*, savings_goals(id, goal_name, target_amount, current_balance)")
     .eq("group_id", params.groupId)
     .order("joined_at", { ascending: true });
 
