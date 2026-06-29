@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import DirectPaymentFlow from "./DirectPaymentFlow";
 
 interface ServicePackage {
@@ -36,6 +37,9 @@ interface OrderFlowProps {
   walletCredits?: number;
   onClose: () => void;
   onOrderPlaced: () => void;
+  onPendingChange?: (pending: boolean) => void;
+  onAdminConfirmed?: () => void;
+  onOrderCreated?: (orderId: string) => void;
 }
 
 const currencySymbols: Record<string, string> = {
@@ -44,13 +48,69 @@ const currencySymbols: Record<string, string> = {
 
 type OrderStep = "choose_payment" | "goal_select" | "direct_payment" | "confirmation";
 
-export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId: _userId, walletCredits = 0, onClose, onOrderPlaced }: OrderFlowProps) {
+export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId: _userId, walletCredits = 0, onClose, onOrderPlaced, onPendingChange, onAdminConfirmed, onOrderCreated }: OrderFlowProps) {
   const [step, setStep] = useState<OrderStep>("choose_payment");
   const [selectedGoalId, setSelectedGoalId] = useState("");
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [orderResult, setOrderResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [adminConfirmed, setAdminConfirmed] = useState(false);
+  const supabase = createClient();
+
+  // Realtime: auto-close when admin confirms payment
+  useEffect(() => {
+    if (!confirmed || !orderResult?.orderId || orderResult?.paymentMethod !== "direct_payment") return;
+    const channel = supabase
+      .channel(`service_order:${orderResult.orderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "service_orders",
+          filter: `id=eq.${orderResult.orderId}`,
+        },
+        (payload: any) => {
+          if (payload.new?.status === "payment_confirmed") {
+            setAdminConfirmed(true);
+            onAdminConfirmed?.();
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [confirmed, orderResult?.orderId, orderResult?.paymentMethod, supabase, onAdminConfirmed]);
+
+  // Notify parent when payment is pending
+  useEffect(() => {
+    onPendingChange?.(confirmed && !adminConfirmed && orderResult?.paymentMethod === "direct_payment");
+  }, [confirmed, adminConfirmed, orderResult?.paymentMethod, onPendingChange]);
+
+  // Notify parent of order ID for safety net subscription
+  useEffect(() => {
+    if (orderResult?.orderId) {
+      onOrderCreated?.(orderResult.orderId);
+    }
+  }, [orderResult?.orderId, onOrderCreated]);
+
+  // Polling fallback
+  useEffect(() => {
+    if (!confirmed || adminConfirmed || !orderResult?.orderId || orderResult?.paymentMethod !== "direct_payment") return;
+    const interval = setInterval(async () => {
+      const { data } = await supabase
+        .from("service_orders")
+        .select("status")
+        .eq("id", orderResult.orderId)
+        .single();
+      if ((data as any)?.status === "payment_confirmed") {
+        setAdminConfirmed(true);
+        onAdminConfirmed?.();
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [confirmed, adminConfirmed, orderResult?.orderId, orderResult?.paymentMethod, supabase, onAdminConfirmed]);
 
   const currencyKey = `price_${preferredCurrency.toLowerCase()}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,7 +123,7 @@ export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId:
 
   return (
     <>
-      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50 }} />
+      <div onClick={confirmed && !adminConfirmed && orderResult?.paymentMethod === "direct_payment" ? undefined : onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, cursor: confirmed && !adminConfirmed && orderResult?.paymentMethod === "direct_payment" ? 'default' : 'pointer' }} />
       <div style={{
         position: 'fixed', top: '50%', left: '50%',
         transform: 'translate(-50%, -50%)',
@@ -258,21 +318,20 @@ export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId:
             preferredCurrency={preferredCurrency}
             onComplete={(result) => {
               setOrderResult(result);
+              setConfirmed(true);
               setStep("confirmation");
             }}
           />
         )}
 
-        {step === "confirmation" && (
+        {step === "confirmation" && orderResult?.paymentMethod === "goal_redemption" && (
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
             <h3 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1.25rem', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.5rem' }}>
               Order placed!
             </h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
-              {orderResult?.paymentMethod === "goal_redemption"
-                ? "Payment deducted from your goal. Our team will be in touch within 24 hours."
-                : "Payment received. Our team will confirm and begin processing within 1–4 hours."}
+              Payment deducted from your goal. Our team will be in touch within 24 hours.
             </p>
             {orderResult?.creditApplied > 0 && (
               <div style={{ background: 'var(--teal-pale)', borderRadius: 'var(--radius-md)', padding: '0.75rem 1rem', marginBottom: '1rem' }}>
@@ -289,6 +348,30 @@ export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId:
               style={{ width: '100%', padding: '0.875rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}
             >
               View my orders →
+            </button>
+          </div>
+        )}
+
+        {step === "confirmation" && orderResult?.paymentMethod === "direct_payment" && (
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>{adminConfirmed ? '✅' : '⏱'}</p>
+            <h3 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.75rem' }}>
+              {adminConfirmed ? 'Payment confirmed!' : 'Payment pending confirmation'}
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
+              {adminConfirmed ? (
+                <>Your order <strong>{orderResult?.orderReference}</strong> has been confirmed. We&apos;ll begin processing shortly.</>
+              ) : (
+                <>Your order <strong>{orderResult?.orderReference}</strong> has been submitted.</>
+              )}
+            </p>
+            {!adminConfirmed && (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '1.5rem' }}>
+                This usually takes 1–4 business hours.
+              </p>
+            )}
+            <button onClick={onClose} style={{ padding: '0.75rem 1.5rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}>
+              {adminConfirmed ? 'Close' : 'Back to services'}
             </button>
           </div>
         )}

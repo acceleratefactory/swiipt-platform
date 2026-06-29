@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useState, useEffect, useRef } from "react";
+import { createClient } from "@/lib/supabase/client";
 import OrderFlow from "./OrderFlow";
 import ActiveOrderTracker from "./ActiveOrderTracker";
 
@@ -60,7 +61,12 @@ const pricingFields = [
 
 export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals, existingOrder, userId, walletCredits = 0 }: ServiceDetailViewProps) {
   const [showOrder, setShowOrder] = useState(false);
+  const [currentOrderId, setCurrentOrderId] = useState<string | null>(null);
   const trackerRef = useRef<HTMLDivElement>(null);
+  const handleAdminConfirmed = useCallback(() => {
+    setShowOrder(false);
+    window.location.reload();
+  }, []);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const price = (pkg as any)[`price_${preferredCurrency.toLowerCase()}`] || pkg.price_ngn;
   const symbol = currencySymbols[preferredCurrency] || '₦';
@@ -70,6 +76,30 @@ export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals,
       trackerRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [existingOrder]);
+
+  // Realtime: catch admin confirmation after modal closes (safety net)
+  useEffect(() => {
+    if (!currentOrderId) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`service_order_live:${currentOrderId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "service_orders",
+          filter: `id=eq.${currentOrderId}`,
+        },
+        (payload) => {
+          if ((payload.new as any).status === "payment_confirmed") {
+            window.location.reload();
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [currentOrderId]);
 
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto' }}>
@@ -151,6 +181,8 @@ export default function ServiceDetailView({ pkg, preferredCurrency, activeGoals,
           walletCredits={walletCredits}
           onClose={() => setShowOrder(false)}
           onOrderPlaced={() => window.location.reload()}
+          onAdminConfirmed={handleAdminConfirmed}
+          onOrderCreated={setCurrentOrderId}
         />
       )}
     </div>
