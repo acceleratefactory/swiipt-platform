@@ -653,6 +653,35 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Key decision:** `existingGoal` prop is optional in `HolidayBookingFlow` — `HolidayGrid.tsx` doesn't have existing goal data for grid packages.
 - **Build verified:** `npm run build` — zero TS errors
 
+### Session 16 — Holiday Goal Payment Flow UX Fixes (Completed)
+- **Problem:** User with funded goal saw "Continue saving →" on detail page, had to click through 4 steps to reach goal payment. Grid path didn't pass goal context at all.
+- **Fix 1 — Detail page CTA:** Changed button logic in `HolidayDetailView.tsx` — when goal has sufficient balance, shows "🎯 Pay with savings — ₦{balance}" (teal button) instead of "Continue saving →". Clicking it opens modal with `initialAction="book"`, skipping the action selection screen.
+- **Fix 2 — Grid path:** Added `linked_holiday_package_id` to `activeGoals` query in `holidays/page.tsx`. `HolidayGrid.tsx` now finds linked goal from `activeGoals` and passes `existingGoal` + `initialAction` to `HolidayBookingFlow`.
+- **Fix 3 — Stale prop workaround:** Added `detectedGoal` state in `HolidayBookingFlow` — stores the goal from the duplicate check so booking form can reference it even when server prop is null.
+- **Fix 4 — In-session book button:** Added "✈️ Book directly from this goal" button on the `existing_goal` result screen, so user can proceed to booking without closing/reopening modal.
+- **Investigation reports:** `reports/findings/holiday-goal-payment-not-available.md` (stale prop), `reports/findings/holiday-pay-flow-too-many-steps.md` (UX), `reports/findings/holiday-grid-missing-goal-context.md` (grid path)
+- **Build verified:** `npm run build` — zero TS errors
+- **Deployed:** Commits `c674754`, `fc38f66`, `b0699b2`
+
+### Session 17 — Holiday Goal Deduction in Transaction History (Completed)
+- **Problem:** Goal_redemption holiday booking deduction did not appear in the goal's transaction history on the goal detail page.
+- **Root cause:** Same as Session 13 Fix 3 — `goals/[id]/page.tsx` queried `deposits`, `gifts`, `serviceOrders` but not `holiday_bookings`. `TransactionHistory.tsx` had no `holiday_payment` mapping.
+- **Fix:** Added `holiday_bookings` query (with `holiday_packages(title)` join) in `page.tsx`. Passed through `GoalDetailView.tsx`. Added `holiday_payment` type in `TransactionHistory.tsx` with 🌍 icon, purple background, "Holiday payment" label.
+- **Build verified:** `npm run build` — zero TS errors
+- **Deployed:** Commit `5eec857`
+
+### Session 18 — Holiday Pending Confirmation Modal (Completed)
+- **Problem:** After clicking "I Have Transferred", holiday booking showed "🎉 Payment submitted!" with no auto-close on admin confirmation. User had to manually close modal. Overlay click could accidentally dismiss the pending state. No polling fallback if Realtime event missed.
+- **Investigation report:** `reports/findings/holiday-pending-confirmation-gap.md` — 5 gaps identified vs goal deposit and group buy patterns.
+- **Priority 1 — UI alignment:** Changed icon from 🎉 to ⏱, heading from "Payment submitted!" to "Payment pending confirmation", added "1–4 business hours" body text, "Back to holidays" button text.
+- **Priority 2 — Overlay guard:** Added `bookingPending` state in `HolidayDetailView`. When pending, `onClick=undefined` + `cursor=default` prevents accidental dismissal.
+- **Priority 3 — Auto-close:** Realtime callback now calls `onAdminConfirmed()` which does `setShowBooking(false); router.refresh()`. Modal auto-closes + page refreshes on admin confirmation.
+- **Priority 4 — Polling fallback:** 5-second `setInterval` polls `holiday_bookings.status` — mirrors `GroupDetailActions` polling pattern exactly. Backup if Realtime event is missed.
+- **Priority 5 — Parent subscription:** New `currentBookingId` state in `HolidayDetailView`. New parent-level Realtime subscription persists after modal closes, catches confirmations the user might have missed.
+- **Build verified:** `npm run build` — zero TS errors
+- **Deployed:** Commits `448d905`, `d6d9763`
+- **Pattern note:** All 5 priorities together make the holiday booking flow match the group buy payment confirmation pattern exactly (Realtime + polling + overlay guard + parent safety net).
+
 ## 11. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors
 - **Lint:** `npm run lint`
