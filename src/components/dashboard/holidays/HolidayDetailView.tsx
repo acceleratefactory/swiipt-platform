@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+
 import { createClient } from "@/lib/supabase/client";
 import HolidayBookingFlow from "./HolidayBookingFlow";
 
@@ -24,11 +24,14 @@ const _currencySymbols: Record<string, string> = {
 };
 
 export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals, userId, existingBooking, existingGoal }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingBooking: any; existingGoal: any }) {
-  const router = useRouter();
   const [showBooking, setShowBooking] = useState(false);
   const [initialAction, setInitialAction] = useState<"book" | null>(null);
   const [bookingPending, setBookingPending] = useState(false);
   const [currentBookingId, setCurrentBookingId] = useState<string | null>(null);
+  const handleAdminConfirmed = useCallback(() => {
+    setShowBooking(false);
+    window.location.reload();
+  }, []);
 
   // Realtime: auto-refresh when admin confirms booking
   useEffect(() => {
@@ -46,13 +49,13 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
         },
         (payload) => {
           if ((payload.new as any).status === "payment_confirmed") {
-            router.refresh();
+            window.location.reload();
           }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [existingBooking?.id, router]);
+  }, [existingBooking]);
 
   // Realtime: catch admin confirmation for newly created bookings
   useEffect(() => {
@@ -70,13 +73,13 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
         },
         (payload) => {
           if ((payload.new as any).status === "payment_confirmed") {
-            router.refresh();
+            window.location.reload();
           }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [currentBookingId, router]);
+  }, [currentBookingId]);
 
   const prices = [
     { currency: 'NGN', value: pkg.price_per_person_ngn, symbol: '₦' },
@@ -209,7 +212,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
               initialAction={initialAction}
               onClose={() => { setShowBooking(false); setInitialAction(null); setCurrentBookingId(null); }}
               onPendingChange={setBookingPending}
-              onAdminConfirmed={() => { setShowBooking(false); router.refresh(); }}
+              onAdminConfirmed={handleAdminConfirmed}
               onBookingCreated={setCurrentBookingId}
             />
           </div>

@@ -45,7 +45,7 @@ export default async function HolidayDetailPage({ params }: { params: { id: stri
     .select("id, status, reference, total_price, currency, travellers, created_at")
     .eq("user_id", user.id)
     .eq("package_id", params.id)
-    .in("status", ["payment_pending", "payment_submitted"])
+    .in("status", ["payment_pending", "payment_submitted", "payment_confirmed"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
