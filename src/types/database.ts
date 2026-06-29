@@ -23,7 +23,7 @@ export interface Database {
           readiness_last_calculated: string | null
           created_at: string
         }
-        Insert: Omit<Database["public"]["Tables"]["users"]["Row"], "created_at" | "mobility_score" | "alumni_status">
+        Insert: Omit<Database["public"]["Tables"]["users"]["Row"], "created_at" | "mobility_score" | "alumni_status" | "readiness_score" | "readiness_destination" | "readiness_last_calculated">
         Update: Partial<Database["public"]["Tables"]["users"]["Insert"]>
         Relationships: []
       }
