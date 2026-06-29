@@ -22,3 +22,12 @@ export function getExpiryDate(hours: number = 72): Date {
 export function getPaymentDeadline(days: number = 7): Date {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 }
+
+export function generateTradeShowInviteCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 8; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return "TS-" + code;
+}

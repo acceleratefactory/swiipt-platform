@@ -160,10 +160,10 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 |-------|---------|-------------|
 | `group_buys` | Group purchase commitments (2-10 people, 72h expiry) | creator_id, item_type, holiday_package_id/service_package_id, target_size, current_size, group_price_ngn, group_discount_pct, invite_code, payment_deadline |
 | `group_buy_members` | Member status tracking | user_confirmed_at, payment_reference, order_id, booking_id, paid_at |
-| `trade_shows` | Admin-managed trade show catalog | |
-| `trade_show_groups` | Group savings toward trade shows | |
-| `trade_show_group_members` | Member savings tracking | |
-| `readiness_score_log` | Score change audit trail | |
+| `trade_shows` | Admin-managed trade show catalog | name, location_city/country, event_date_start/end, category, base_cost_solo_ngn, base_cost_group_ngn, min/max_group_size, is_active |
+| `trade_show_groups` | Group savings toward trade shows | organizer_id, trade_show_id, title, target_group_size, current_member_count, cost_per_person_ngn, status (forming→saving→funded→booking→confirmed→completed→cancelled), invite_code (TS- prefix), savings_deadline |
+| `trade_show_group_members` | Member savings tracking | group_id, user_id, role (organizer/member), savings_goal_id, status (saving/funded/withdrawn/removed), amount_saved_ngn, funded_at |
+| `readiness_score_log` | Score change audit trail | user_id, event_type, points_awarded, running_total |
 
 ### Rewards & Referrals (Sprint 0 + Sprint 9)
 | Table | Purpose |
@@ -353,8 +353,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - Public invite page `/join/[code]` with price comparison + countdown
 - Dashboard groups list + detail with member management
 - **Priority 2 (Sprint 16) — Group Buy Payment Flow (Sessions 5–8):** Full payment modal with goal redemption, direct bank transfer, travel credit auto-apply, Realtime subscription, payment recovery (resume/cancel), admin confirmation sync from all admin paths
-- **System 2 — Trade Show Groups:** 3 new tables (`trade_shows`, `trade_show_groups`, `trade_show_group_members`), SME group savings toward trade show attendance, linked savings goals
-- **System 3 — Readiness Score:** 0-100 scale, `calculate_readiness_score()` RPC, SVG circular progress on dashboard home, fire-and-forget triggers in deposit/order/document APIs
+- **System 2 — Trade Show Groups (✅ Built):** 3 tables, 6 seed trade shows, create-group + join-group APIs, catalog/discovery page, show detail page, group detail page with funding progress + member bars, admin management page, public invite page at `/join/trade-show/[code]` with `TS-` prefixed codes, sidebar nav items in both dashboard + admin. Invite code namespace resolved via prefix. `lock_type` → `is_locked=TRUE`. `goal_category='custom'`.
+- **System 3 — Readiness Score (SQL built, UI pending):** `calculate_readiness_score()` RPC created, `users.readiness_score/readiness_destination/readiness_last_calculated` columns added, `readiness_score_log` table created, `POST /api/readiness/recalculate` route created. `confirm_deposit` RPC updated to fire readiness score recalculation. **ReadinessScore widget + dashboard integration not yet built.**
 - **Priority 4 — Goal-based holiday payment (Sessions 14-15):** Phase 1: linked_holiday_package_id on savings_goals, duplicate goal prevention, existing goal detection on detail page. Phase 2: goal_id on holiday_bookings, goal_redemption support in booking API, payment method selection UI, admin cancel reverts goal balance.
 
 ## 8. API ROUTES — COMPLETE INDEX
@@ -368,7 +368,6 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 ### Goals & Payments
 - `POST /api/goals/deposit/initiate` — Create deposit, return bank details
 - `POST /api/goals/withdraw/request` — Create withdrawal request with penalty calc
-- `POST /api/readiness/recalculate` — Recalculate and return readiness score
 
 ### Services
 - `POST /api/services/order` — Create service order (goal redemption or direct payment)
@@ -389,7 +388,9 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - `POST /api/group-buy/leave` — Withdraw from group
 - `POST /api/group-buy/pay` — Initiate payment for filled group
 - `POST /api/group-buy/expire` — Cron: expire stale groups
-- `POST /api/trade-shows/create-group` / `join-group`
+- `POST /api/trade-shows/create-group` — Creates trade show group + savings goal + membership for organizer
+- `POST /api/trade-shows/join-group` — Joins via invite code, creates savings goal + membership
+- `POST /api/readiness/recalculate` — Recalculate and return readiness score
 - `GET /api/group-buy/payment-status` — Check for existing pending payment (resumable)
 - `POST /api/group-buy/cancel-payment` — Cancel pending payment and revert to `committed`
 
@@ -477,6 +478,16 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `reports/priority_2_migration.sql` | SQL: enables Realtime on `group_buy_members` |
 | `reports/holiday_bookings_migration.sql` | SQL migration: creates `holiday_bookings` table |
 | `docs/history/` | Sprint history files (Sprint 10, Sprint 12 phases) |
+| `sprint_16_readiness_score.sql` | SQL: System 3 readiness score columns, function, log table |
+| `sprint_16_trade_show_tables.sql` | SQL: 3 trade show tables + RLS + indexes |
+| `sprint_16_trade_show_seed.sql` | SQL: 6 trade show seed rows |
+| `sprint_16_trade_show_helper_fn.sql` | SQL: check_and_update_trade_show_group_funding helper |
+| `sprint_16_confirm_deposit_mod.sql` | SQL: confirm_deposit updated with trade show + readiness blocks |
+| `reports/sprint_16_system2_conflict_analysis.md` | Conflict analysis: System 2 vs existing codebase (17 findings) |
+| `reports/sprint_16_system2_build_plan.md` | Complete 6-phase build plan with resolved conflicts |
+| `reports/sprint_16_analysis_and_plan.md` | Sprint 16 investigation with 4 priorities |
+| `reports/group-buy-pending-confirmed-transition-plan.md` | Plan: add ⏱→✅ transition to group buy modal |
+| `reports/findings/realtime-auto-close-not-firing.md` | Superseded: earlier investigation into auto-close (incorrect root cause) |
 
 ## 10. SESSION HISTORY — COMPLETED WORK
 
@@ -730,7 +741,52 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Build verified:** `npm run build` — zero TS errors
 - **Deployed:** Commits `9587978`, `1c4cdc8`
 
-## 11. VERIFICATION SCRIPTS
+### Session 22 — Group Buy Pending→Confirmed Transition Gap (Pending)
+
+- **Investigation:** User reported group buy payment modal never transitions from ⏱ "Payment pending confirmation" to ✅ "Payment confirmed" when admin confirms payment. Unlike holiday and service flows which DO show this transition.
+- **Root cause found:** `GroupBuyPaymentModal.tsx` — `ConfirmationStep` was built as a **static dead-end screen** with no `adminConfirmed` state, no Realtime subscription, and no polling fallback. The only Realtime subscription exists in the parent `GroupDetailActions.tsx` (line 66-86), which skips the ✅ step entirely and just calls `setShowPaymentModal(false); router.refresh()`.
+- **Additional issue:** `GroupDetailActions.tsx:63` has `createClient()` in the component body — same subscription churn bug that Session 21 fixed for holiday/service. Was never applied to group buy.
+- **Note:** The page refresh + status display (member showing as "paid") DOES work when user manually clicks "Back to groups" after admin confirmation. Only the ✅ transition inside the modal is missing.
+- **Implementation plan:** `reports/group-buy-pending-confirmed-transition-plan.md`
+
+### Key difference from holiday/service flow
+| Aspect | Holiday/Service | Group Buy (current) |
+|--------|----------------|---------------------|
+| `adminConfirmed` state inside modal | ✅ Yes | ❌ No |
+| Realtime subscription inside modal | ✅ Yes | ❌ No |
+| Polling fallback inside modal | ✅ Yes | ❌ No |
+| `createClient()` in component body | ❌ Fixed in S21 | ❌ Still broken |
+| Conditional ⏱/✅ UI | ✅ Yes | ❌ Always ⏱ |
+
+### Session 23 — Sprint 16 System 2 (Trade Show Group Savings) — Full Build (Completed)
+
+- **Goal:** Build Trade Show Group Goals — SME group savings toward international trade show attendance, with group negotiation mechanics. Resolve all conflicts identified in `reports/sprint_16_system2_conflict_analysis.md` (17 findings, 4 HIGH/Critical).
+- **Conflict resolutions applied:**
+  - `lock_type` → used existing `is_locked=TRUE` + `maturity_date` (no column added)
+  - `goal_category` → used `'custom'` (no ALTER TABLE needed)
+  - Invite code namespace → `TS-` prefix + separate route `/join/trade-show/[code]`
+  - `confirm_deposit` → surgically inserted trade show funding + readiness score blocks with NULL guards
+  - System 3 SQL built first as prerequisite for `confirm_deposit` mod
+- **6 phases, surgical precision, one approval at a time:**
+  - **Phase 1:** System 3 SQL (`sprint_16_readiness_score.sql`: 3 ALTER TABLE users, readiness_score_log, calculate_readiness_score function) + `POST /api/readiness/recalculate` route
+  - **Phase 2:** System 2 SQL (`sprint_16_trade_show_tables.sql`: 3 tables + 7 RLS + 5 indexes) + seed data (6 trade shows)
+  - **Phase 3:** API routes (`POST /api/trade-shows/create-group`, `POST /api/trade-shows/join-group`) + `generateTradeShowInviteCode()` with `TS-` prefix in `group-buy-utils.ts`
+  - **Phase 4:** Helper function `check_and_update_trade_show_group_funding()` + `confirm_deposit` RPC modified with trade show member funding UPDATE + `PERFORM calculate_readiness_score`
+  - **Phase 5:** Pages + Components (`TradeShowCard.tsx`, catalog page, show detail page with cost breakdown + open groups, group detail page with funding progress + member bars + invite link, admin management page with catalog + groups tables)
+  - **Phase 6:** Sidebar entries (dashboard + admin), public invite page at `/join/trade-show/[code]`, `JoinTradeShowGroup.tsx` client component, `database.ts` types updated (readiness columns, 4 new tables, 2 new RPCs)
+- **Build verified:** `npm run build` — zero TS errors, zero new lint warnings across all phases
+- **Deployed:** Pushed to `main` for Vercel deployment
+
+## 11. PENDING / FUTURE BUILD
+
+### Group Buy ⏱→✅ Transition
+- **Plan file:** `reports/group-buy-pending-confirmed-transition-plan.md`
+- **Files to modify:**
+  - `src/components/dashboard/groups/GroupBuyPaymentModal.tsx` — Add `confirmed`, `adminConfirmed` states; Realtime subscription; polling fallback; update `ConfirmationStep` UI to show ⏱/✅
+  - `src/components/dashboard/groups/GroupDetailActions.tsx` — Fix `createClient()` in component body (same pattern as Session 21)
+- **Pattern to follow:** Holiday flow (`HolidayBookingFlow.tsx` lines 24-76 for state + effects; lines 180-203 for conditional UI)
+
+## 12. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors
 - **Lint:** `npm run lint`
 - No test framework installed — would need Jest/Vitest/Playwright setup from scratch

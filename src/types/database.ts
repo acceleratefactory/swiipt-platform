@@ -18,6 +18,9 @@ export interface Database {
           alumni_status: boolean
           referral_code: string | null
           referred_by: string | null
+          readiness_score: number
+          readiness_destination: string | null
+          readiness_last_calculated: string | null
           created_at: string
         }
         Insert: Omit<Database["public"]["Tables"]["users"]["Row"], "created_at" | "mobility_score" | "alumni_status">
@@ -777,6 +780,85 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["withdrawals"]["Insert"]>
         Relationships: []
       }
+
+      readiness_score_log: {
+        Row: {
+          id: string
+          user_id: string
+          event_type: string
+          points_awarded: number
+          running_total: number
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["readiness_score_log"]["Row"], "id" | "created_at">
+        Update: Partial<Database["public"]["Tables"]["readiness_score_log"]["Insert"]>
+        Relationships: []
+      }
+
+      trade_shows: {
+        Row: {
+          id: string
+          name: string
+          location_city: string
+          location_country: string
+          venue: string | null
+          event_date_start: string
+          event_date_end: string
+          registration_deadline: string | null
+          category: string
+          base_cost_solo_ngn: number
+          base_cost_group_ngn: number | null
+          min_group_size: number
+          max_group_size: number
+          description: string | null
+          invitation_letter_fee_ngn: number
+          image_url: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["trade_shows"]["Row"], "id" | "created_at">
+        Update: Partial<Database["public"]["Tables"]["trade_shows"]["Insert"]>
+        Relationships: []
+      }
+
+      trade_show_groups: {
+        Row: {
+          id: string
+          organizer_id: string
+          trade_show_id: string
+          title: string
+          description: string | null
+          target_group_size: number
+          current_member_count: number
+          cost_per_person_ngn: number
+          status: string
+          activation_threshold_pct: number
+          invite_code: string
+          savings_deadline: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["trade_show_groups"]["Row"], "id" | "created_at" | "updated_at" | "current_member_count">
+        Update: Partial<Database["public"]["Tables"]["trade_show_groups"]["Insert"]>
+        Relationships: []
+      }
+
+      trade_show_group_members: {
+        Row: {
+          id: string
+          group_id: string
+          user_id: string
+          role: string
+          savings_goal_id: string | null
+          status: string
+          amount_saved_ngn: number
+          funded_at: string | null
+          joined_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["trade_show_group_members"]["Row"], "id" | "joined_at">
+        Update: Partial<Database["public"]["Tables"]["trade_show_group_members"]["Insert"]>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -815,6 +897,14 @@ export interface Database {
       get_current_period_key: {
         Args: Record<string, never>
         Returns: string
+      }
+      calculate_readiness_score: {
+        Args: { user_id_input: string }
+        Returns: number
+      }
+      check_and_update_trade_show_group_funding: {
+        Args: { goal_id: string }
+        Returns: void
       }
     }
   }

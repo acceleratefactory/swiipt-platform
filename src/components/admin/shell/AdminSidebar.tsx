@@ -37,6 +37,7 @@ const navItems: Array<{
   { href: "/admin/documents", label: "Documents", icon: <FileText size={16} /> },
   { href: "/admin/services", label: "Services", icon: <Globe size={16} /> },
   { href: "/admin/groups", label: "Groups", icon: <Users size={16} /> },
+  { href: "/admin/trade-shows", label: "Trade Shows", icon: <Globe size={16} /> },
   { href: "/admin/content", label: "Content", icon: <FileEdit size={16} /> },
   { href: "/admin/holidays", label: "Holiday Bookings", icon: <Umbrella size={16} /> },
   { href: "/admin/currencies", label: "Currencies", icon: <DollarSign size={16} /> },
