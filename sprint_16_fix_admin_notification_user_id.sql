@@ -1,9 +1,6 @@
--- ============================================================
--- Sprint 16 System 2 — Helper function for trade show group
--- funding check. Called by confirm_deposit after a goal-linked
--- deposit is confirmed.
--- Does NOT modify any existing functions.
--- ============================================================
+-- Fix: check_and_update_trade_show_group_funding selects
+-- user_roles.id instead of user_roles.user_id for admin notification.
+-- Run in Supabase SQL Editor.
 
 CREATE OR REPLACE FUNCTION check_and_update_trade_show_group_funding(goal_id UUID)
 RETURNS VOID AS $$

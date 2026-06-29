@@ -788,7 +788,22 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **SQL files created:** `swiipt/sprint_16_fix_ambiguous_deposit_id.sql`, `swiipt/sprint_16_fix_referrals_column.sql`
 - **Deployed:** Commits to `main`
 
+### Session 25 — Post-Deploy: Admin notification FK fix + Booking flow analysis (Completed)
+- **Problem:** Confirming second member's deposit triggered `insert or update on table "notifications" violates foreign key constraint "notifications_user_id_fkey"`. Root cause: `check_and_update_trade_show_group_funding` at `sprint_16_trade_show_helper_fn.sql:53` selects `u.id` (user_roles's auto-generated PK) instead of `u.user_id` (the FK to users.id) for the admin notification. Only fires when all members are funded (first member's deposit didn't trigger it).
+- **Fix:** `sprint_16_fix_admin_notification_user_id.sql` — changed `u.id` → `u.user_id`.
+- **Booking flow analysis:** `reports/sprint_16_trade_show_booking_flow_analysis.md`
+- **Decision:** **Pause here. Do not build booking phase yet.** Validate with real users first that the savings model works for trade show groups before building the `funded → booking → confirmed → completed` pipeline. The money sitting in locked goals is fine — it counts toward AUM and cannot be withdrawn.
+
 ## 11. PENDING / FUTURE BUILD
+
+### Trade Show Group Booking Phase (Paused — Validate with users first)
+- **Plan file:** `reports/sprint_16_trade_show_booking_flow_analysis.md`
+- **When to build:** After validating the savings model works for real trade show groups
+- **Flow:** `funded → booking → confirmed → completed`
+- **Admin action:** "Initiate booking" on a funded group → deducts from all funded members' goals via `deduct_goal_balance` (existing pattern from holiday/service flows) → creates document requests → moves group to `booking` status
+- **Direct pay option:** For members who don't save (late joiners, cash-rich, corporate). Deposit not linked to a goal; admin marks as paid manually. Add later, not MVP.
+- **Active Applications:** When built, trade show bookings **must** appear under the "Active Applications" section on the dashboard home feed (alongside service orders and holiday bookings). The dashboard home page will need to query `trade_show_groups` where the user is a member and status is `booking` or `confirmed`.
+- **Money while sitting:** Locked savings goals (`is_locked = TRUE`) count toward `wallets.total_locked_ngn` (treasury float). Members cannot withdraw. Admin can cancel and funds remain in goals.
 
 ### Group Buy ⏱→✅ Transition
 - **Plan file:** `reports/group-buy-pending-confirmed-transition-plan.md`
