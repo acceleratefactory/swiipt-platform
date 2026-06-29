@@ -3,6 +3,8 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { notFound } from "next/navigation";
 import TradeShowGroupPaymentModal from "@/components/dashboard/trade-shows/TradeShowGroupPaymentModal";
+import QuickJoinGroupButton from "@/components/dashboard/trade-shows/QuickJoinGroupButton";
+import TradeShowInviteLink from "@/components/dashboard/trade-shows/TradeShowInviteLink";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -124,30 +126,7 @@ export default async function TradeShowGroupDetailPage({ params }: { params: { g
 
         <div style={{ marginBottom: "1.25rem" }}>
           <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: "0.375rem" }}>Invite link</p>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input
-              readOnly
-              value={inviteUrl}
-              style={{
-                flex: 1, padding: "0.5rem 0.75rem",
-                border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
-                fontSize: "0.8125rem", color: "var(--text-muted)",
-                background: "var(--off-white)",
-              }}
-            />
-            <button
-              onClick={() => navigator.clipboard.writeText(inviteUrl)}
-              style={{
-                padding: "0.5rem 1rem",
-                background: "var(--teal)", color: "var(--midnight)",
-                fontWeight: 700, fontSize: "0.8125rem",
-                border: "none", borderRadius: "var(--radius-sm)",
-                cursor: "pointer",
-              }}
-            >
-              Copy
-            </button>
-          </div>
+          <TradeShowInviteLink inviteUrl={inviteUrl} />
         </div>
 
         {myGoal && (
@@ -186,31 +165,7 @@ export default async function TradeShowGroupDetailPage({ params }: { params: { g
             <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
               Join this group to start saving toward your share.
             </p>
-            <button
-              onClick={async () => {
-                const res = await fetch("/api/trade-shows/join-group", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ inviteCode: group.invite_code }),
-                });
-                if (res.ok) {
-                  const data = await res.json();
-                  window.location.href = `/dashboard/trade-shows/groups/${data.groupId}`;
-                }
-              }}
-              style={{
-                padding: "0.625rem 1.5rem",
-                background: "var(--teal)",
-                color: "var(--midnight)",
-                fontWeight: 700,
-                fontSize: "0.875rem",
-                border: "none",
-                borderRadius: "var(--radius-sm)",
-                cursor: "pointer",
-              }}
-            >
-              Join this group
-            </button>
+            <QuickJoinGroupButton groupId={group.id} inviteCode={group.invite_code} />
           </div>
         )}
       </div>
