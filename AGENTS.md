@@ -682,6 +682,45 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Deployed:** Commits `448d905`, `d6d9763`
 - **Pattern note:** All 5 priorities together make the holiday booking flow match the group buy payment confirmation pattern exactly (Realtime + polling + overlay guard + parent safety net).
 
+### Session 19 — Holiday Auto-Refresh Fix (Completed)
+- **Problem:** After admin confirmation, "pending payment confirmation" → "payment confirmed" (state change worked) but page did not auto-refresh. `router.refresh()` was too subtle (no visual flash). The `existingBooking` query filtered out `payment_confirmed` bookings (line 48), so the booking card disappeared after refresh. The inline `onAdminConfirmed` arrow function caused Realtime subscription teardown/re-create on every parent re-render (race window for missed events).
+- **Investigation report:** Written in session conversation (not saved as file).
+- **Root causes:**
+  1. `router.refresh()` is a soft refresh — no visual feedback vs goal deposit's `window.location.reload()`
+  2. Line 48 of `holidays/[id]/page.tsx`: `.in("status", ["payment_pending", "payment_submitted"])` excluded `payment_confirmed` — booking card disappeared after refresh
+  3. `onAdminConfirmed` was inline arrow `() => { setShowBooking(false); router.refresh(); }` — new reference on every render caused Realtime subscription to tear down and re-create
+  4. `router` in useEffect dependency arrays triggered unnecessary subscription re-creation
+- **Fix A — Hard reload:** Replaced all 3 `router.refresh()` calls with `window.location.reload()` (modal `onAdminConfirmed` callback + both parent Realtime subscriptions)
+- **Fix B — Query includes confirmed:** Added `"payment_confirmed"` to the IN filter. Booking card now shows "✓ Payment confirmed" after refresh.
+- **Fix C — Stable callback:** `onAdminConfirmed` wrapped in `useCallback(() => { setShowBooking(false); window.location.reload(); }, [])` — stable reference prevents subscription churn.
+- **Fix D — Deps cleanup:** Removed `router` from both parent useEffect dependency arrays. Changed `[existingBooking?.id, router]` → `[existingBooking]` for lint compliance.
+- **Build verified:** `npm run build` — zero TS errors
+- **Deployed:** Commit `3bc15cb`
+
+### Session 20 — Service Orders Pending Confirmation + Auto-Refresh (Completed)
+- **Problem:** Service orders had no pending confirmation waiting state, no Realtime auto-close, no polling fallback, no overlay guard. After clicking "I Have Transferred", users saw a static 🎉 success screen with no way to know if admin had confirmed payment.
+- **Investigation:** 5 gaps identified vs holiday/group buy pattern:
+  1. No pending confirmation modal (⏱ clock, "pending admin confirmation" text)
+  2. No Realtime subscription to auto-close on admin confirmation
+  3. No polling fallback (5-second interval)
+  4. Overlay always dismissible (no guard during pending state)
+  5. No parent-level safety net subscription after modal closes
+- **File 1 — `OrderFlow.tsx` (6 changes):**
+  - Added `confirmed`, `adminConfirmed` state + `createClient()`
+  - Added Realtime subscription on `service_orders` table — calls `onAdminConfirmed?.()` + `setAdminConfirmed(true)` when status → `payment_confirmed`
+  - Added `onPendingChange` effect for overlay guard
+  - Added `onOrderCreated` effect for parent safety net
+  - Added 5-second polling fallback (same pattern as holiday flow)
+  - Split confirmation step: goal_redemption → existing 🎉 success (no admin needed); direct_payment → ⏱ pending / ✅ confirmed UI
+  - Overlay guard: `cursor: default`, `onClick: undefined` during pending state
+- **File 2 — `ServiceDetailView.tsx` (4 changes):**
+  - Added `currentOrderId` state + `handleAdminConfirmed` (`useCallback`)
+  - Added parent-level Realtime subscription on `service_order_live:{id}` — persists after modal closes
+  - Passed `onAdminConfirmed={handleAdminConfirmed}`, `onOrderCreated={setCurrentOrderId}`
+  - Auto-close: `setShowOrder(false); window.location.reload()` on admin confirmation
+- **Build verified:** `npm run build` — zero TS errors
+- **Deployed:** Commit `3b9f974`
+
 ## 11. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors
 - **Lint:** `npm run lint`
