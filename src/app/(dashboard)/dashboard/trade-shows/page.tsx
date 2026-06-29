@@ -22,6 +22,16 @@ export default async function TradeShowsPage() {
     .eq("is_active", true)
     .order("event_date_start", { ascending: true });
 
+  const { data: allOpenGroups } = await (adminSupabase as any)
+    .from("trade_show_groups")
+    .select("trade_show_id")
+    .in("status", ["forming", "saving"]);
+
+  const groupCountMap = new Map<string, number>();
+  (allOpenGroups || []).forEach((g: any) => {
+    groupCountMap.set(g.trade_show_id, (groupCountMap.get(g.trade_show_id) || 0) + 1);
+  });
+
   const { data: memberships } = await (adminSupabase as any)
     .from("trade_show_group_members")
     .select("*, trade_show_groups(*)")
@@ -92,7 +102,7 @@ export default async function TradeShowsPage() {
 
       <div style={{ display: "grid", gap: "1rem" }}>
         {(shows || []).map((show: any) => (
-          <TradeShowCard key={show.id} show={show} />
+          <TradeShowCard key={show.id} show={show} openGroupCount={groupCountMap.get(show.id) || 0} />
         ))}
       </div>
     </div>

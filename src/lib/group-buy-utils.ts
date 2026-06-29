@@ -31,3 +31,14 @@ export function generateTradeShowInviteCode(): string {
   }
   return "TS-" + code;
 }
+
+export function getTradeShowDiscountPct(targetGroupSize: number, discounts: Record<string, number>): number {
+  const sizes = Object.keys(discounts).map(Number).sort((a, b) => a - b);
+  let best = 0;
+  for (const size of sizes) {
+    if (targetGroupSize >= size) {
+      best = discounts[size.toString()] || 0;
+    }
+  }
+  return best;
+}

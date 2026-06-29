@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { notFound } from "next/navigation";
+import CreateTradeShowGroupModal from "@/components/dashboard/trade-shows/CreateTradeShowGroupModal";
+import QuickJoinGroupButton from "@/components/dashboard/trade-shows/QuickJoinGroupButton";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -36,6 +38,30 @@ export default async function TradeShowDetailPage({ params }: { params: { showId
     ? await (adminSupabase as any).from("users").select("id, full_name").in("id", organizerIds)
     : { data: [] };
   const organizerMap = new Map((organizers || []).map((u: any) => [u.id, u.full_name]));
+
+  const groupIds = (groups || []).map((g: any) => g.id);
+  let isMemberOfShow = false;
+  if (groupIds.length > 0) {
+    const { data: userGroups } = await (adminSupabase as any)
+      .from("trade_show_group_members")
+      .select("id")
+      .eq("user_id", user.id)
+      .in("group_id", groupIds);
+    isMemberOfShow = (userGroups || []).length > 0;
+  }
+
+  const { data: settings } = await (adminSupabase as any)
+    .from("platform_settings")
+    .select("value")
+    .eq("key", "trade_show_discounts")
+    .single();
+
+  const discountTiers: Record<string, number> = settings?.value ? JSON.parse(settings.value) : {};
+  const tierKeys = Object.keys(discountTiers).map(Number).sort((a, b) => a - b);
+  const maxTierDiscount = tierKeys.length > 0 ? discountTiers[tierKeys[tierKeys.length - 1].toString()] : 0;
+  const showTierInfo = tierKeys.length > 0 && show.base_cost_solo_ngn > 0;
+
+  const firstGroup = (groups || [])[0];
 
   const savingsPct = show.base_cost_group_ngn
     ? Math.round((1 - show.base_cost_group_ngn / show.base_cost_solo_ngn) * 100)
@@ -100,7 +126,9 @@ export default async function TradeShowDetailPage({ params }: { params: { showId
           )}
           {savingsPct > 0 && (
             <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--teal)", textAlign: "right" }}>
-              Save {savingsPct}% with {show.min_group_size}+ members
+              {showTierInfo && maxTierDiscount > savingsPct
+                ? `Save ${savingsPct}–${maxTierDiscount}% with group pricing`
+                : `Save ${savingsPct}% with ${show.min_group_size}+ members`}
             </p>
           )}
           {show.invitation_letter_fee_ngn > 0 && (
@@ -115,6 +143,15 @@ export default async function TradeShowDetailPage({ params }: { params: { showId
         <h2 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.125rem", fontWeight: 700, color: "var(--midnight)", marginBottom: "0.75rem" }}>
           Open groups for this show
         </h2>
+
+        {groups && groups.length > 0 && !isMemberOfShow && firstGroup && (
+          <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <QuickJoinGroupButton groupId={firstGroup.id} inviteCode={firstGroup.invite_code} />
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+              or browse groups below to find the best fit
+            </span>
+          </div>
+        )}
 
         {(!groups || groups.length === 0) && (
           <div style={{ padding: "2rem", textAlign: "center", background: "white", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)" }}>
@@ -159,26 +196,13 @@ export default async function TradeShowDetailPage({ params }: { params: { showId
         </div>
       </div>
 
-      <div style={{ textAlign: "center", padding: "1.5rem", background: "white", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)" }}>
-        <p style={{ fontSize: "0.875rem", color: "var(--text-muted)", marginBottom: "0.75rem" }}>
-          Want to start your own group for this show?
-        </p>
-        <a
-          href={`/dashboard/trade-shows/create?showId=${show.id}`}
-          style={{
-            display: "inline-block",
-            padding: "0.625rem 1.5rem",
-            background: "var(--teal)",
-            color: "var(--midnight)",
-            fontWeight: 700,
-            fontSize: "0.875rem",
-            borderRadius: "var(--radius-sm)",
-            textDecoration: "none",
-          }}
-        >
-          Create my own group
-        </a>
-      </div>
+      <CreateTradeShowGroupModal
+        showId={show.id}
+        showName={show.name}
+        minGroupSize={show.min_group_size}
+        maxGroupSize={show.max_group_size}
+        costPerPerson={show.base_cost_group_ngn}
+      />
     </div>
   );
 }

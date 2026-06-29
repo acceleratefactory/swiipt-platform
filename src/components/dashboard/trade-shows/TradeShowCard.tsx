@@ -16,9 +16,10 @@ interface TradeShowCardProps {
     max_group_size: number;
     description: string | null;
   };
+  openGroupCount?: number;
 }
 
-export default function TradeShowCard({ show }: TradeShowCardProps) {
+export default function TradeShowCard({ show, openGroupCount }: TradeShowCardProps) {
   const savingsPct = show.base_cost_group_ngn
     ? Math.round((1 - show.base_cost_group_ngn / show.base_cost_solo_ngn) * 100)
     : 0;
@@ -60,6 +61,20 @@ export default function TradeShowCard({ show }: TradeShowCardProps) {
           }}>
             {show.category}
           </span>
+          {openGroupCount && openGroupCount > 0 && (
+            <span style={{
+              padding: "3px 10px",
+              borderRadius: "20px",
+              fontSize: "0.7rem",
+              fontWeight: 700,
+              background: "rgba(5,150,105,0.12)",
+              color: "#059669",
+              whiteSpace: "nowrap",
+              marginLeft: "0.5rem",
+            }}>
+              {openGroupCount} open group{openGroupCount !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
 
         <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "0.75rem", lineHeight: 1.4 }}>

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
+import TradeShowsTable from "@/components/admin/trade-shows/TradeShowsTable";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -70,49 +71,27 @@ export default async function AdminTradeShowsPage() {
         Trade Shows
       </h1>
 
-      <h2 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1rem', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.75rem' }}>
-        Trade Show Catalog
-      </h2>
-      <div style={{ background: "white", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)", overflow: "hidden", marginBottom: "2rem" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
-          <thead>
-            <tr style={{ background: "var(--off-white)", textAlign: "left" }}>
-              <th style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "var(--text-muted)" }}>Name</th>
-              <th style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "var(--text-muted)" }}>Location</th>
-              <th style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "var(--text-muted)" }}>Dates</th>
-              <th style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "var(--text-muted)" }}>Solo / Group</th>
-              <th style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "var(--text-muted)" }}>Active</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(shows || []).map((show: any) => (
-              <tr key={show.id} style={{ borderTop: "1px solid var(--border)" }}>
-                <td style={{ padding: "0.75rem 1rem", fontWeight: 600, color: "var(--midnight)" }}>{show.name}</td>
-                <td style={{ padding: "0.75rem 1rem", color: "var(--text-secondary)" }}>
-                  {show.location_city}, {show.location_country}
-                </td>
-                <td style={{ padding: "0.75rem 1rem", color: "var(--text-secondary)" }}>
-                  {new Date(show.event_date_start).toLocaleDateString()}
-                </td>
-                <td style={{ padding: "0.75rem 1rem" }}>
-                  ₦{show.base_cost_solo_ngn.toLocaleString()} / {show.base_cost_group_ngn ? `₦${show.base_cost_group_ngn.toLocaleString()}` : "—"}
-                </td>
-                <td style={{ padding: "0.75rem 1rem" }}>
-                  <span style={{
-                    padding: "2px 8px",
-                    borderRadius: "10px",
-                    fontSize: "0.65rem",
-                    fontWeight: 700,
-                    background: show.is_active ? "rgba(5,150,105,0.12)" : "rgba(239,68,68,0.12)",
-                    color: show.is_active ? "#059669" : "#EF4444",
-                  }}>
-                    {show.is_active ? "Active" : "Inactive"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+        <h2 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1rem', fontWeight: 700, color: 'var(--midnight)' }}>
+          Trade Show Catalog
+        </h2>
+        <a
+          href="/admin/trade-shows/new"
+          style={{
+            padding: "0.5rem 1rem",
+            background: "var(--teal)",
+            color: "var(--midnight)",
+            fontWeight: 700,
+            fontSize: "0.8125rem",
+            borderRadius: "var(--radius-sm)",
+            textDecoration: "none",
+          }}
+        >
+          + Add Trade Show
+        </a>
+      </div>
+      <div style={{ marginBottom: "2rem" }}>
+        <TradeShowsTable shows={shows || []} />
       </div>
 
       <h2 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1rem', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.75rem' }}>

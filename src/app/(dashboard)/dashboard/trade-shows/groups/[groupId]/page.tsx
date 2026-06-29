@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { notFound } from "next/navigation";
+import TradeShowGroupPaymentModal from "@/components/dashboard/trade-shows/TradeShowGroupPaymentModal";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -171,21 +172,11 @@ export default async function TradeShowGroupDetailPage({ params }: { params: { g
               }} />
             </div>
             {myMembership?.status !== "funded" && (
-              <a
-                href={`/dashboard/goals/${myGoal.id}`}
-                style={{
-                  display: "inline-block",
-                  padding: "0.5rem 1rem",
-                  background: "var(--teal)",
-                  color: "var(--midnight)",
-                  fontWeight: 700,
-                  fontSize: "0.8125rem",
-                  borderRadius: "var(--radius-sm)",
-                  textDecoration: "none",
-                }}
-              >
-                Start saving my share →
-              </a>
+              <TradeShowGroupPaymentModal
+                goalId={myGoal.id}
+                targetAmount={myGoal.target_amount}
+                currentBalance={myGoal.current_balance || 0}
+              />
             )}
           </div>
         )}
