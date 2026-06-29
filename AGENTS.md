@@ -690,12 +690,12 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
   2. Line 48 of `holidays/[id]/page.tsx`: `.in("status", ["payment_pending", "payment_submitted"])` excluded `payment_confirmed` — booking card disappeared after refresh
   3. `onAdminConfirmed` was inline arrow `() => { setShowBooking(false); router.refresh(); }` — new reference on every render caused Realtime subscription to tear down and re-create
   4. `router` in useEffect dependency arrays triggered unnecessary subscription re-creation
-- **Fix A — Hard reload:** Replaced all 3 `router.refresh()` calls with `window.location.reload()` (modal `onAdminConfirmed` callback + both parent Realtime subscriptions)
-- **Fix B — Query includes confirmed:** Added `"payment_confirmed"` to the IN filter. Booking card now shows "✓ Payment confirmed" after refresh.
-- **Fix C — Stable callback:** `onAdminConfirmed` wrapped in `useCallback(() => { setShowBooking(false); window.location.reload(); }, [])` — stable reference prevents subscription churn.
-- **Fix D — Deps cleanup:** Removed `router` from both parent useEffect dependency arrays. Changed `[existingBooking?.id, router]` → `[existingBooking]` for lint compliance.
+- **Fix A — Hard reload (reverted in Session 21):** Replaced all 3 `router.refresh()` calls with `window.location.reload()`. **Reverted** — `window.location.reload()` starts page navigation before React can flush batched state updates (`setShowBooking(false)`), so modal never visually closes.
+- **Fix B — Query includes confirmed (kept):** Added `"payment_confirmed"` to the IN filter. Booking card now shows "✓ Payment confirmed" after refresh.
+- **Fix C — Stable callback (replaced in Session 21):** Replaced inline arrow with `useCallback`. **Replaced** with ref-based approach + inline arrow in Session 21.
+- **Fix D — Deps cleanup (kept):** Removed `router` from both parent useEffect dependency arrays. Changed `[existingBooking?.id, router]` → `[existingBooking]` for lint compliance.
 - **Build verified:** `npm run build` — zero TS errors
-- **Deployed:** Commit `3bc15cb`
+- **Deployed:** Commit `3bc15cb` (partially reverted in `1c4cdc8`)
 
 ### Session 20 — Service Orders Pending Confirmation + Auto-Refresh (Completed)
 - **Problem:** Service orders had no pending confirmation waiting state, no Realtime auto-close, no polling fallback, no overlay guard. After clicking "I Have Transferred", users saw a static 🎉 success screen with no way to know if admin had confirmed payment.
@@ -720,6 +720,15 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
   - Auto-close: `setShowOrder(false); window.location.reload()` on admin confirmation
 - **Build verified:** `npm run build` — zero TS errors
 - **Deployed:** Commit `3b9f974`
+
+### Session 21 — Subscription Churn Fix + Revert to router.refresh() (Completed)
+- **Investigation:** User reported both holidays and service modals didn't auto-close and pages didn't auto-refresh after admin confirmation, despite `setAdminConfirmed(true)` working (⏱ → ✅ visible).
+- **Root cause found:** `createClient()` was called in component body outside effects in `HolidayBookingFlow.tsx` and `OrderFlow.tsx`. Every React re-render (triggered by `onPendingChange` → parent re-render → child re-render) created a **new `supabase` object reference**. This appeared in both the Realtime and polling effect dependency arrays, causing both to tear down and re-create on every render — creating a window where events were missed or the callback fired against a stale closure.
+- **Fix 1 — Subscription churn:** Moved `createClient()` inside each effect (Realtime + polling) in both `HolidayBookingFlow.tsx` and `OrderFlow.tsx`. Removed `supabase` from effect deps. `handleSave` got its own local `createClient()`.
+- **Fix 2 — Stale closure safety:** Added `useRef` for `onAdminConfirmed` in both `HolidayBookingFlow.tsx` and `OrderFlow.tsx`. Callbacks use `onAdminConfirmedRef.current?.()` instead of `onAdminConfirmed?.()`, ensuring the latest callback is always called regardless of closure capture timing.
+- **Revert — router.refresh():** After investigation, `window.location.reload()` was too aggressive — the browser page navigation starts before React can flush batched state updates (`setShowBooking(false)`). Reverted both `HolidayDetailView.tsx` and `ServiceDetailView.tsx` back to `router.refresh()` + `setShowBooking(false)` pattern. Key insight: `router.refresh()` preserves client state (allowing React to process state updates like closing the modal) while re-rendering server components. The `existingBooking` query now includes `payment_confirmed` (from Session 19 Fix B), so the booking card shows "✓ Payment confirmed" after refresh.
+- **Build verified:** `npm run build` — zero TS errors
+- **Deployed:** Commits `9587978`, `1c4cdc8`
 
 ## 11. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors
