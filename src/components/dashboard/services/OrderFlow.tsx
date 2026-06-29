@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import DirectPaymentFlow from "./DirectPaymentFlow";
 
@@ -57,11 +57,13 @@ export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId:
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState(false);
   const [adminConfirmed, setAdminConfirmed] = useState(false);
-  const supabase = createClient();
+  const onAdminConfirmedRef = useRef(onAdminConfirmed);
+  onAdminConfirmedRef.current = onAdminConfirmed;
 
   // Realtime: auto-close when admin confirms payment
   useEffect(() => {
     if (!confirmed || !orderResult?.orderId || orderResult?.paymentMethod !== "direct_payment") return;
+    const supabase = createClient();
     const channel = supabase
       .channel(`service_order:${orderResult.orderId}`)
       .on(
@@ -75,13 +77,13 @@ export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId:
         (payload: any) => {
           if (payload.new?.status === "payment_confirmed") {
             setAdminConfirmed(true);
-            onAdminConfirmed?.();
+            onAdminConfirmedRef.current?.();
           }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [confirmed, orderResult?.orderId, orderResult?.paymentMethod, supabase, onAdminConfirmed]);
+  }, [confirmed, orderResult?.orderId, orderResult?.paymentMethod]);
 
   // Notify parent when payment is pending
   useEffect(() => {
@@ -98,6 +100,7 @@ export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId:
   // Polling fallback
   useEffect(() => {
     if (!confirmed || adminConfirmed || !orderResult?.orderId || orderResult?.paymentMethod !== "direct_payment") return;
+    const supabase = createClient();
     const interval = setInterval(async () => {
       const { data } = await supabase
         .from("service_orders")
@@ -106,11 +109,11 @@ export default function OrderFlow({ pkg, preferredCurrency, activeGoals, userId:
         .single();
       if ((data as any)?.status === "payment_confirmed") {
         setAdminConfirmed(true);
-        onAdminConfirmed?.();
+        onAdminConfirmedRef.current?.();
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [confirmed, adminConfirmed, orderResult?.orderId, orderResult?.paymentMethod, supabase, onAdminConfirmed]);
+  }, [confirmed, adminConfirmed, orderResult?.orderId, orderResult?.paymentMethod]);
 
   const currencyKey = `price_${preferredCurrency.toLowerCase()}`;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

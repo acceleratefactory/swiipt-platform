@@ -1,6 +1,6 @@
 "use client";
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -9,7 +9,6 @@ const currencySymbols: Record<string, string> = {
 };
 
 export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, existingGoal, initialAction, onClose, onPendingChange, onAdminConfirmed, onBookingCreated }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingGoal?: any; initialAction?: "book" | null; onClose: () => void; onPendingChange?: (pending: boolean) => void; onAdminConfirmed?: () => void; onBookingCreated?: (bookingId: string) => void }) {
-  const supabase = createClient();
   const router = useRouter();
   const [action, setAction] = useState<"save" | "book" | null>(initialAction || null);
   const [travellers, setTravellers] = useState(1);
@@ -22,9 +21,12 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
   const [adminConfirmed, setAdminConfirmed] = useState(false);
   const [confirmError, setConfirmError] = useState("");
   const [detectedGoal, setDetectedGoal] = useState<any>(null);
+  const onAdminConfirmedRef = useRef(onAdminConfirmed);
+  onAdminConfirmedRef.current = onAdminConfirmed;
 
   useEffect(() => {
     if (!confirmed || !result?.bookingId) return;
+    const supabase = createClient();
     const channel = supabase
       .channel(`holiday_booking:${result.bookingId}`)
       .on(
@@ -38,13 +40,13 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
         (payload: any) => {
           if (payload.new?.status === "payment_confirmed") {
             setAdminConfirmed(true);
-            onAdminConfirmed?.();
+            onAdminConfirmedRef.current?.();
           }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [confirmed, result?.bookingId, supabase, onAdminConfirmed]);
+  }, [confirmed, result?.bookingId]);
 
   useEffect(() => {
     onPendingChange?.(confirmed && !adminConfirmed);
@@ -58,6 +60,7 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
 
   useEffect(() => {
     if (!confirmed || adminConfirmed || !result?.bookingId) return;
+    const supabase = createClient();
     const interval = setInterval(async () => {
       const { data } = await supabase
         .from("holiday_bookings")
@@ -66,11 +69,11 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
         .single();
       if (data?.status === "payment_confirmed") {
         setAdminConfirmed(true);
-        onAdminConfirmed?.();
+        onAdminConfirmedRef.current?.();
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [confirmed, adminConfirmed, result?.bookingId, supabase, onAdminConfirmed]);
+  }, [confirmed, adminConfirmed, result?.bookingId]);
 
   const currencyKey = `price_per_person_${currency.toLowerCase()}`;
   const pricePerPerson = (pkg as any)[currencyKey] || pkg.price_per_person_ngn;
@@ -80,6 +83,7 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
   async function handleSave() {
     setLoading(true);
     setError("");
+    const supabase = createClient();
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: existingGoal } = await (supabase as any)
