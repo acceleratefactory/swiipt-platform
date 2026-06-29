@@ -8,7 +8,7 @@ const currencySymbols: Record<string, string> = {
   NGN: '₦', USD: '$', AED: 'AED ', GBP: '£', EUR: '€',
 };
 
-export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, existingGoal, initialAction, onClose }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingGoal?: any; initialAction?: "book" | null; onClose: () => void }) {
+export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals, userId, existingGoal, initialAction, onClose, onPendingChange, onAdminConfirmed }: { pkg: any; preferredCurrency: string; activeGoals: any[]; userId: string; existingGoal?: any; initialAction?: "book" | null; onClose: () => void; onPendingChange?: (pending: boolean) => void; onAdminConfirmed?: () => void }) {
   const supabase = createClient();
   const router = useRouter();
   const [action, setAction] = useState<"save" | "book" | null>(initialAction || null);
@@ -38,12 +38,17 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
         (payload: any) => {
           if (payload.new?.status === "payment_confirmed") {
             setAdminConfirmed(true);
+            onAdminConfirmed?.();
           }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [confirmed, result?.bookingId, supabase]);
+  }, [confirmed, result?.bookingId, supabase, onAdminConfirmed]);
+
+  useEffect(() => {
+    onPendingChange?.(confirmed && !adminConfirmed);
+  }, [confirmed, adminConfirmed, onPendingChange]);
 
   const currencyKey = `price_per_person_${currency.toLowerCase()}`;
   const pricePerPerson = (pkg as any)[currencyKey] || pkg.price_per_person_ngn;
@@ -148,19 +153,24 @@ export default function HolidayBookingFlow({ pkg, preferredCurrency, activeGoals
     if (confirmed) {
       return (
         <div style={{ padding: '2rem', textAlign: 'center' }}>
-          <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>{adminConfirmed ? '✅' : '🎉'}</p>
+          <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>{adminConfirmed ? '✅' : '⏱'}</p>
           <h3 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontWeight: 700, color: 'var(--midnight)', marginBottom: '0.75rem' }}>
-            {adminConfirmed ? 'Payment confirmed!' : 'Payment submitted!'}
+            {adminConfirmed ? 'Payment confirmed!' : 'Payment pending confirmation'}
           </h3>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginBottom: '1.5rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9375rem', marginBottom: '0.5rem' }}>
             {adminConfirmed ? (
               <>Your booking reference <strong>{result.reference}</strong> has been confirmed. Get ready for your trip!</>
             ) : (
-              <>Thank you. Your booking reference <strong>{result.reference}</strong> has been submitted for verification. We will confirm within 24 hours.</>
+              <>Your booking reference <strong>{result.reference}</strong> has been submitted.</>
             )}
           </p>
+          {!adminConfirmed && (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '1.5rem' }}>
+              This usually takes 1–4 business hours.
+            </p>
+          )}
           <button onClick={onClose} style={{ padding: '0.75rem 1.5rem', background: 'var(--midnight)', color: 'white', fontWeight: 700, borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}>
-            Close
+            {adminConfirmed ? 'Close' : 'Back to holidays'}
           </button>
         </div>
       );

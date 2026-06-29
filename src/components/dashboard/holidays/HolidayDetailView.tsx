@@ -27,6 +27,7 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
   const router = useRouter();
   const [showBooking, setShowBooking] = useState(false);
   const [initialAction, setInitialAction] = useState<"book" | null>(null);
+  const [bookingPending, setBookingPending] = useState(false);
 
   // Realtime: auto-refresh when admin confirms booking
   useEffect(() => {
@@ -170,8 +171,8 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
       </div>
 
       {showBooking && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}
-          onClick={() => setShowBooking(false)}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem', cursor: bookingPending ? 'default' : 'pointer' }}
+          onClick={bookingPending ? undefined : () => setShowBooking(false)}>
           <div style={{ background: 'white', borderRadius: 'var(--radius-xl)', maxWidth: '600px', width: '100%', maxHeight: '90vh', overflow: 'auto' }}
             onClick={e => e.stopPropagation()}>
             <HolidayBookingFlow
@@ -182,6 +183,8 @@ export default function HolidayDetailView({ pkg, preferredCurrency, activeGoals,
               existingGoal={existingGoal}
               initialAction={initialAction}
               onClose={() => { setShowBooking(false); setInitialAction(null); }}
+              onPendingChange={setBookingPending}
+              onAdminConfirmed={() => { setShowBooking(false); router.refresh(); }}
             />
           </div>
         </div>
