@@ -1,5 +1,42 @@
 # Swiipt — Complete Platform Knowledge Base
 
+## 🚀 START HERE — For New Agent Onboarding
+
+**You are joining mid-Sprint 16.** Do not start from scratch. Read this first.
+
+### Current State
+- **Sprint 16, System 2 (Trade Show Group Savings)** — fully built and deployed to production
+- All 5 gap phases (Create Group Modal, Join Flow, Admin CRUD, Payment Modal, Discount Settings) are complete
+- Post-deployment bugs fixed: ambiguous `deposit_id`, wrong `referrals` column, missing `goal_id` in select, admin notification FK
+- Groups can: form → members join with invite link → members save into locked goals → admin confirms deposits → group reaches `funded`
+- **Paused before booking phase** — the `funded → booking → confirmed → completed` pipeline is NOT built. See `reports/sprint_16_trade_show_booking_flow_analysis.md` for the plan.
+
+### What NOT to Touch
+- Existing goal savings + visa redemption flows (Sprint 5)
+- Service marketplace + order flow (Sprint 7)
+- Holiday booking flow (Sprint 14-15 fixes)
+- Group Buy (Sprint 16 System 1) — separate from Trade Shows
+- Admin service client pattern (must use service role key for admin pages)
+- CSS design system (Cabinet Grotesk + Plus Jakarta Sans only, no Inter)
+
+### Key Constraints
+- **3 Supabase clients:** browser (`client.ts`), server (`server.ts`), service (`service.ts`) — using wrong one causes blank pages
+- **Surgical precision only** — do not refactor working code. Add new code alongside existing.
+- **Payment recovery pattern** (`user_confirmed_at`, resume/cancel, Realtime + 5s polling) is the standard for all payment flows
+- **Locked goals** (`is_locked = TRUE`) for trade show savings — no early exit. Money counts toward AUM.
+
+### Where to Start
+1. Read this entire AGENTS.md (platform overview, architecture, all sprints, all sessions)
+2. Read `reports/sprint_16_trade_show_booking_flow_analysis.md` for the booking phase plan
+3. Read the relevant sprint SQL files in `swiipt/` for schema context
+4. Ask the user: "Has the booking phase been validated with real users yet? Or should I build it?"
+
+### Current Pending Items
+| Priority | Item | Docs |
+|----------|------|------|
+| 1 | Trade Show Group Booking Phase (paused) | `reports/sprint_16_trade_show_booking_flow_analysis.md` |
+| 2 | Group Buy ⏱→✅ transition in modal | `reports/group-buy-pending-confirmed-transition-plan.md` |
+
 ## 1. PLATFORM OVERVIEW
 
 **Swiipt** is a fintech-led global mobility platform ("Save. Move. Arrive."). Users save toward travel/relocation goals, earn milestone rewards, book flights/holidays, and execute migration services — all in one dashboard.
