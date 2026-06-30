@@ -22,6 +22,14 @@ git clone https://github.com/acceleratefactory/swiipt-platform.git Swiipt
 cd Swiipt
 ```
 
+### Option C: Copy entire folder via USB (simplest — preserves everything)
+
+1. On the old laptop, copy the entire `swiipt` folder to a USB drive or external hard drive
+2. On the new laptop, paste the folder to `C:\Users\<YourUser>\Desktop\Swiipt`
+3. Run `npm install` once to rebuild any architecture-specific modules
+
+**What you keep:** `.git` history, `node_modules`, `.env.local`, uncommitted changes, OpenCode config, all SQL files, all reports. Everything.
+
 ### Option B: Download ZIP (read-only, no git)
 
 1. Go to https://github.com/acceleratefactory/swiipt-platform
