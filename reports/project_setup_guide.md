@@ -12,13 +12,24 @@
 
 ---
 
-## Step 1 — Clone the Repository
+## Step 1 — Get the Project Files
+
+### Option A: git clone (recommended — preserves history, enables push/deploy)
 
 ```powershell
 cd C:\Users\<YourUser>\Desktop
 git clone https://github.com/acceleratefactory/swiipt-platform.git Swiipt
 cd Swiipt
 ```
+
+### Option B: Download ZIP (read-only, no git)
+
+1. Go to https://github.com/acceleratefactory/swiipt-platform
+2. Click the green **Code** button → **Download ZIP**
+3. Extract the ZIP to `C:\Users\<YourUser>\Desktop\Swiipt`
+4. Open the extracted folder
+
+**Tradeoff:** ZIP download has no `.git` folder — you can read code and run the project, but you cannot commit changes or deploy to Vercel. For active development, use `git clone`.
 
 ---
 
