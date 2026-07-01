@@ -84,6 +84,7 @@ export default function GoalDetailView({
   const [activeSection, setActiveSection] = useState<"overview" | "deposit" | "withdraw" | "gift">("overview");
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [giftLinkCopied, setGiftLinkCopied] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -297,6 +298,28 @@ export default function GoalDetailView({
               }}
             >
               🎁 Gift
+            </button>
+          )}
+          {goal.milestone_25_unlocked && (
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/fund/${goal.id}`;
+                navigator.clipboard.writeText(url);
+                setGiftLinkCopied(true);
+                setTimeout(() => setGiftLinkCopied(false), 2000);
+              }}
+              style={{
+                padding: "0.75rem",
+                background: "var(--off-white)",
+                color: "var(--midnight)",
+                fontWeight: 600,
+                fontSize: "0.875rem",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--border)",
+                cursor: "pointer",
+              }}
+            >
+              {giftLinkCopied ? "Link copied ✓" : "🎁 Share gift link"}
             </button>
           )}
           <button

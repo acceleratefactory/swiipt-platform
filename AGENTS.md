@@ -37,13 +37,7 @@
 |----------|------|------|
 | 1 | Trade Show Group Booking Phase (paused) | `reports/sprint_16_trade_show_booking_flow_analysis.md` |
 | 2 | Group Buy ⏱→✅ transition in modal | `reports/group-buy-pending-confirmed-transition-plan.md` |
-
-### Sprint 18 Upgrade Path (Future)
-When Sprint 18 builds a real opportunities system, replace the temporary `opportunityCount` formula in `OpportunityScore.tsx`:
-- Create `user_opportunity_feed` table with `is_unlocked`, `is_dismissed` columns
-- Query real count from server: `SELECT COUNT(*) FROM user_opportunity_feed WHERE user_id = X AND is_unlocked = true AND is_dismissed = false`
-- Pass `opportunityCount` as a prop from `dashboard/page.tsx` to `OpportunityScore`
-- No component or display text changes needed — the widget already renders the correct framing
+| 3 | Sprint 18 — Feed, Onboarding, Campaigns, Success Stories, Affiliate University | Coming next |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -539,7 +533,103 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `reports/group-buy-pending-confirmed-transition-plan.md` | Plan: add ⏱→✅ transition to group buy modal |
 | `reports/findings/realtime-auto-close-not-firing.md` | Superseded: earlier investigation into auto-close (incorrect root cause) |
 
-## 10. SESSION HISTORY — COMPLETED WORK
+## 10. PLATFORM COMPATIBILITY REGISTRY
+
+### Critical (Breaking) — Check every sprint before creating new tables, API routes, or pages
+
+| # | Item | Status | Impact | Resolution |
+|---|------|--------|--------|------------|
+| C1 | `goal_gifts` table name | TAKEN by Sprint 5 gift-to-friend feature | Any sprint adding a "gift" table will conflict | Use `diaspora_gifts` for diaspora gift schema |
+| C2 | `/api/gifts/*` route namespace | TAKEN by Sprint 5 `POST /api/gifts/send` | Any sprint adding gift API routes will conflict | Use `/api/diaspora-gifts/*` for diaspora routes |
+| C3 | `/gift/[goalId]` public page path | Conflicts conceptually with Sprint 5 gift system | Confusion between gift-to-friend and diaspora gift | Use `/fund/[goalId]` for diaspora gift page |
+| C4 | Server Supabase client for admin RPC calls | Platform uses `createClient()` with `as any` cast, NOT `createServiceClient()` | Service client has stub cookies (`getAll` returns `[]`) causing auth failures | Use `createClient()` + `as any` cast (use `createServiceClient()` only for admin **page** queries) |
+
+### Warning (Pattern Mismatches) — Verify against platform code before implementing
+
+| # | Item | Platform Pattern | Wrong Pattern to Avoid |
+|---|------|-----------------|----------------------|
+| W1 | Admin API routes — Supabase client | `createClient()` from `@/lib/supabase/server` + `as any` cast for RPC | `createServiceClient()` from `@/lib/supabase/service` (stub cookies break auth) |
+| W2 | Server components — auth + data fetch | `createClient()` from `@/lib/supabase/server` (anon key, cookie-based) | `createAdminClient` or hardcoded service role key |
+| W3 | Notifications insert | `supabase.from("notifications").insert({ user_id, type, title, body, action_url, target_segment })` | Missing fields or different column names |
+| W4 | Fire-and-forget server-side fetch | `fetch(url, { method: "POST", ... }).catch(() => {})` | `await fetch(...)` (blocks response) |
+| W5 | Internal API fetch from server components | Uses `process.env.NEXT_PUBLIC_APP_URL` (falls back to `http://localhost:3000`) | Relative URL `/api/...` (does not resolve server-side) |
+| W6 | Dashboard sidebar `navItems` array | `Sidebar.tsx` — 12 items, exact indices matter | Inserting at wrong position breaks nav order |
+| W7 | Admin sidebar `navItems` array | `AdminSidebar.tsx` — 24 items, exact indices matter | Inserting at wrong position breaks nav order |
+| W8 | Build verification | `npm run build` — zero TS errors (no test framework) | Assuming Jest/Vitest/Playwright exist |
+| W9 | Stripe integration | Uses `process.env.STRIPE_SECRET_KEY` and `process.env.STRIPE_WEBHOOK_SECRET` | Environment variables vary by project |
+| W10 | Email (transactional) | Resend via `process.env.RESEND_API_KEY` | Not Brevo for transactional |
+
+### Current Sidebar Nav State
+
+**Dashboard (`src/components/dashboard/shell/Sidebar.tsx`):**
+| Index | Label | Icon |
+|-------|-------|------|
+| 0 | Home | Home |
+| 1 | My Goals | Target |
+| 2 | Services | Globe |
+| 3 | Flights | Plane |
+| 4 | Holidays | Umbrella |
+| 5 | Groups | Users |
+| 6 | Trade Shows | Globe |
+| 7 | Documents | FileText |
+| 8 | Rewards | Gift |
+| 9 | Refer & Earn | Users |
+| 10 | Community | MessageCircle |
+| 11 | Wallet | Wallet |
+
+**Admin (`src/components/admin/shell/AdminSidebar.tsx`):**
+| Index | Label | Icon |
+|-------|-------|------|
+| 0 | Overview | LayoutDashboard |
+| 1 | Deposits | ArrowDownCircle |
+| 2 | Visa Apps | FileText |
+| 3 | Withdrawals | ArrowUpCircle |
+| 4 | Users | Users |
+| 5 | Orders | Package |
+| 6 | Documents | FileText |
+| 7 | Services | Globe |
+| 8 | Groups | Users |
+| 9 | Trade Shows | Globe |
+| 10 | Content | FileEdit |
+| 11 | Holiday Bookings | Umbrella |
+| 12 | Currencies | DollarSign |
+| 13 | Leaderboard | Trophy |
+| 14 | Promotions | Tag |
+| 15 | Notifications | Bell |
+| 16 | Subscribers | Mail |
+| 17 | Corporate | Building2 |
+| 18 | Float Ledger | TrendingUp |
+| 19 | Settings | Settings |
+| 20 | Analytics | BarChart2 |
+| 21 | Landing Pages | Layout |
+| 22 | Goal Templates | Crosshair |
+| 23 | SEO Manager | Search |
+
+### Existing Table Name Registry (Non-Obvious Conflicts)
+*Tables that future sprints might accidentally collide with:*
+
+| Table | Sprint | Purpose | Risk for Future |
+|-------|--------|---------|-----------------|
+| `goal_gifts` | Sprint 5 | Friend-to-friend transfers (giver_id, recipient_id, amount) | Any new "gift" feature must use different table name |
+| `group_buys` | Sprint 16 | Group purchase commitments | Any new "group" feature must check namespace |
+| `trade_shows` | Sprint 16 | Trade show catalog | Any new event/catalog feature |
+| `trade_show_groups` | Sprint 16 | Group savings for trade shows | Prefixed with `TS-`, separate from `GB-` groups |
+| `niche_pages` | Sprint 14 | 20+ SEO landing pages with JSONB fields | Any new landing page feature |
+| `holiday_bookings` | Sprint 16 | Holiday booking records | Any new booking flow |
+| `readiness_score_log` | Sprint 16 | Score change audit trail | Any new scoring system |
+
+### Common Mistakes Registry
+
+1. **Using `createServiceClient()` in API routes for auth** — Service client has stub cookies (`getAll` returns `[]`), so `getUser()` fails. Use `createClient()` from `@/lib/supabase/server`.
+2. **Using relative URLs for server-side fetch** — `/api/readiness/recalculate` does not resolve from server components. Must use `process.env.NEXT_PUBLIC_APP_URL` prefix.
+3. **Omitting `id` in Supabase select queries** — Caused deposit `goal_id` to be null (Sprint 16 post-deploy bug). Always include `id` when joining to parent records.
+4. **Inserting sidebar nav items without checking exact indices** — Dashboard has 12 items, admin has 24. Insert at wrong position = broken nav order.
+5. **Using `price_paid` for service orders** — Column does not exist. Use `final_price`.
+6. **Forgetting `setShowXxx(false)` before `router.refresh()` in pending confirmation modals** — Modal stays open because `router.refresh()` preserves client state.
+
+## 11. SESSION HISTORY — COMPLETED WORK
+
+> Note: Section renumbered after Sprint 17 compatibility registry (section 10) was inserted.
 
 ### Session 1 — Reward Security Fixes
 - Fix 1: Remove goal-based credit conversion
@@ -863,7 +953,18 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Build verified:** `npm run build` — zero TS errors
 - **Plan file:** `docs/sprint_16_system3_build_plan.md` (detailed conflict analysis, all 8 files with full code, Sprint 18 upgrade path)
 
-## 11. PENDING / FUTURE BUILD
+### Session 27 — Sprint 17: Global Profile, Certificates, Agent Escrow & Diaspora Gifts (Completed)
+
+- **Phase 0 — Database:** Created `sprint_17_phase0.sql` (5 new tables: `financial_profiles`, `platform_certificates`, `platform_partners`, `escrow_deals`, `diaspora_gifts` + RLS + 6 users columns + 7 indexes + `certificate_seq` + `calculate_financial_profile()` function — all `IF NOT EXISTS` guarded). Created `sprint_17_certificate_helper.sql` (`next_certificate_number(cert_prefix)` function). Both SQL files ready to run in Supabase SQL Editor.
+- **Phase 1 — Global Profile:** Created `/dashboard/profile/page.tsx` (server, parallel fetches, auto-recalc if stale >24h), `GlobalProfile.tsx` (3-column client: Identity/Financial/Global), `POST /api/financial-profile/recalculate` (auth + admin override), fire-and-forget trigger in deposit confirm route, "My Profile" at sidebar index 1.
+- **Phase 2 — Proof of Funds:** Created `POST /api/certificates/proof-of-funds` (validates goal ≥₦50K, fee deposit, 30-day expiry), public verify page at `/verify/[code]` with `VerificationPage.tsx` (green/red states), `ProofOfFundsDocument.tsx` (PDF via `@react-pdf/renderer`), `GET /api/certificates/[code]/download` (dynamic import per type), certificate list + request page at `/dashboard/profile/certificates`.
+- **Phase 3 — Trust Certificate:** Created `POST /api/certificates/trust` (reads `financial_profiles` + `users`, `SWP-TC-` prefix, 90-day expiry), `TrustCertificateDocument.tsx` (PDF with tenure/trust score/compliance badges). Reuses verify + download routes.
+- **Phase 4 — Agent Escrow Portal:** Created 14 files across 10 build plan items. Includes: public partner registration (`/partners/apply`), agent directory with filter bar (`/dashboard/find-agent`), `PartnerCard.tsx`, agent detail + escrow deal form with milestone builder, `POST /api/escrow/create-deal`, two-step `POST /api/escrow/complete-milestone` + `POST /api/escrow/admin-confirm-milestone`, admin partners list + detail with commission rate editor and audit log, sidebar entries (Partners at index 17, "Find an Agent" at index 10).
+- **Phase 5 — Diaspora Gift:** Created 4 files. Public `/fund/[goalId]` page with amount/currency/giver form, `POST /api/diaspora-gifts/create-session` (Stripe Checkout with FX rate + 1.5% fee), `POST /api/diaspora-gifts/webhook` (signature verify, goal balance increment, milestone checks, notification), "Share gift link" button in `GoalDetailView.tsx` alongside existing Gift button. Installed `stripe` + `@stripe/stripe-js`, updated `.env.example` with Stripe vars.
+- **Key constraint compliance:** Table name `diaspora_gifts` (not `goal_gifts`), routes at `/api/diaspora-gifts/*` (not `/api/gifts/*`), public page at `/fund/[goalId]` (not `/gift/[goalId]`).
+- **Build verified:** `npm run build` — zero TS errors across all phases.
+
+## 12. PENDING / FUTURE BUILD
 
 ### Trade Show Group Booking Phase (Paused — Validate with users first)
 - **Plan file:** `reports/sprint_16_trade_show_booking_flow_analysis.md`
@@ -899,7 +1000,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
   4. Remove `getOpportunityCount()` function from `OpportunityScore.tsx` — use the prop instead
 - **Zero rework needed:** Component name, file path, display framing, all props stay the same. Only the data source changes.
 
-## 12. VERIFICATION SCRIPTS
+## 13. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors
 - **Lint:** `npm run lint`
 - No test framework installed — would need Jest/Vitest/Playwright setup from scratch

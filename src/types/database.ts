@@ -21,10 +21,16 @@ export interface Database {
           readiness_score: number
           readiness_destination: string | null
           readiness_last_calculated: string | null
+          global_profile_complete: boolean
+          trust_score: number
+          income_estimate_usd_monthly: number | null
+          skills: string[] | null
+          languages: string[] | null
+          linkedin_url: string | null
           created_at: string
         }
-        Insert: Omit<Database["public"]["Tables"]["users"]["Row"], "created_at" | "mobility_score" | "alumni_status" | "readiness_score" | "readiness_destination" | "readiness_last_calculated">
-        Update: Partial<Database["public"]["Tables"]["users"]["Insert"]>
+        Insert: Omit<Database["public"]["Tables"]["users"]["Row"], "created_at" | "mobility_score" | "alumni_status" | "readiness_score" | "readiness_destination" | "readiness_last_calculated" | "global_profile_complete" | "trust_score" | "income_estimate_usd_monthly" | "skills" | "languages" | "linkedin_url">
+        Update: Partial<Omit<Database["public"]["Tables"]["users"]["Row"], "id" | "created_at">>
         Relationships: []
       }
 
@@ -859,6 +865,136 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["trade_show_group_members"]["Insert"]>
         Relationships: []
       }
+
+      financial_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          total_deposited_ngn: number
+          total_goals_created: number
+          total_goals_completed: number
+          average_monthly_deposit_ngn: number
+          deposit_consistency_score: number
+          longest_streak_weeks: number
+          primary_destination: string | null
+          secondary_destination: string | null
+          estimated_move_timeline: string | null
+          relocation_intent_score: number
+          has_uk_company: boolean
+          has_us_llc: boolean
+          has_uae_company: boolean
+          is_sme_owner: boolean
+          identity_verified: boolean
+          documents_verified_count: number
+          services_completed: number
+          platform_tenure_days: number
+          trust_score: number
+          last_calculated: string
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["financial_profiles"]["Row"], "id" | "created_at" | "last_calculated">
+        Update: Partial<Database["public"]["Tables"]["financial_profiles"]["Insert"]>
+        Relationships: []
+      }
+
+      platform_certificates: {
+        Row: {
+          id: string
+          user_id: string
+          certificate_type: string
+          certificate_number: string
+          goal_id: string | null
+          data_snapshot: Json
+          verification_url: string
+          is_valid: boolean
+          expires_at: string
+          fee_paid_ngn: number
+          fee_deposit_id: string | null
+          issued_at: string
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["platform_certificates"]["Row"], "id" | "created_at" | "issued_at">
+        Update: Partial<Database["public"]["Tables"]["platform_certificates"]["Insert"]>
+        Relationships: []
+      }
+
+      platform_partners: {
+        Row: {
+          id: string
+          name: string
+          business_name: string | null
+          email: string
+          phone: string | null
+          partner_type: string
+          status: string
+          verification_documents: Json
+          verified_by: string | null
+          verified_at: string | null
+          cac_number: string | null
+          professional_licence_number: string | null
+          years_in_operation: number | null
+          specialisations: string[] | null
+          destinations_served: string[] | null
+          average_rating: number
+          total_reviews: number
+          total_escrow_volume_ngn: number
+          total_escrow_transactions: number
+          platform_fee_pct: number
+          stripe_account_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["platform_partners"]["Row"], "id" | "created_at" | "updated_at">
+        Update: Partial<Database["public"]["Tables"]["platform_partners"]["Insert"]>
+        Relationships: []
+      }
+
+      escrow_deals: {
+        Row: {
+          id: string
+          partner_id: string
+          client_user_id: string
+          title: string
+          description: string | null
+          total_amount_ngn: number
+          platform_fee_ngn: number
+          partner_payout_ngn: number
+          status: string
+          milestones: Json
+          savings_goal_id: string | null
+          completed_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["escrow_deals"]["Row"], "id" | "created_at" | "updated_at">
+        Update: Partial<Database["public"]["Tables"]["escrow_deals"]["Insert"]>
+        Relationships: []
+      }
+
+      diaspora_gifts: {
+        Row: {
+          id: string
+          goal_id: string
+          recipient_user_id: string
+          giver_name: string
+          giver_email: string | null
+          giver_country: string | null
+          amount_paid_foreign: number
+          foreign_currency: string
+          fx_rate_used: number
+          amount_credited_ngn: number
+          platform_fee_ngn: number
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string | null
+          gift_message: string | null
+          status: string
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["diaspora_gifts"]["Row"], "id" | "created_at">
+        Update: Partial<Database["public"]["Tables"]["diaspora_gifts"]["Insert"]>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -901,6 +1037,14 @@ export interface Database {
       calculate_readiness_score: {
         Args: { user_id_input: string }
         Returns: number
+      }
+      calculate_financial_profile: {
+        Args: { user_id_input: string }
+        Returns: void
+      }
+      next_certificate_number: {
+        Args: { cert_prefix: string }
+        Returns: string
       }
       check_and_update_trade_show_group_funding: {
         Args: { goal_id: string }

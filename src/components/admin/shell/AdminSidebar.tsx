@@ -20,6 +20,7 @@ import {
   TrendingUp,
   Settings,
   BarChart2,
+  Handshake,
 } from "lucide-react";
 
 const navItems: Array<{
@@ -45,6 +46,7 @@ const navItems: Array<{
   { href: "/admin/promotions", label: "Promotions", icon: <Tag size={16} /> },
   { href: "/admin/notifications", label: "Notifications", icon: <Bell size={16} /> },
   { href: "/admin/subscribers", label: "Subscribers", icon: <Mail size={16} /> },
+  { href: "/admin/partners", label: "Partners", icon: <Handshake size={16} /> },
   { href: "/admin/corporate", label: "Corporate", icon: <Building2 size={16} /> },
   { href: "/admin/float", label: "Float Ledger", icon: <TrendingUp size={16} /> },
   { href: "/admin/settings", label: "Settings", icon: <Settings size={16} /> },

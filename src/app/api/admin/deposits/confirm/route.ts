@@ -34,6 +34,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
+  // Fire-and-forget financial profile recalculation
+  supabase
+    .from("deposits")
+    .select("user_id")
+    .eq("id", depositId)
+    .single()
+    .then(({ data: deposit }) => {
+      if (deposit) {
+        const url = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+        fetch(`${url}/api/financial-profile/recalculate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: deposit.user_id }),
+        }).catch(() => {});
+      }
+    });
+
   if (notes) {
     await supabase
       .from("deposits")

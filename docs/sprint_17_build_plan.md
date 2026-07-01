@@ -14,15 +14,57 @@ Sprint 17 builds 5 features that expand Swiipt from a savings/migration platform
 | 2 | Proof of Funds Certificate | High | `platform_certificates` table | ₦15,000 per certificate |
 | 3 | Swiipt Trust Certificate | High | `platform_certificates` table (shared) | ₦10,000 per certificate |
 | 4 | Agent Escrow Portal | Medium | `platform_partners` + `escrow_deals` tables | 5% platform fee per deal |
-| 5 | Goal Gift from Diaspora | Medium | `goal_gifts` table + Stripe | 2% FX spread |
+| 5 | Goal Gift from Diaspora | Medium | `diaspora_gifts` table + Stripe | 2% FX spread |
 
-**No conflicts apply to Sprint 17** — all changes are additive. No existing table or function is modified. All 5 features can be built independently.
+---
+
+## Critical Compatibility Findings (Platform Audit)
+
+Before building, these discrepancies between the source documents and the actual platform were identified and resolved:
+
+### 🔴 BREAKING — Must fix before building
+
+| # | Issue | Source Doc Says | Platform Has | Fix |
+|---|-------|----------------|--------------|-----|
+| 1 | `goal_gifts` table name conflict | Create `goal_gifts` with diaspora gift schema | `goal_gifts` ALREADY EXISTS with Sprint 5 gift-to-friend schema (`giver_id`, `giver_goal_id`, `recipient_id`, `recipient_goal_id`, `amount`, `currency`, `ngn_equivalent`, `message`) | **Rename** diaspora gift table to **`diaspora_gifts`** (all SQL, API routes, types, and references) |
+| 2 | `gifts/` API route namespace | `POST /api/gifts/create-session` and `POST /api/gifts/webhook` | `POST /api/gifts/send` already exists (Sprint 5) | **Rename** diaspora gift API routes to **`/api/diaspora-gifts/create-session`** and **`/api/diaspora-gifts/webhook`** |
+| 3 | Public gift page URL | `/gift/[goalId]` | Path is available but conflicts conceptually with existing gift system | Use **`/fund/[goalId]`** for diaspora gift page to avoid confusion with existing `/gift` routes |
+
+### 🟡 WARNING — Pattern mismatches
+
+| # | Issue | Source Doc Says | Platform Has | Fix |
+|---|-------|----------------|--------------|-----|
+| 4 | Service client import pattern | Uses `createAdminClient(URL, KEY)` from `@supabase/supabase-js` | Two patterns exist: `import { createClient as createAdminClient } from "@supabase/supabase-js"` AND `import { createServiceClient } from "@/lib/supabase/service"` | Follow **both** existing patterns — use `createServiceClient()` from `@/lib/supabase/service` for new server components |
+| 5 | Dashboard sidebar — "My Profile" placement | Add after Home | `navItems` array in `Sidebar.tsx` with `Home` at index 0 | Insert `{ href: "/dashboard/profile", label: "My Profile", icon: User }` at **index 1** (import `User` from lucide-react) |
+| 6 | Dashboard sidebar — "Find an Agent" placement | Add after Rewards | `Rewards` at index 8 in `navItems` | Insert `{ href: "/dashboard/find-agent", label: "Find an Agent", icon: Handshake }` at **index 9** (import `Handshake` from lucide-react) |
+| 7 | Admin sidebar — "Partners" placement | Add after "Subscribers" | `Subscribers` at index 16 | Insert after index 16 using existing icon pattern |
+| 8 | Notification insert pattern | Generic "creates notification" | **Exact pattern**: `supabase.from("notifications").insert({ user_id, type, title, body, action_url, target_segment })` | Use exact existing insert call signature |
+| 9 | Financial profile trigger in deposit confirm | Fire-and-forget fetch | Route uses `(supabase as any).rpc("confirm_deposit", ...)` via anon server client | Add fire-and-forget **after** RPC succeeds, before `return` |
+| 10 | Service role queries in server components | Generic `createAdminClient` | Pattern: `import { createClient } from "@/lib/supabase/server"` + `import { createServiceClient } from "@/lib/supabase/service"` | Use `createServiceClient()` for RPC calls requiring bypass RLS; use `createClient()` for auth only |
+| 11 | GoalDetailView gift button | Add "Share gift link" button | Existing "🎁 Gift" button opens `GiftToFriendFlow` (Sprint 5). Sprint 17 button is ADDITIONAL | Place "🎁 Share gift link" button **alongside** the existing Gift button, not replacing it |
+
+### 🟢 SAFE — No changes needed
+
+| # | Item | Status |
+|---|------|--------|
+| 12 | `users` table ALTER TABLE — uses `ADD COLUMN IF NOT EXISTS` | ✅ Safe, won't break existing columns |
+| 13 | `certificate_seq` — uses `CREATE SEQUENCE IF NOT EXISTS` | ✅ Safe |
+| 14 | `platform_settings` for gift max pct — existing table, not being modified | ✅ Safe |
+| 15 | Profile page path `/dashboard/profile` — no existing page at this route | ✅ Available |
+| 16 | Verify page path `/verify/[code]` — no existing page at this route | ✅ Available |
+| 17 | Partners page paths — no existing pages at these routes | ✅ Available |
 
 **Build order:** 1 → 2/3 (parallel) → 4 → 5
 
 ---
 
-## Phase 0 — Database Migration
+## Phase 0 — Database Migration ✅
+
+> **Built.** SQL file: `sprint_17_phase0.sql` (run in Supabase SQL Editor).  
+> Types: `src/types/database.ts` updated with 5 new tables + users columns + RPC.  
+> API route: `src/app/api/financial-profile/recalculate/route.ts` created.  
+> Trigger: `src/app/api/admin/deposits/confirm/route.ts` modified with fire-and-forget recalculation.  
+> Build: `npm run build` — zero errors.
 
 Run this SQL in Supabase SQL Editor in a single transaction:
 
@@ -119,8 +161,8 @@ CREATE TABLE escrow_deals (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- === GOAL GIFTS (DIASPORA) ===
-CREATE TABLE goal_gifts (
+-- === DIASPORA GIFTS (external card payments into locked goals) ===
+CREATE TABLE diaspora_gifts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   goal_id UUID REFERENCES savings_goals(id) NOT NULL,
   recipient_user_id UUID REFERENCES users(id) NOT NULL,
@@ -145,7 +187,7 @@ ALTER TABLE financial_profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_certificates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE platform_partners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE escrow_deals ENABLE ROW LEVEL SECURITY;
-ALTER TABLE goal_gifts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE diaspora_gifts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users read own financial profile"
   ON financial_profiles FOR SELECT USING (auth.uid() = user_id);
@@ -167,13 +209,13 @@ CREATE POLICY "Deal parties can read their deals"
   );
 
 CREATE POLICY "Recipients can read their gifts"
-  ON goal_gifts FOR SELECT USING (auth.uid() = recipient_user_id);
+  ON diaspora_gifts FOR SELECT USING (auth.uid() = recipient_user_id);
 
 -- Admin policies for all new tables
 DO $$
 DECLARE t TEXT;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['financial_profiles','platform_certificates','platform_partners','escrow_deals','goal_gifts']
+  FOREACH t IN ARRAY ARRAY['financial_profiles','platform_certificates','platform_partners','escrow_deals','diaspora_gifts']
   LOOP
     EXECUTE format('CREATE POLICY "Admins manage %I" ON %I FOR ALL USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = ''admin''))', t, t);
   END LOOP;
@@ -194,7 +236,7 @@ CREATE INDEX IF NOT EXISTS idx_platform_certificates_number ON platform_certific
 CREATE INDEX IF NOT EXISTS idx_platform_partners_status ON platform_partners(status, partner_type);
 CREATE INDEX IF NOT EXISTS idx_escrow_deals_client ON escrow_deals(client_user_id);
 CREATE INDEX IF NOT EXISTS idx_escrow_deals_partner ON escrow_deals(partner_id);
-CREATE INDEX IF NOT EXISTS idx_goal_gifts_goal ON goal_gifts(goal_id);
+CREATE INDEX IF NOT EXISTS idx_diaspora_gifts_goal ON diaspora_gifts(goal_id);
 
 -- === CERTIFICATE NUMBER SEQUENCE ===
 CREATE SEQUENCE IF NOT EXISTS certificate_seq START 1000;
@@ -307,15 +349,22 @@ The `calculate_financial_profile` function must be triggered at these points (fr
 
 **Trigger 1 — After deposit confirmation:**
 
-Modify `POST /api/admin/deposits/confirm/route.ts` (or the `confirm_deposit` RPC if modifiable). After the deposit is confirmed, fire a fire-and-forget call to recalculate the user's financial profile:
+Modify `POST /api/admin/deposits/confirm/route.ts`. After the RPC succeeds (after line 35), fetch the deposit's `user_id` and fire a fire-and-forget call to recalculate the user's financial profile:
 
 ```typescript
-// Fire-and-forget — after deposit confirmed
-fetch("/api/financial-profile/recalculate", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ userId: deposit.user_id }),
-}).catch(() => {});
+// After line 35 — fire-and-forget financial profile recalculation
+const { data: deposit } = await supabase
+  .from("deposits")
+  .select("user_id")
+  .eq("id", depositId)
+  .single();
+if (deposit) {
+  fetch(new URL("/api/financial-profile/recalculate", process.env.NEXT_PUBLIC_APP_URL).toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId: deposit.user_id }),
+  }).catch(() => {});
+}
 ```
 
 **Trigger 2 — On profile page load when stale:**
@@ -324,13 +373,14 @@ The Global Profile server page (`/dashboard/profile/page.tsx`) already auto-reca
 
 **API route to trigger recalculation:**
 
-Create `src/app/api/financial-profile/recalculate/route.ts`:
+Create `src/app/api/financial-profile/recalculate/route.ts` — uses `createServiceClient` pattern (matching existing platform pattern for admin operations):
 
 ```typescript
-// POST — admin-only endpoint to recalculate financial profile
-// Called by trigger points — uses service client
+// POST — recalculate financial profile for a user
+// Called fire-and-forget from trigger points
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
@@ -346,16 +396,18 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
     if (!roleData || roleData.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
   }
 
-  const adminSupabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+  const serviceSupabase = createServiceClient();
+  const { error } = await serviceSupabase.rpc("calculate_financial_profile", {
+    user_id_input: userId,
+  });
 
-  await adminSupabase.rpc("calculate_financial_profile", { user_id_input: userId });
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
 
   return NextResponse.json({ success: true });
 }
@@ -424,10 +476,8 @@ Uses service client (`createAdminClient` from `@supabase/supabase-js`) for all q
 ### 1.3 — Sidebar + Navigation
 
 **Modify:** `src/components/dashboard/shell/Sidebar.tsx`
-Add after Home:
-```typescript
-{ href: "/dashboard/profile", label: "My Profile", icon: "User" },
-```
+
+Insert `{ href: "/dashboard/profile", label: "My Profile", icon: User }` at **index 1** in `navItems` array (after Home, before My Goals). Import `User` from `lucide-react` alongside existing imports.
 
 ---
 
@@ -610,21 +660,23 @@ Transaction history with escrow deals.
 
 ### 4.9 — Admin Sidebar
 
-Add after "Subscribers":
+Insert at **index 17** in `AdminSidebar.tsx`'s `navItems` array (after `Subscribers` at index 16, before `Corporate`):
 ```typescript
-{ href: "/admin/partners", label: "Partners", icon: "Handshake" },
+{ href: "/admin/partners", label: "Partners", icon: <Handshake size={16} /> },
 ```
+Import `Handshake` from `lucide-react` alongside existing imports.
 
 ### 4.10 — Dashboard Sidebar
 
-Add after "Rewards":
+Insert at **index 9** in `Sidebar.tsx`'s `navItems` array (after `Rewards` at index 8, before `Refer & Earn`):
 ```typescript
-{ href: "/dashboard/find-agent", label: "Find an Agent", icon: "Handshake" },
+{ href: "/dashboard/find-agent", label: "Find an Agent", icon: Handshake },
 ```
+Import `Handshake` from `lucide-react` alongside existing imports.
 
 ---
 
-## Phase 5 — Goal Gift from Diaspora
+## Phase 5 — Diaspora Gift (Goal Gift from Diaspora)
 
 ### Prerequisites
 - Stripe account connected to Swiipt UK Ltd company
@@ -638,12 +690,12 @@ Add after "Rewards":
 
 | # | File | Action |
 |---|------|--------|
-| 5.1 | `src/app/(public)/gift/[goalId]/page.tsx` | Create — public gift page |
-| 5.2 | `src/app/api/gifts/create-session/route.ts` | Create — Stripe Checkout session |
-| 5.3 | `src/app/api/gifts/webhook/route.ts` | Create — Stripe webhook handler |
-| 5.4 | `src/components/dashboard/goals/GoalDetailView.tsx` | Modify — add "Share gift link" button |
+| 5.1 | `src/app/(public)/fund/[goalId]/page.tsx` | Create — public diaspora gift page (NOT `/gift/` which conflicts with Sprint 5 gift feature) |
+| 5.2 | `src/app/api/diaspora-gifts/create-session/route.ts` | Create — Stripe Checkout session (NOT `/api/gifts/` which has existing Sprint 5 routes) |
+| 5.3 | `src/app/api/diaspora-gifts/webhook/route.ts` | Create — Stripe webhook handler |
+| 5.4 | `src/components/dashboard/goals/GoalDetailView.tsx` | Modify — add "🎁 Share gift link" button **alongside** the existing "🎁 Gift" button (both co-exist) |
 
-### 5.1 — Gift Page (`/gift/[goalId]`)
+### 5.1 — Diaspora Gift Page (`/fund/[goalId]`)
 
 Public page, no login required. Fetches goal by ID (limited info: goal name, holder's first name, progress, target amount).
 
@@ -654,9 +706,9 @@ UI elements:
 - Giver name input (required)
 - Giver email (optional — for confirmation receipt)
 - Gift message textarea (max 200 chars)
-- "Send gift" button → POST to `/api/gifts/create-session`
+- "Send gift" button → POST to `/api/diaspora-gifts/create-session`
 
-### 5.2 — Create Checkout Session (`POST /api/gifts/create-session`)
+### 5.2 — Create Checkout Session (`POST /api/diaspora-gifts/create-session`)
 
 Input: `{ goalId, amount, foreignCurrency, giverName, giverEmail, message }`
 
@@ -664,37 +716,59 @@ Logic:
 1. Verify goal exists and is active
 2. Get current FX rate from `currencies` table for `foreignCurrency → NGN`
 3. Calculate `amount_credited_ngn` after platform fee (1.5%)
-4. Create `goal_gifts` record with `status = 'pending'`
+4. Create `diaspora_gifts` record with `status = 'pending'`
 5. Create Stripe Checkout session:
    - `line_items`: single item with name "Gift to {holder_first_name}'s goal"
    - `amount`: in foreign currency smallest unit
    - `currency`: foreign currency
-   - `success_url`: redirect to /gift/{goalId}/success
-   - `cancel_url`: redirect to /gift/{goalId}
+   - `success_url`: `${origin}/fund/${goalId}?success=true`
+   - `cancel_url`: `${origin}/fund/${goalId}`
    - `metadata`: `{ goal_gift_id, goal_id, recipient_user_id }`
 6. Return `{ checkoutUrl }`
 
-### 5.3 — Webhook Handler (`POST /api/gifts/webhook`)
+### 5.3 — Webhook Handler (`POST /api/diaspora-gifts/webhook`)
 
 Stripe webhook endpoint (signed by `STRIPE_WEBHOOK_SECRET`).
 
 On `checkout.session.completed`:
-1. Find `goal_gifts` record by `stripe_session_id`
+1. Find `diaspora_gifts` record by `stripe_session_id`
 2. Apply FX rate to get NGN amount
 3. Deduct platform fee (1.5%)
 4. `UPDATE savings_goals SET current_balance = current_balance + amount_credited_ngn WHERE id = goal_id`
-5. `UPDATE goal_gifts SET status = 'completed', stripe_payment_intent_id = paymentIntent`
-6. Create `activity_log` entry (type: `goal_gift_received`)
-7. Create notification for recipient (`type: 'gift_received'`, linking to goal detail page)
+5. `UPDATE diaspora_gifts SET status = 'completed', stripe_payment_intent_id = paymentIntent`
+6. Create `activity_log` entry (type: `diaspora_gift_received`)
+7. Create notification for recipient — use the **exact existing platform pattern** from `gifts/send/route.ts`:
+   ```typescript
+   await supabase.from("notifications").insert({
+     user_id: recipientUser.id,
+     type: "diaspora_gift_received",
+     title: `🎁 ${giverName} sent you a gift!`,
+     body: `${amount_credited_ngn.toLocaleString()} NGN added to your goal.${giftMessage ? ` "${giftMessage}"` : ""}`,
+     action_url: `/dashboard/goals/${goalId}`,
+     target_segment: null,
+   });
+   ```
 8. Send gift received confirmation email to giver (via Resend — optional, dependent on `RESEND_API_KEY`)
-9. Send notification to recipient via in-app notification + WhatsApp template if available
+9. Also notify recipient via WhatsApp if template available (same pattern as existing milestone notifications)
 
-From the sprint_17_claude_code.md checklist: "Recipient notified via notification, email, and WhatsApp." Implement notifications using the existing `notifications` table insert pattern.
+### 5.4 — Share Diaspora Gift Link Button
 
-### 5.4 — Share Gift Link Button
+Modify `GoalDetailView.tsx`: add a new button **alongside** the existing "🎁 Gift" button (which opens `GiftToFriendFlow` — Sprint 5 internal gifting). Both buttons co-exist:
 
-Modify `GoalDetailView.tsx`: add button after existing action buttons:
-"🎁 Share gift link" → copies `{origin}/gift/{goal.id}` → shows "Link copied ✓" for 2 seconds.
+```tsx
+// After the existing Gift button, add:
+<button
+  onClick={() => {
+    const url = `${window.location.origin}/fund/${goal.id}`;
+    navigator.clipboard.writeText(url);
+    setGiftLinkCopied(true);
+    setTimeout(() => setGiftLinkCopied(false), 2000);
+  }}
+  style={{ padding: "0.75rem", background: "var(--off-white)", color: "var(--midnight)", fontWeight: 600, fontSize: "0.875rem", borderRadius: "var(--radius-md)", border: "1px solid var(--border)", cursor: "pointer" }}
+>
+  {giftLinkCopied ? "Link copied ✓" : "🎁 Share gift link"}
+</button>
+```
 
 ---
 
@@ -798,7 +872,7 @@ export interface EscrowMilestone {
   completed_at: string | null;
 }
 
-export interface GoalGift {
+export interface DiasporaGift {
   id: string;
   goal_id: string;
   recipient_user_id: string;
@@ -824,29 +898,29 @@ export interface GoalGift {
 ## Build Sequence (Phase Order)
 
 ```
-PHASE 0 — Database + SQL function
+PHASE 0 — Database + SQL function  ✅
   ├── Run SQL migration (5 tables + users columns + RLS + indexes + sequence)
   ├── Create calculate_financial_profile SQL function
   ├── Create POST /api/financial-profile/recalculate trigger endpoint
   ├── Update src/types/database.ts
   └── Add fire-and-forget trigger in deposit confirmation route
 
-PHASE 1 — Global Opportunity Profile
+PHASE 1 — Global Opportunity Profile  ✅
   ├── Create /dashboard/profile/page.tsx
   ├── Create GlobalProfile.tsx client component
   └── Modify Sidebar.tsx — add "My Profile" link
 
-PHASE 2 — Proof of Funds Certificate
+PHASE 2 — Proof of Funds Certificate  ✅
   ├── Create POST /api/certificates/proof-of-funds
   ├── Create verify/[code] page + VerificationPage.tsx
   ├── npm install @react-pdf/renderer
   ├── Create GET /api/certificates/[code]/download
   └── Create /dashboard/profile/certificates page
 
-PHASE 3 — Trust Certificate
+PHASE 3 — Trust Certificate  ✅
   └── Create POST /api/certificates/trust (reuses verify + download)
 
-PHASE 4 — Agent Escrow Portal
+PHASE 4 — Agent Escrow Portal  ✅
   ├── Create /partners/apply page + API
   ├── Create /dashboard/find-agent + PartnerCard + agent detail + create deal
   ├── Create escrow API routes (create-deal, complete-milestone)
@@ -854,14 +928,14 @@ PHASE 4 — Agent Escrow Portal
   ├── Modify AdminSidebar — add "Partners"
   └── Modify dashboard Sidebar — add "Find an Agent"
 
-PHASE 5 — Goal Gift from Diaspora
+PHASE 5 — Diaspora Gift (Goal Gift from Diaspora)  ✅
   ├── npm install stripe @stripe/stripe-js
   ├── Add STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY to Vercel
-  ├── Create /gift/[goalId] public page
-  ├── Create POST /api/gifts/create-session (Stripe Checkout)
-  ├── Create POST /api/gifts/webhook (Stripe webhook handler)
+  ├── Create /fund/[goalId] public page (NOT /gift/ — conflicts with Sprint 5)
+  ├── Create POST /api/diaspora-gifts/create-session (NOT /api/gifts/ — conflicts with Sprint 5)
+  ├── Create POST /api/diaspora-gifts/webhook (Stripe webhook handler)
   ├── Configure Stripe webhook endpoint in Stripe dashboard
-  └── Modify GoalDetailView — add "Share gift link" button
+  └── Modify GoalDetailView — add "🎁 Share gift link" button alongside existing "🎁 Gift" button
 ```
 
 ---
@@ -906,7 +980,7 @@ PHASE 5 — Goal Gift from Diaspora
 3. Select ₦25,000 → GBP currency → enter name + message → click "Send gift"
 4. Redirected to Stripe Checkout
 5. Complete payment with test card
-6. Webhook fires → `goal_gifts.status = 'completed'`
+6. Webhook fires → `diaspora_gifts.status = 'completed'`
 7. Goal balance increases by credited amount (minus 1.5% fee)
 8. Recipient receives notification
 

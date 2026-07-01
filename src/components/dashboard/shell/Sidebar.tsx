@@ -5,13 +5,14 @@ import Link from "next/link";
 import {
   Home, Target, Globe, Plane, Umbrella,
   FileText, Gift, Users, MessageCircle,
-  Settings, Wallet, LogOut,
+  Settings, Wallet, LogOut, User, Handshake,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import CurrencyDisplay from "@/components/dashboard/shared/CurrencyDisplay";
 
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/dashboard/profile", label: "My Profile", icon: User },
   { href: "/dashboard/goals", label: "My Goals", icon: Target },
   { href: "/dashboard/services", label: "Services", icon: Globe },
   { href: "/dashboard/flights", label: "Flights", icon: Plane },
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/dashboard/trade-shows", label: "Trade Shows", icon: Globe },
   { href: "/dashboard/documents", label: "Documents", icon: FileText },
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
+  { href: "/dashboard/find-agent", label: "Find an Agent", icon: Handshake },
   { href: "/dashboard/refer", label: "Refer & Earn", icon: Users },
   { href: "/dashboard/community", label: "Community", icon: MessageCircle },
   { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
