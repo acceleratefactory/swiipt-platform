@@ -401,6 +401,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **System 2 — Trade Show Groups (✅ Built):** 3 tables, 6 seed trade shows, create-group + join-group APIs, catalog/discovery page, show detail page, group detail page with funding progress + member bars, admin management page, public invite page at `/join/trade-show/[code]` with `TS-` prefixed codes, sidebar nav items in both dashboard + admin. Invite code namespace resolved via prefix. `lock_type` → `is_locked=TRUE`. `goal_category='custom'`.
 - **System 3 — Opportunity Score (✅ Built):** `calculate_readiness_score()` RPC created, `users.readiness_score/readiness_destination/readiness_last_calculated` columns added, `readiness_score_log` table created, `POST /api/readiness/recalculate` route created. `confirm_deposit` RPC updated to fire recalculation. `OpportunityScore.tsx` widget shows "You qualify for X opportunities today" with SVG circular progress, 5 score tiers, next-action CTA, and refresh button. Dashboard home renders it after WelcomeBanner. Score auto-recalculates via fire-and-forget triggers on: goal creation, vault document upload, service order, profile update. Admin user detail page shows readiness score in Overview tab. Temporary `opportunityCount = Math.round((score / 100) * 35)` — see Sprint 18 Upgrade Path below when real opportunities table is built.
 - **Priority 4 — Goal-based holiday payment (Sessions 14-15):** Phase 1: linked_holiday_package_id on savings_goals, duplicate goal prevention, existing goal detection on detail page. Phase 2: goal_id on holiday_bookings, goal_redemption support in booking API, payment method selection UI, admin cancel reverts goal balance.
+- **NicheCTA → Goal Template Connection (Session 26 post-deploy):** `NicheCTA.tsx` and `NicheHero.tsx` updated to pass `recommended_goal_template_id` through signup return URL. NicheHero converted to `"use client"` with auth check — logged-in users go directly to `/dashboard/goals/new?template={id}`, logged-out users go via `/signup?return=...`. Closes Loop 1 end-to-end.
 
 ## 8. API ROUTES — COMPLETE INDEX
 
@@ -506,6 +507,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `src/components/landing/` | All landing page components (Navbar, Hero, etc.) |
 | `src/components/dashboard/home/OpportunityScore.tsx` | **Opportunity Score widget** — SVG circle, "X opportunities today" framing, 5 tiers, refresh button |
 | `docs/sprint_16_system3_build_plan.md` | System 3 build plan — conflict analysis, 7-phase implementation, Sprint 18 upgrade path |
+| `docs/sprint_17_build_plan.md` | Sprint 17 build plan — 5 features (Global Profile, Certificates, Agent Escrow, Diaspora Gifts), 5 new DB tables, phase-by-phase implementation |
+| `reports/opportunity_score_testing_walkthrough.md` | Testing walkthrough for Opportunity Score — 7 trigger points, admin display |
 | `docs/movenaija_claude_code_direction_v2.md` | Master direction document (1933 lines) |
 | `reports/sprint_16_investigation_report.md` | Sprint 16 investigation with 4 priorities |
 | `reports/admin_api_rls_audit.md` | Audit of 33 admin API routes (22 broken) |
