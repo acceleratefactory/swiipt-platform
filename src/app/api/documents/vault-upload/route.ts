@@ -50,5 +50,11 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  fetch(`${appUrl}/api/readiness/recalculate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  }).catch(() => {});
+
   return NextResponse.json({ success: true, filePath });
 }

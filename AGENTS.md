@@ -2,12 +2,13 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-**You are joining mid-Sprint 16.** Do not start from scratch. Read this first.
+**You are joining after System 3 (Opportunity Score) delivery.** Do not start from scratch. Read this first.
 
 ### Current State
 - **Sprint 16, System 2 (Trade Show Group Savings)** — fully built and deployed to production
 - All 5 gap phases (Create Group Modal, Join Flow, Admin CRUD, Payment Modal, Discount Settings) are complete
 - Post-deployment bugs fixed: ambiguous `deposit_id`, wrong `referrals` column, missing `goal_id` in select, admin notification FK
+- **Sprint 16, System 3 (Opportunity Score)** — fully built and deployed (see System 3 section below)
 - Groups can: form → members join with invite link → members save into locked goals → admin confirms deposits → group reaches `funded`
 - **Paused before booking phase** — the `funded → booking → confirmed → completed` pipeline is NOT built. See `reports/sprint_16_trade_show_booking_flow_analysis.md` for the plan.
 
@@ -36,6 +37,13 @@
 |----------|------|------|
 | 1 | Trade Show Group Booking Phase (paused) | `reports/sprint_16_trade_show_booking_flow_analysis.md` |
 | 2 | Group Buy ⏱→✅ transition in modal | `reports/group-buy-pending-confirmed-transition-plan.md` |
+
+### Sprint 18 Upgrade Path (Future)
+When Sprint 18 builds a real opportunities system, replace the temporary `opportunityCount` formula in `OpportunityScore.tsx`:
+- Create `user_opportunity_feed` table with `is_unlocked`, `is_dismissed` columns
+- Query real count from server: `SELECT COUNT(*) FROM user_opportunity_feed WHERE user_id = X AND is_unlocked = true AND is_dismissed = false`
+- Pass `opportunityCount` as a prop from `dashboard/page.tsx` to `OpportunityScore`
+- No component or display text changes needed — the widget already renders the correct framing
 
 ## 1. PLATFORM OVERVIEW
 
@@ -391,7 +399,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - Dashboard groups list + detail with member management
 - **Priority 2 (Sprint 16) — Group Buy Payment Flow (Sessions 5–8):** Full payment modal with goal redemption, direct bank transfer, travel credit auto-apply, Realtime subscription, payment recovery (resume/cancel), admin confirmation sync from all admin paths
 - **System 2 — Trade Show Groups (✅ Built):** 3 tables, 6 seed trade shows, create-group + join-group APIs, catalog/discovery page, show detail page, group detail page with funding progress + member bars, admin management page, public invite page at `/join/trade-show/[code]` with `TS-` prefixed codes, sidebar nav items in both dashboard + admin. Invite code namespace resolved via prefix. `lock_type` → `is_locked=TRUE`. `goal_category='custom'`.
-- **System 3 — Readiness Score (SQL built, UI pending):** `calculate_readiness_score()` RPC created, `users.readiness_score/readiness_destination/readiness_last_calculated` columns added, `readiness_score_log` table created, `POST /api/readiness/recalculate` route created. `confirm_deposit` RPC updated to fire readiness score recalculation. **ReadinessScore widget + dashboard integration not yet built.**
+- **System 3 — Opportunity Score (✅ Built):** `calculate_readiness_score()` RPC created, `users.readiness_score/readiness_destination/readiness_last_calculated` columns added, `readiness_score_log` table created, `POST /api/readiness/recalculate` route created. `confirm_deposit` RPC updated to fire recalculation. `OpportunityScore.tsx` widget shows "You qualify for X opportunities today" with SVG circular progress, 5 score tiers, next-action CTA, and refresh button. Dashboard home renders it after WelcomeBanner. Score auto-recalculates via fire-and-forget triggers on: goal creation, vault document upload, service order, profile update. Admin user detail page shows readiness score in Overview tab. Temporary `opportunityCount = Math.round((score / 100) * 35)` — see Sprint 18 Upgrade Path below when real opportunities table is built.
 - **Priority 4 — Goal-based holiday payment (Sessions 14-15):** Phase 1: linked_holiday_package_id on savings_goals, duplicate goal prevention, existing goal detection on detail page. Phase 2: goal_id on holiday_bookings, goal_redemption support in booking API, payment method selection UI, admin cancel reverts goal balance.
 
 ## 8. API ROUTES — COMPLETE INDEX
@@ -496,6 +504,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `src/components/dashboard/shell/Sidebar.tsx` | Dashboard sidebar nav |
 | `src/app/(public)/page.tsx` | Landing page assembly |
 | `src/components/landing/` | All landing page components (Navbar, Hero, etc.) |
+| `src/components/dashboard/home/OpportunityScore.tsx` | **Opportunity Score widget** — SVG circle, "X opportunities today" framing, 5 tiers, refresh button |
+| `docs/sprint_16_system3_build_plan.md` | System 3 build plan — conflict analysis, 7-phase implementation, Sprint 18 upgrade path |
 | `docs/movenaija_claude_code_direction_v2.md` | Master direction document (1933 lines) |
 | `reports/sprint_16_investigation_report.md` | Sprint 16 investigation with 4 priorities |
 | `reports/admin_api_rls_audit.md` | Audit of 33 admin API routes (22 broken) |
@@ -831,6 +841,25 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Booking flow analysis:** `reports/sprint_16_trade_show_booking_flow_analysis.md`
 - **Decision:** **Pause here. Do not build booking phase yet.** Validate with real users first that the savings model works for trade show groups before building the `funded → booking → confirmed → completed` pipeline. The money sitting in locked goals is fine — it counts toward AUM and cannot be withdrawn.
 
+### Session 26 — System 3: Opportunity Score (Completed)
+- **Goal:** Build the Relocation Readiness Score as the Opportunity Score (user-facing framing). SQL + API were already built in Sessions 23-25. This session built the UI layer and all trigger points.
+- **Naming convention (build once correctly):**
+  - DB columns: `users.readiness_score` (internal, not renamed)
+  - SQL function: `calculate_readiness_score()` (internal, not renamed)
+  - API route: `/api/readiness/recalculate` (internal, not renamed)
+  - Component: **`OpportunityScore.tsx`** (user-facing, final name from day one)
+  - Display: **"You qualify for X opportunities today"** (final framing from day one)
+- **7 phases, surgical precision, one approval at a time:**
+  - **Phase 1:** Created `src/components/dashboard/home/OpportunityScore.tsx` — SVG circular progress (radius 54), 5 score tiers (Getting Started → Move-ready), temporary `opportunityCount = Math.round((score / 100) * 35)`, primary display "You qualify for X opportunities today", secondary display "Readiness: X/100", next-action CTA per tier, refresh button calling `POST /api/readiness/recalculate`
+  - **Phase 2:** Modified `src/app/(dashboard)/dashboard/page.tsx` — added readiness score fetch from `users` table, 24-hour auto-recalc via server-side fetch to API route, renders `OpportunityScore` after `WelcomeBanner`, before `WalletCard`
+  - **Phase 3:** Modified `src/components/dashboard/goals/CreateGoalForm.tsx` — added fire-and-forget `fetch("/api/readiness/recalculate")` after goal creation
+  - **Phase 4:** Modified `src/app/api/documents/vault-upload/route.ts` — added fire-and-forget readiness recalc after vault document upload
+  - **Phase 5:** Modified `src/app/api/services/order/route.ts` — added fire-and-forget readiness recalc after service order creation
+  - **Phase 6:** Modified `src/app/api/settings/update-profile/route.ts` — added fire-and-forget readiness recalc after profile update
+  - **Phase 7:** Modified `src/components/admin/users/UserProfileAdmin.tsx` — added "Readiness Score: X/100" display in admin user Overview tab
+- **Build verified:** `npm run build` — zero TS errors
+- **Plan file:** `docs/sprint_16_system3_build_plan.md` (detailed conflict analysis, all 8 files with full code, Sprint 18 upgrade path)
+
 ## 11. PENDING / FUTURE BUILD
 
 ### Trade Show Group Booking Phase (Paused — Validate with users first)
@@ -848,6 +877,24 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
   - `src/components/dashboard/groups/GroupBuyPaymentModal.tsx` — Add `confirmed`, `adminConfirmed` states; Realtime subscription; polling fallback; update `ConfirmationStep` UI to show ⏱/✅
   - `src/components/dashboard/groups/GroupDetailActions.tsx` — Fix `createClient()` in component body (same pattern as Session 21)
 - **Pattern to follow:** Holiday flow (`HolidayBookingFlow.tsx` lines 24-76 for state + effects; lines 180-203 for conditional UI)
+
+### Sprint 18 Upgrade Path — Replace Temporary Opportunity Count Formula
+- **Current state:** `OpportunityScore.tsx` uses `Math.round((score / 100) * 35)` as a temporary formula
+- **When to build:** Sprint 18, when a real opportunities system is built
+- **What to do:**
+  1. Create `user_opportunity_feed` table with `is_unlocked` (boolean), `is_dismissed` (boolean), `user_id` (FK to users)
+  2. In `src/app/(dashboard)/dashboard/page.tsx`, add a query after the readiness fetch:
+     ```typescript
+     const { count: opportunityCount } = await supabase
+       .from("user_opportunity_feed")
+       .select("*", { count: "exact", head: true })
+       .eq("user_id", user.id)
+       .eq("is_unlocked", true)
+       .eq("is_dismissed", false);
+     ```
+  3. Pass `opportunityCount` as a prop to `OpportunityScore` component
+  4. Remove `getOpportunityCount()` function from `OpportunityScore.tsx` — use the prop instead
+- **Zero rework needed:** Component name, file path, display framing, all props stay the same. Only the data source changes.
 
 ## 12. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors

@@ -32,6 +32,7 @@ export default function UserProfileAdmin({ profile, wallet, goals, deposits, wit
                   ["Referral code", profile?.referral_code || "—"],
                   ["Referred by", profile?.referred_by || "—"],
                   ["Mobility Score", String(profile?.mobility_score ?? 0)],
+                  ["Readiness Score", profile?.readiness_score != null ? `${profile.readiness_score}/100` : "—"],
                 ].map(([label, value]) => (
                   <div key={label}>
                     <p style={{ color: "var(--text-muted)", marginBottom: "0.125rem" }}>{label}</p>

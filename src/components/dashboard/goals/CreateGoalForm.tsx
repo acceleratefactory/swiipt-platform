@@ -138,6 +138,8 @@ export default function CreateGoalForm({
       points: 20,
     });
 
+    fetch("/api/readiness/recalculate", { method: "POST" }).catch(() => {});
+
     setLoading(false);
     if (onSuccess) {
       onSuccess(newGoal.id, {

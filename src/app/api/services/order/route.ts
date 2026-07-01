@@ -155,6 +155,12 @@ export async function POST(request: NextRequest) {
     event_data: { package_id: packageId, package_name: pkg.name, payment_method: paymentMethod, credit_applied: creditApplied },
   });
 
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  fetch(`${appUrl}/api/readiness/recalculate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  }).catch(() => {});
+
   return NextResponse.json({
     orderId: order.id,
     orderReference,
