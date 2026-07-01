@@ -49,7 +49,7 @@ function getScoreTier(score: number): { label: string; color: string; message: s
   };
 }
 
-export default function OpportunityScore({ score, destination, userId }: OpportunityScoreProps) {
+export default function OpportunityScore({ score, destination, userId: _userId }: OpportunityScoreProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [currentScore, setCurrentScore] = useState(score);
   const tier = getScoreTier(currentScore);
