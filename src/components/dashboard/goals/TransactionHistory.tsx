@@ -31,6 +31,7 @@ export default function TransactionHistory({
   gifts,
   serviceOrders,
   holidayBookings,
+  certificates,
   goalCurrency: _goalCurrency,
   userId,
 }: {
@@ -40,6 +41,8 @@ export default function TransactionHistory({
   serviceOrders: any[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   holidayBookings: any[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  certificates: any[];
   goalCurrency: string;
   userId: string;
 }) {
@@ -90,6 +93,18 @@ export default function TransactionHistory({
       confirmedAt: b.updated_at || b.created_at,
       fromTo: b.holiday_packages?.title || "Holiday payment",
     })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...certificates.map((c: any) => ({
+      id: c.id,
+      type: "certificate_fee" as const,
+      amount: c.fee_paid_ngn,
+      currency: "NGN",
+      status: "confirmed" as const,
+      date: c.issued_at,
+      reference: c.certificate_number,
+      confirmedAt: c.issued_at,
+      fromTo: "Proof of Funds certificate fee",
+    })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   return (
@@ -136,6 +151,7 @@ export default function TransactionHistory({
           const isGiftReceived = tx.type === "gift_received";
           const isServicePayment = tx.type === "service_payment";
           const isHolidayPayment = tx.type === "holiday_payment";
+          const isCertificateFee = tx.type === "certificate_fee";
           return (
             <div
               key={tx.id}
@@ -152,7 +168,7 @@ export default function TransactionHistory({
                   width: 36,
                   height: 36,
                   borderRadius: "50%",
-                  background: isGiftReceived ? "#EDE9FE" : isServicePayment || isHolidayPayment ? "#EDE9FE" : "var(--teal-pale)",
+                  background: isGiftReceived || isServicePayment || isHolidayPayment || isCertificateFee ? "#EDE9FE" : "var(--teal-pale)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -160,7 +176,7 @@ export default function TransactionHistory({
                   flexShrink: 0,
                 }}
               >
-                {tx.type === "deposit" ? "↓" : tx.type === "service_payment" ? "🛠️" : tx.type === "holiday_payment" ? "🌍" : "🎁"}
+                {tx.type === "deposit" ? "↓" : tx.type === "service_payment" ? "🛠️" : tx.type === "holiday_payment" ? "🌍" : tx.type === "certificate_fee" ? "📜" : "🎁"}
               </div>
 
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -179,7 +195,9 @@ export default function TransactionHistory({
                         ? "Service payment"
                         : tx.type === "holiday_payment"
                           ? "Holiday payment"
-                          : "Gift received"}
+                          : tx.type === "certificate_fee"
+                            ? "Certificate fee"
+                            : "Gift received"}
                   {tx.fromTo && (
                     <span
                       style={{

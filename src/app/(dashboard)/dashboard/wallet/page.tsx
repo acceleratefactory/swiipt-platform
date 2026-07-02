@@ -43,19 +43,17 @@ export default async function WalletPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (supabase as any)
       .from("platform_certificates")
-      .select("fee_deposit_id")
+      .select("*")
       .eq("user_id", user.id)
-      .not("fee_deposit_id", "is", null),
+      .order("issued_at", { ascending: false }),
     supabase.from("users").select("preferred_currency, full_name").eq("id", user.id).single(),
   ]);
-
-  const feeDepositIds = new Set((certsRes.data || []).map((c: { fee_deposit_id: string }) => c.fee_deposit_id));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const transactions: any[] = [
     ...(depositsRes.data || []).map(d => ({
       id: d.id,
-      type: (feeDepositIds.has(d.id) ? "certificate_fee" : "deposit") as "deposit" | "certificate_fee",
+      type: "deposit" as const,
       amount: d.amount,
       currency: d.currency,
       ngn_equivalent: d.ngn_equivalent || d.amount,
@@ -124,6 +122,19 @@ export default async function WalletPage() {
       reference: null as string | null,
       goal_name: o.service_packages?.name || "Service payment",
       confirmed_at: o.updated_at || o.created_at,
+    })),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ...(certsRes.data || []).map((c: any) => ({
+      id: c.id,
+      type: "certificate_fee" as const,
+      amount: c.fee_paid_ngn,
+      currency: "NGN",
+      ngn_equivalent: c.fee_paid_ngn,
+      status: "confirmed" as const,
+      date: c.issued_at,
+      reference: c.certificate_number,
+      goal_name: c.certificate_type === "proof_of_funds" ? `Proof of Funds — ${c.certificate_number}` : `Trust Certificate — ${c.certificate_number}`,
+      confirmed_at: c.issued_at,
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 

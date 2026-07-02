@@ -108,6 +108,20 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const { data: wallet } = await adminSupabase
+      .from("wallets")
+      .select("balance_ngn")
+      .eq("user_id", user.id)
+      .single();
+    if (wallet) {
+      await adminSupabase
+        .from("wallets")
+        .update({ balance_ngn: Math.max(0, wallet.balance_ngn - 10000) })
+        .eq("user_id", user.id);
+    }
+  } catch {} // fire-and-forget
+
+  try {
     await adminSupabase.from("notifications").insert({
       user_id: user.id,
       type: "certificate_issued",

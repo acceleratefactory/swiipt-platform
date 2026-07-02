@@ -134,6 +134,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    await (supabase as any).rpc("deduct_goal_balance", {
+      goal_id_input: goalId,
+      amount_input: 15000,
+    });
+  } catch {} // fire-and-forget
+
+  try {
     await adminSupabase.from("notifications").insert({
       user_id: user.id,
       type: "certificate_issued",
