@@ -23,7 +23,7 @@ function formatDate(dateStr: string): string {
 }
 
 function formatNgn(amount: number): string {
-  return `₦${amount.toLocaleString()}.00`;
+  return `NGN ${amount.toLocaleString()}.00`;
 }
 
 interface TrustCertificateDocumentProps {

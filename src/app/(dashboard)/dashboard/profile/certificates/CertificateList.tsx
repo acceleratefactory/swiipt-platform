@@ -75,6 +75,7 @@ export default function CertificateList({
       const data = await res.json();
       if (res.ok) {
         setResult({ success: true, message: `Certificate issued: ${data.certificate.certificate_number}` });
+        setLiveCerts([data.certificate as Certificate, ...liveCerts]);
         setShowRequest(false);
       } else {
         setResult({ success: false, message: data.error || "Request failed" });
