@@ -107,19 +107,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  try {
-    const { data: wallet } = await adminSupabase
+  const { data: wallet } = await adminSupabase
+    .from("wallets")
+    .select("balance_ngn")
+    .eq("user_id", user.id)
+    .single();
+  if (wallet) {
+    await adminSupabase
       .from("wallets")
-      .select("balance_ngn")
-      .eq("user_id", user.id)
-      .single();
-    if (wallet) {
-      await adminSupabase
-        .from("wallets")
-        .update({ balance_ngn: Math.max(0, wallet.balance_ngn - 10000) })
-        .eq("user_id", user.id);
-    }
-  } catch {} // fire-and-forget
+      .update({ balance_ngn: Math.max(0, wallet.balance_ngn - 10000) })
+      .eq("user_id", user.id);
+  }
 
   try {
     await adminSupabase.from("notifications").insert({

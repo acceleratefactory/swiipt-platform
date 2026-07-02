@@ -59,6 +59,7 @@ export default async function GoalDetailPage({
   const { data: certificates } = await (supabase as any)
     .from("platform_certificates")
     .select("*")
+    .eq("user_id", user.id)
     .eq("goal_id", params.id)
     .eq("certificate_type", "proof_of_funds")
     .order("issued_at", { ascending: false });

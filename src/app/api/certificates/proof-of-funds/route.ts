@@ -133,12 +133,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  try {
-    await (supabase as any).rpc("deduct_goal_balance", {
-      goal_id_input: goalId,
-      amount_input: 15000,
-    });
-  } catch {} // fire-and-forget
+  await (adminSupabase as any).rpc("deduct_goal_balance", {
+    goal_id_input: goalId,
+    amount_input: 15000,
+  });
 
   try {
     await adminSupabase.from("notifications").insert({
