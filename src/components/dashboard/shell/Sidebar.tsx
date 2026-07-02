@@ -13,6 +13,7 @@ import CurrencyDisplay from "@/components/dashboard/shared/CurrencyDisplay";
 const navItems = [
   { href: "/dashboard", label: "Home", icon: Home },
   { href: "/dashboard/profile", label: "My Profile", icon: User },
+  { href: "/dashboard/profile/certificates", label: "Certificates", icon: FileText },
   { href: "/dashboard/goals", label: "My Goals", icon: Target },
   { href: "/dashboard/services", label: "Services", icon: Globe },
   { href: "/dashboard/flights", label: "Flights", icon: Plane },

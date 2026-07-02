@@ -64,6 +64,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
+  // Update partner counters when all milestones complete
+  if (allCompleted) {
+    const { data: partner } = await supabase
+      .from("platform_partners")
+      .select("id, total_escrow_volume_ngn, total_escrow_transactions")
+      .eq("id", deal.partner_id)
+      .single();
+
+    if (partner) {
+      await (supabase as any)
+        .from("platform_partners")
+        .update({
+          total_escrow_volume_ngn: (partner.total_escrow_volume_ngn || 0) + deal.total_amount_ngn,
+          total_escrow_transactions: (partner.total_escrow_transactions || 0) + 1,
+        })
+        .eq("id", partner.id);
+    }
+  }
+
   // Notifications (client only — partner has no auth.users link yet)
   const notifs = [
     {

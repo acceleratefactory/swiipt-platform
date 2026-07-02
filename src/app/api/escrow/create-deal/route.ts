@@ -18,10 +18,11 @@ export async function POST(request: NextRequest) {
     .select("id, name, platform_fee_pct")
     .eq("id", partnerId)
     .eq("status", "active")
+    .eq("is_available", true)
     .single();
 
   if (!partner) {
-    return NextResponse.json({ error: "Partner not found or not active" }, { status: 404 });
+    return NextResponse.json({ error: "Partner not found, not active, or not available" }, { status: 404 });
   }
 
   const platformFeePct = partner.platform_fee_pct || 5;

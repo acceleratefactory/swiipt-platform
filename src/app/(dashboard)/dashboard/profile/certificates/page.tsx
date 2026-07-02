@@ -46,6 +46,7 @@ export default async function CertificatesPage() {
         certificates={certificates}
         eligibleGoals={eligibleGoals}
         confirmedDeposits={confirmedDeposits}
+        userId={user.id}
       />
     </div>
   );

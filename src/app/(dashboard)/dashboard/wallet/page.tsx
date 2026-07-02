@@ -9,7 +9,7 @@ export default async function WalletPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const [walletRes, depositsRes, withdrawalsRes, giftsRes, holidayBookingsRes, serviceOrdersRes, profileRes] = await Promise.all([
+  const [walletRes, depositsRes, withdrawalsRes, giftsRes, holidayBookingsRes, serviceOrdersRes, certsRes, profileRes] = await Promise.all([
     supabase.from("wallets").select("*").eq("user_id", user.id).single(),
     supabase.from("deposits")
       .select("*, savings_goals(goal_name, currency)")
@@ -40,14 +40,22 @@ export default async function WalletPage() {
       .select("*, service_packages(name)")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase as any)
+      .from("platform_certificates")
+      .select("fee_deposit_id")
+      .eq("user_id", user.id)
+      .not("fee_deposit_id", "is", null),
     supabase.from("users").select("preferred_currency, full_name").eq("id", user.id).single(),
   ]);
+
+  const feeDepositIds = new Set((certsRes.data || []).map((c: { fee_deposit_id: string }) => c.fee_deposit_id));
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const transactions: any[] = [
     ...(depositsRes.data || []).map(d => ({
       id: d.id,
-      type: "deposit" as const,
+      type: (feeDepositIds.has(d.id) ? "certificate_fee" : "deposit") as "deposit" | "certificate_fee",
       amount: d.amount,
       currency: d.currency,
       ngn_equivalent: d.ngn_equivalent || d.amount,

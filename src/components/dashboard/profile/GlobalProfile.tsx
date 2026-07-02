@@ -505,6 +505,12 @@ export default function GlobalProfile({
                 })}
               </div>
             )}
+            <a
+              href="/dashboard/profile/certificates"
+              style={{ display: "inline-block", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--teal)", textDecoration: "none", fontWeight: 600 }}
+            >
+              View all certificates →
+            </a>
           </div>
 
           {/* Opportunities hint */}

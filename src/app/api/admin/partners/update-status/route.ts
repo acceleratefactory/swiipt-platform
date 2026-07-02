@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { partnerId, status, notes, platformFeePct } = await request.json();
+  const { partnerId, status, notes, platformFeePct, isAvailable } = await request.json();
   if (!partnerId || !status) {
     return NextResponse.json({ error: "partnerId and status required" }, { status: 400 });
   }
@@ -38,6 +38,10 @@ export async function POST(request: NextRequest) {
 
   if (platformFeePct !== undefined && platformFeePct >= 0 && platformFeePct <= 100) {
     updates.platform_fee_pct = platformFeePct;
+  }
+
+  if (isAvailable !== undefined) {
+    updates.is_available = isAvailable;
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

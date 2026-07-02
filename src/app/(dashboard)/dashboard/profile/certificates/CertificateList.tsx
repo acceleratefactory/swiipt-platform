@@ -1,5 +1,6 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 interface Certificate {
   id: string; certificate_type: string; certificate_number: string;
@@ -18,13 +19,35 @@ interface Deposit {
 }
 
 export default function CertificateList({
-  certificates, eligibleGoals, confirmedDeposits,
+  certificates, eligibleGoals, confirmedDeposits, userId,
 }: {
   certificates: Certificate[];
   eligibleGoals: Goal[];
   confirmedDeposits: Deposit[];
+  userId: string;
 }) {
   const [showRequest, setShowRequest] = useState(false);
+  const [liveCerts, setLiveCerts] = useState(certificates);
+
+  useEffect(() => {
+    setLiveCerts(certificates);
+  }, [certificates]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("certificates_live")
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "platform_certificates",
+        filter: `user_id=eq.${userId}`,
+      }, () => {
+        window.location.reload();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
   const [certType, setCertType] = useState<"proof_of_funds" | "trust_certificate">("proof_of_funds");
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [selectedDepositId, setSelectedDepositId] = useState("");
@@ -65,13 +88,13 @@ export default function CertificateList({
   return (
     <div>
       {/* Existing certificates */}
-      {certificates.length === 0 ? (
+      {liveCerts.length === 0 ? (
         <div style={{ padding: "2rem", background: "white", borderRadius: "var(--radius-xl)", border: "1px solid var(--border)", textAlign: "center", marginBottom: "1.5rem" }}>
           <p style={{ fontSize: "0.875rem", color: "#6B7280", margin: 0 }}>No certificates yet.</p>
         </div>
       ) : (
         <div style={{ marginBottom: "1.5rem" }}>
-          {certificates.map((cert) => {
+          {liveCerts.map((cert) => {
             const isExpired = !cert.is_valid || new Date(cert.expires_at) < new Date();
             const data = cert.data_snapshot as Record<string, unknown>;
             return (

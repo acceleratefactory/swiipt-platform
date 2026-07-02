@@ -12,16 +12,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "feeDepositId required" }, { status: 400 });
   }
 
-  // Verify the fee deposit exists and is confirmed
+  // Verify the fee deposit exists, is confirmed, and covers the fee
   const { data: feeDeposit } = await supabase
     .from("deposits")
-    .select("id, status")
+    .select("id, status, amount")
     .eq("id", feeDepositId)
     .eq("user_id", user.id)
     .single();
 
   if (!feeDeposit || feeDeposit.status !== "confirmed") {
     return NextResponse.json({ error: "Fee deposit not confirmed" }, { status: 400 });
+  }
+
+  if (feeDeposit.amount < 10000) {
+    return NextResponse.json({ error: "Deposit amount must be at least ₦10,000 for this certificate" }, { status: 400 });
   }
 
   // Fetch user's financial profile
@@ -102,6 +106,16 @@ export async function POST(request: NextRequest) {
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
+
+  try {
+    await adminSupabase.from("notifications").insert({
+      user_id: user.id,
+      type: "certificate_issued",
+      title: "Trust Certificate Issued",
+      body: `Your Trust Certificate (#${certNumber}) has been issued and is ready for download.`,
+      action_url: "/dashboard/profile/certificates",
+    });
+  } catch {} // fire-and-forget
 
   return NextResponse.json({ certificate });
 }

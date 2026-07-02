@@ -29,16 +29,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Goal balance must be at least ₦50,000" }, { status: 400 });
   }
 
-  // Verify the fee deposit exists and is confirmed
+  // Verify the fee deposit exists, is confirmed, and covers the fee
   const { data: feeDeposit } = await supabase
     .from("deposits")
-    .select("id, status")
+    .select("id, status, amount")
     .eq("id", feeDepositId)
     .eq("user_id", user.id)
     .single();
 
   if (!feeDeposit || feeDeposit.status !== "confirmed") {
     return NextResponse.json({ error: "Fee deposit not confirmed" }, { status: 400 });
+  }
+
+  if (feeDeposit.amount < 15000) {
+    return NextResponse.json({ error: "Deposit amount must be at least ₦15,000 for this certificate" }, { status: 400 });
   }
 
   const adminSupabase = createAdminClient(
@@ -55,30 +59,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Failed to generate certificate number" }, { status: 500 });
   }
 
-  // Calculate 28-day minimum balance
-  const twentyEightDaysAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString();
-  const { data: recentDeposits } = await supabase
-    .from("deposits")
-    .select("amount, created_at")
-    .eq("user_id", user.id)
-    .eq("status", "confirmed")
-    .gte("created_at", twentyEightDaysAgo)
-    .order("created_at", { ascending: false });
-
-  const totalRecentDeposits = (recentDeposits || []).reduce((sum, d) => sum + (d.amount || 0), 0);
-  const daysWithData = recentDeposits?.length || 0;
-  const min28DayBalance = daysWithData > 0 ? Math.round(totalRecentDeposits / Math.max(daysWithData, 1)) : 0;
-
-  // Calculate deposit history (90 days)
+  // Calculate deposit history (90 days) for this goal
   const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
   const { data: depositHistory } = await supabase
     .from("deposits")
     .select("amount, created_at, ngn_equivalent")
-    .eq("user_id", user.id)
+    .eq("goal_id", goalId)
     .eq("status", "confirmed")
     .gte("created_at", ninetyDaysAgo)
     .order("created_at", { ascending: false })
     .limit(30);
+
+  const totalDeposits90d = (depositHistory || []).reduce((sum, d) => sum + (d.amount || 0), 0);
+
+  // Calculate true 28-day minimum balance via balance trajectory
+  const twentyEightDaysAgo = new Date(Date.now() - 28 * 24 * 60 * 60 * 1000);
+  const depositsLast28d = (depositHistory || [])
+    .filter(d => new Date(d.created_at) >= twentyEightDaysAgo)
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+  const totalNewDeposits28d = depositsLast28d.reduce((sum, d) => sum + (d.amount || 0), 0);
+
+  let runningBalance = goal.current_balance;
+  let min28DayBalance = runningBalance;
+  for (const dep of depositsLast28d) {
+    runningBalance -= (dep.amount || 0);
+    if (runningBalance < min28DayBalance) min28DayBalance = runningBalance;
+  }
+  min28DayBalance = Math.max(0, min28DayBalance);
 
   const { data: profile } = await supabase
     .from("users")
@@ -98,6 +106,8 @@ export async function POST(request: NextRequest) {
     current_balance_ngn: goal.current_balance,
     target_amount_ngn: goal.target_amount,
     twenty_eight_day_min_balance_ngn: min28DayBalance,
+    total_new_deposits_28d: totalNewDeposits28d,
+    total_deposits_90d: totalDeposits90d,
     goal_created_at: goal.created_at,
     deposit_history_90_days: depositHistory || [],
   };
@@ -122,6 +132,16 @@ export async function POST(request: NextRequest) {
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
+
+  try {
+    await adminSupabase.from("notifications").insert({
+      user_id: user.id,
+      type: "certificate_issued",
+      title: "Proof of Funds Certificate Issued",
+      body: `Your Proof of Funds Certificate (#${certNumber}) has been issued and is ready for download.`,
+      action_url: "/dashboard/profile/certificates",
+    });
+  } catch {} // fire-and-forget
 
   return NextResponse.json({ certificate });
 }

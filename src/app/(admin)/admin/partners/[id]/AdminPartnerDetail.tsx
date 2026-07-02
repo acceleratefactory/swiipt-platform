@@ -2,10 +2,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface DealRecord {
+  interface DealRecord {
   id: string; title: string; status: string;
   total_amount_ngn: number; client_user_id: string;
   created_at: string;
+  platform_fee_ngn?: number;
+  partner_payout_ngn?: number;
 }
 
 export default function AdminPartnerDetail({
@@ -18,6 +20,7 @@ export default function AdminPartnerDetail({
   const [actioning, setActioning] = useState(false);
   const [actionResult, setActionResult] = useState<string | null>(null);
   const [adminNote, setAdminNote] = useState("");
+  const [resolving, setResolving] = useState<string | null>(null);
   const [feePct, setFeePct] = useState((partner as any).platform_fee_pct || 5);
   const [savingFee, setSavingFee] = useState(false);
 
@@ -33,6 +36,7 @@ export default function AdminPartnerDetail({
     average_rating: number; total_reviews: number;
     total_escrow_volume_ngn: number; total_escrow_transactions: number;
     platform_fee_pct: number;
+    is_available: boolean;
     created_at: string;
   };
 
@@ -90,6 +94,29 @@ export default function AdminPartnerDetail({
     setSavingFee(false);
   }
 
+  async function resolveDispute(dealId: string, resolution: string) {
+    setResolving(dealId);
+    setActionResult(null);
+    try {
+      const res = await fetch("/api/escrow/resolve-dispute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dealId, resolution, notes: adminNote || undefined }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActionResult(`Dispute resolved: ${resolution}. Refreshing...`);
+        setAdminNote("");
+        setTimeout(() => router.refresh(), 1500);
+      } else {
+        setActionResult(`Error: ${data.error || "Unknown error"}`);
+      }
+    } catch (err) {
+      setActionResult(`Error: ${(err as Error).message}`);
+    }
+    setResolving(null);
+  }
+
   return (
     <div>
       {/* Back link */}
@@ -127,6 +154,17 @@ export default function AdminPartnerDetail({
           <div><strong style={{ color: "#374151" }}>Volume:</strong> ₦{p.total_escrow_volume_ngn.toLocaleString()}</div>
           <div><strong style={{ color: "#374151" }}>Deals:</strong> {p.total_escrow_transactions}</div>
           <div><strong style={{ color: "#374151" }}>Applied:</strong> {new Date(p.created_at).toLocaleDateString()}</div>
+        </div>
+
+        {/* Commission earnings */}
+        <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+          <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#374151", marginBottom: "0.5rem" }}>Commission Earnings</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", fontSize: "0.8125rem" }}>
+            <div><strong style={{ color: "#374151" }}>Volume:</strong> ₦{p.total_escrow_volume_ngn.toLocaleString()}</div>
+            <div><strong style={{ color: "#374151" }}>Transactions:</strong> {p.total_escrow_transactions}</div>
+            <div><strong style={{ color: "#374151" }}>Fee Rate:</strong> {p.platform_fee_pct}%</div>
+            <div><strong style={{ color: "#374151" }}>Est. Commission:</strong> ₦{Math.round(p.total_escrow_volume_ngn * (p.platform_fee_pct / 100)).toLocaleString()}</div>
+          </div>
         </div>
 
         {p.specialisations.length > 0 && (
@@ -176,6 +214,37 @@ export default function AdminPartnerDetail({
             </button>
           </div>
         </div>
+
+        {/* Availability toggle */}
+        {p.status === "active" && (
+          <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
+            <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "#374151", marginBottom: "0.5rem" }}>Availability for New Deals</div>
+            <button
+              onClick={async () => {
+                setActioning(true);
+                try {
+                  const res = await fetch("/api/admin/partners/update-status", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ partnerId: p.id, status: p.status, isAvailable: !p.is_available, notes: `Availability toggled to ${!p.is_available ? "available" : "paused"}` }),
+                  });
+                  if (res.ok) {
+                    setActionResult(`Agent now ${!p.is_available ? "available" : "paused"} for new deals. Refreshing...`);
+                    setTimeout(() => router.refresh(), 1500);
+                  }
+                } catch {}
+                setActioning(false);
+              }}
+              disabled={actioning}
+              style={{ padding: "0.5rem 1.25rem", background: p.is_available ? "#F59E0B" : "var(--teal)", color: "white", fontWeight: 700, fontSize: "0.8125rem", border: "none", borderRadius: "var(--radius-sm)", cursor: actioning ? "not-allowed" : "pointer" }}
+            >
+              {actioning ? "Updating..." : p.is_available ? "Pause Availability" : "Resume Availability"}
+            </button>
+            <span style={{ marginLeft: "0.75rem", fontSize: "0.75rem", fontWeight: 600, color: p.is_available ? "var(--teal)" : "#DC2626" }}>
+              {p.is_available ? "● Accepting deals" : "● Paused"}
+            </span>
+          </div>
+        )}
 
         {/* Admin notes */}
         <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border)" }}>
@@ -238,17 +307,44 @@ export default function AdminPartnerDetail({
         ) : (
           <div>
             {deals.map((deal) => (
-              <div key={deal.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0", borderBottom: "1px solid var(--border)", fontSize: "0.8125rem" }}>
-                <div>
-                  <div style={{ fontWeight: 600, color: "var(--midnight)" }}>{deal.title}</div>
-                  <div style={{ fontSize: "0.6875rem", color: "#6B7280" }}>{new Date(deal.created_at).toLocaleDateString()}</div>
+              <div key={deal.id} style={{ padding: "0.5rem 0", borderBottom: "1px solid var(--border)", fontSize: "0.8125rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, color: "var(--midnight)" }}>{deal.title}</div>
+                    <div style={{ fontSize: "0.6875rem", color: "#6B7280" }}>{new Date(deal.created_at).toLocaleDateString()}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <span style={{ padding: "0.125rem 0.5rem", borderRadius: "4px", fontSize: "0.6875rem", fontWeight: 600, background: deal.status === "active" ? "#FEF3C7" : deal.status === "completed" ? "#D1FAE5" : deal.status === "disputed" ? "#FEE2E2" : "#F3F4F6", color: deal.status === "active" ? "#92400E" : deal.status === "completed" ? "#065F46" : deal.status === "disputed" ? "#DC2626" : "#6B7280" }}>
+                      {deal.status}
+                    </span>
+                    <div style={{ fontSize: "0.6875rem", color: "#6B7280", marginTop: "0.125rem" }}>₦{deal.total_amount_ngn.toLocaleString()}</div>
+                  </div>
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <span style={{ padding: "0.125rem 0.5rem", borderRadius: "4px", fontSize: "0.6875rem", fontWeight: 600, background: deal.status === "active" ? "#FEF3C7" : deal.status === "completed" ? "#D1FAE5" : "#FEE2E2", color: deal.status === "active" ? "#92400E" : deal.status === "completed" ? "#065F46" : "#DC2626" }}>
-                    {deal.status}
-                  </span>
-                  <div style={{ fontSize: "0.6875rem", color: "#6B7280", marginTop: "0.125rem" }}>₦{deal.total_amount_ngn.toLocaleString()}</div>
-                </div>
+                {deal.status === "disputed" && (
+                  <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem" }}>
+                    <button
+                      onClick={() => resolveDispute(deal.id, "active")}
+                      disabled={resolving === deal.id}
+                      style={{ padding: "0.25rem 0.75rem", background: "var(--teal)", color: "var(--midnight)", fontWeight: 600, fontSize: "0.6875rem", border: "none", borderRadius: "var(--radius-sm)", cursor: resolving === deal.id ? "not-allowed" : "pointer" }}
+                    >
+                      {resolving === deal.id ? "..." : "Dismiss (reactivate)"}
+                    </button>
+                    <button
+                      onClick={() => resolveDispute(deal.id, "refunded")}
+                      disabled={resolving === deal.id}
+                      style={{ padding: "0.25rem 0.75rem", background: "#F59E0B", color: "white", fontWeight: 600, fontSize: "0.6875rem", border: "none", borderRadius: "var(--radius-sm)", cursor: resolving === deal.id ? "not-allowed" : "pointer" }}
+                    >
+                      Refund
+                    </button>
+                    <button
+                      onClick={() => resolveDispute(deal.id, "cancelled")}
+                      disabled={resolving === deal.id}
+                      style={{ padding: "0.25rem 0.75rem", background: "#DC2626", color: "white", fontWeight: 600, fontSize: "0.6875rem", border: "none", borderRadius: "var(--radius-sm)", cursor: resolving === deal.id ? "not-allowed" : "pointer" }}
+                    >
+                      Cancel deal
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

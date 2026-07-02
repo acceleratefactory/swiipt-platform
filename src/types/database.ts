@@ -941,6 +941,7 @@ export interface Database {
           total_escrow_transactions: number
           platform_fee_pct: number
           stripe_account_id: string | null
+          is_available: boolean
           created_at: string
           updated_at: string
         }

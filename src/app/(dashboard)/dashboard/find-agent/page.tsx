@@ -22,6 +22,7 @@ export default async function FindAgentPage() {
     .from("platform_partners")
     .select("*")
     .eq("status", "active")
+    .eq("is_available", true)
     .order("average_rating", { ascending: false, nullsFirst: false });
 
   const partnersList = (partners || []).map((p: Record<string, unknown>) => ({
