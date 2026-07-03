@@ -55,14 +55,22 @@ export default async function GoalDetailPage({
     .eq("goal_id", params.id)
     .order("created_at", { ascending: false });
 
+  // Show certificates issued for this goal OR paid using a deposit from this goal
+  const feeDepositIds = (deposits || []).map((d) => d.id).filter(Boolean);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: certificates } = await (supabase as any)
+  let certQuery = (supabase as any)
     .from("platform_certificates")
     .select("*")
     .eq("user_id", user.id)
-    .eq("goal_id", params.id)
-    .eq("certificate_type", "proof_of_funds")
-    .order("issued_at", { ascending: false });
+    .eq("certificate_type", "proof_of_funds");
+
+  if (feeDepositIds.length > 0) {
+    certQuery = certQuery.or(`goal_id.eq.${params.id},fee_deposit_id.in.(${feeDepositIds.join(",")})`);
+  } else {
+    certQuery = certQuery.eq("goal_id", params.id);
+  }
+
+  const { data: certificates } = await certQuery.order("issued_at", { ascending: false });
 
   const { data: profile } = await supabase
     .from("users")
