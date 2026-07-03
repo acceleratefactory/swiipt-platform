@@ -87,6 +87,30 @@ export async function POST(request: NextRequest) {
     has_uk_company: financialProfile.has_uk_company || false,
   };
 
+  // Deduct certificate fee from wallet before issuing certificate
+  const { data: wallet } = await adminSupabase
+    .from("wallets")
+    .select("balance_ngn")
+    .eq("user_id", user.id)
+    .single();
+
+  if (!wallet) {
+    return NextResponse.json({ error: "Wallet not found" }, { status: 404 });
+  }
+
+  if (wallet.balance_ngn < 10000) {
+    return NextResponse.json({ error: "Insufficient wallet balance to pay certificate fee" }, { status: 400 });
+  }
+
+  const { error: walletError } = await adminSupabase
+    .from("wallets")
+    .update({ balance_ngn: wallet.balance_ngn - 10000 })
+    .eq("user_id", user.id);
+
+  if (walletError) {
+    return NextResponse.json({ error: `Failed to deduct fee: ${walletError.message}` }, { status: 500 });
+  }
+
   const { data: certificate, error: insertError } = await adminSupabase
     .from("platform_certificates")
     .insert({
@@ -105,18 +129,6 @@ export async function POST(request: NextRequest) {
 
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
-  }
-
-  const { data: wallet } = await adminSupabase
-    .from("wallets")
-    .select("balance_ngn")
-    .eq("user_id", user.id)
-    .single();
-  if (wallet) {
-    await adminSupabase
-      .from("wallets")
-      .update({ balance_ngn: Math.max(0, wallet.balance_ngn - 10000) })
-      .eq("user_id", user.id);
   }
 
   try {

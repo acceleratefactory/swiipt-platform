@@ -112,6 +112,16 @@ export async function POST(request: NextRequest) {
     deposit_history_90_days: depositHistory || [],
   };
 
+  // Deduct certificate fee from goal balance before issuing certificate
+  const { error: deductionError } = await adminSupabase.rpc("deduct_goal_balance", {
+    goal_id_input: goalId,
+    amount_input: 15000,
+  });
+
+  if (deductionError) {
+    return NextResponse.json({ error: `Failed to deduct fee: ${deductionError.message}` }, { status: 500 });
+  }
+
   const { data: certificate, error: insertError } = await adminSupabase
     .from("platform_certificates")
     .insert({
@@ -132,11 +142,6 @@ export async function POST(request: NextRequest) {
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
-
-  await (adminSupabase as any).rpc("deduct_goal_balance", {
-    goal_id_input: goalId,
-    amount_input: 15000,
-  });
 
   try {
     await adminSupabase.from("notifications").insert({
