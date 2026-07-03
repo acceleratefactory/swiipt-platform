@@ -21,6 +21,7 @@ import {
   Settings,
   BarChart2,
   Handshake,
+  Shield,
 } from "lucide-react";
 
 const navItems: Array<{
@@ -36,6 +37,7 @@ const navItems: Array<{
   { href: "/admin/users", label: "Users", icon: <Users size={16} /> },
   { href: "/admin/orders", label: "Orders", icon: <Package size={16} /> },
   { href: "/admin/documents", label: "Documents", icon: <FileText size={16} /> },
+  { href: "/admin/certificates", label: "Certificates", icon: <Shield size={16} /> },
   { href: "/admin/services", label: "Services", icon: <Globe size={16} /> },
   { href: "/admin/groups", label: "Groups", icon: <Users size={16} /> },
   { href: "/admin/trade-shows", label: "Trade Shows", icon: <Globe size={16} /> },
