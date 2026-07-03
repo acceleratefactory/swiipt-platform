@@ -267,6 +267,7 @@ export default function GlobalProfile({
                   value={skillInput}
                   onChange={(e) => setSkillInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addSkill(); } }}
+                  onBlur={(e) => { if (e.target.value.trim()) addSkill(); }}
                   placeholder="Type a skill + Enter"
                   style={{ flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8125rem", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", outline: "none" }}
                 />
@@ -290,6 +291,7 @@ export default function GlobalProfile({
                 value={langInput}
                 onChange={(e) => setLangInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addLanguage(); } }}
+                onBlur={(e) => { if (e.target.value.trim()) addLanguage(); }}
                 placeholder="Type a language + Enter"
                 style={{ flex: 1, padding: "0.375rem 0.625rem", fontSize: "0.8125rem", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", outline: "none" }}
               />
