@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
   // Verify the fee deposit exists, is confirmed, and covers the fee
   const { data: feeDeposit } = await supabase
     .from("deposits")
-    .select("id, status, amount")
+    .select("id, status, amount, goal_id")
     .eq("id", feeDepositId)
     .eq("user_id", user.id)
     .single();
@@ -112,9 +112,9 @@ export async function POST(request: NextRequest) {
     deposit_history_90_days: depositHistory || [],
   };
 
-  // Deduct certificate fee from goal balance before issuing certificate
+  // Deduct certificate fee from the deposit's goal, not the certificate goal
   const { error: deductionError } = await adminSupabase.rpc("deduct_goal_balance", {
-    goal_id_input: goalId,
+    goal_id_input: feeDeposit.goal_id,
     amount_input: 15000,
   });
 
