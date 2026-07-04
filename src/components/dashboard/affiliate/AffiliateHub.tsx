@@ -1,9 +1,18 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import AffiliateTierBadge from "./AffiliateTierBadge";
 
 export default function AffiliateHub({ status }: { status: any }) {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (status.id || initialized.current) return;
+    initialized.current = true;
+    fetch("/api/affiliate/init", { method: "POST" }).then(res => { if (res.ok) router.refresh(); }).catch(() => {});
+  }, [status.id, router]);
 
   const referralLink = `${window.location.origin}/signup?ref=${status.custom_affiliate_code || ""}`;
 

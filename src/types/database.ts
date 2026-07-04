@@ -1167,7 +1167,7 @@ export interface Database {
           created_at: string
           updated_at: string
         }
-        Insert: Omit<Database["public"]["Tables"]["affiliate_status"]["Row"], "id" | "created_at" | "updated_at" | "tier" | "total_earned_ngn" | "pending_earnings_ngn" | "withdrawn_earnings_ngn" | "total_referrals" | "converting_referrals" | "conversion_rate_pct" | "modules_completed" | "university_certificate_issued">
+        Insert: Omit<Database["public"]["Tables"]["affiliate_status"]["Row"], "id" | "created_at" | "updated_at" | "tier" | "total_earned_ngn" | "pending_earnings_ngn" | "withdrawn_earnings_ngn" | "total_referrals" | "converting_referrals" | "conversion_rate_pct" | "modules_completed" | "university_points" | "university_certificate_issued">
         Update: Partial<Omit<Database["public"]["Tables"]["affiliate_status"]["Row"], "id" | "created_at" | "updated_at">>
         Relationships: []
       }

@@ -1,5 +1,6 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
 
 const TEMPLATES = [
@@ -11,6 +12,15 @@ const TEMPLATES = [
 ];
 
 export default function AffiliateTools({ status }: { status: any }) {
+  const router = useRouter();
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (status.id || initialized.current) return;
+    initialized.current = true;
+    fetch("/api/affiliate/init", { method: "POST" }).then(res => { if (res.ok) router.refresh(); }).catch(() => {});
+  }, [status.id, router]);
+
   const referralCode = status.custom_affiliate_code || "";
   const referralLink = `${window.location.origin}/signup?ref=${referralCode}`;
 
