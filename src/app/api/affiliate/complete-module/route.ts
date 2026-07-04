@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     } else {
       await supabase
         .from("affiliate_module_progress")
-        .insert({ user_id: user.id, module_id: moduleId, completed_at: now, points_earned: 0 });
+        .insert({ user_id: user.id, module_id: moduleId, completed_at: now, score: module.points_on_completion });
     }
 
     await supabase.rpc("increment_mobility_score", { points: module.points_on_completion, user_id_input: user.id });
