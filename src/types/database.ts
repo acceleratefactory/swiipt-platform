@@ -1172,6 +1172,22 @@ export interface Database {
         Relationships: []
       }
 
+      affiliate_withdrawals: {
+        Row: {
+          id: string
+          user_id: string
+          amount_ngn: number
+          status: string
+          admin_id: string | null
+          admin_note: string | null
+          requested_at: string
+          processed_at: string | null
+        }
+        Insert: Omit<Database["public"]["Tables"]["affiliate_withdrawals"]["Row"], "id" | "status" | "admin_id" | "admin_note" | "requested_at" | "processed_at">
+        Update: Partial<Omit<Database["public"]["Tables"]["affiliate_withdrawals"]["Row"], "id">>
+        Relationships: []
+      }
+
       achievement_cards: {
         Row: {
           id: string
