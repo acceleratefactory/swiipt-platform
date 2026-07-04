@@ -17,7 +17,7 @@ export default function BottomTabs() {
 
   return (
     <nav
-      className="md:hidden"
+      className="md:hidden flex"
       style={{
         position: "fixed",
         bottom: 0,
@@ -27,7 +27,6 @@ export default function BottomTabs() {
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
         background: "white",
         borderTop: "1px solid var(--border)",
-        display: "flex",
         zIndex: 40,
       }}
     >
