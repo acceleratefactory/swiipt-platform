@@ -1212,6 +1212,23 @@ export interface Database {
         Relationships: []
       }
 
+      ai_providers: {
+        Row: {
+          id: string
+          name: string
+          provider_slug: string
+          base_url: string
+          api_key: string
+          model: string
+          is_active: boolean
+          priority: number
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["ai_providers"]["Row"], "id" | "created_at">
+        Update: Partial<Database["public"]["Tables"]["ai_providers"]["Insert"]>
+        Relationships: []
+      }
+
       campaign_participations: {
         Row: {
           id: string

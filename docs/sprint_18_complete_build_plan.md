@@ -1092,62 +1092,118 @@ All fields from `opportunities` table editable. Stats show view_count and apply_
 
 Already in the card spec (section 6.5 — Boundless source link at bottom). No additional build needed.
 
-### 8.3 AI Opportunity Refresh
+### 8.3 AI Opportunity Refresh — Multi-Provider System
+
+#### Overview
+Replace the hardcoded Anthropic API with a **pluggable multi-provider AI system**. Providers are configured from admin — no code changes needed to add/remove/switch AI backends.
+
+#### Architecture
+
+**DB Table — `ai_providers`:**
+```sql
+CREATE TABLE IF NOT EXISTS ai_providers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,                    -- Display name, e.g. "OpenAI GPT-4o"
+  provider_slug TEXT NOT NULL UNIQUE,    -- slug for internal reference, e.g. "openai"
+  base_url TEXT NOT NULL,                -- API base URL
+  api_key TEXT NOT NULL,                 -- Encrypted or plain (env-referenced)
+  model TEXT NOT NULL,                   -- Model name, e.g. "gpt-4o"
+  is_active BOOLEAN DEFAULT TRUE,
+  priority INTEGER DEFAULT 0,            -- Lower = tried first; fallback order
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+API keys stored in DB but referenced via `$ENV_VAR_NAME` syntax (e.g. `$OPENAI_API_KEY`). The system resolves env vars at runtime. This keeps keys out of the DB while still allowing admin to configure everything.
+
+**Supported providers** (all use OpenAI-compatible chat completions format):
+| Provider | base_url | model example |
+|----------|----------|--------------|
+| OpenAI | `https://api.openai.com/v1` | gpt-4o, gpt-4o-mini |
+| DeepSeek | `https://api.deepseek.com` | deepseek-chat |
+| OpenRouter | `https://openrouter.ai/api/v1` | openai/gpt-4o, anthropic/claude-3.5 |
+| NVIDIA NIM | `https://integrate.api.nvidia.com/v1` | meta/llama-3.1-405b |
+| Google Gemini (via OpenAI proxy) | `https://generativelanguage.googleapis.com/v1beta/openai` | gemini-1.5-pro |
+| Moonshot (Kimi) | `https://api.moonshot.cn/v1` | moonshot-v1-8k |
+| Mistral AI | `https://api.mistral.ai/v1` | mistral-large-latest |
+| Together AI | `https://api.together.xyz/v1` | meta-llama/Meta-Llama-3.1-70B |
+| Perplexity | `https://api.perplexity.ai` | sonar-pro |
+| xAI (Grok) | `https://api.x.ai/v1` | grok-beta |
+| OpenCode | `https://opencode.ai/zen/v1` | opencode-zen |
+| Any OpenAI-compatible endpoint | User-provided URL | User-provided model |
 
 **File:** `src/app/api/opportunities/refresh/route.ts`
 
-Daily cron endpoint that uses `ANTHROPIC_API_KEY` to AI-source new opportunities from the web.
+Flow:
+1. Fetch all active `ai_providers` ordered by `priority`
+2. Build prompt for each segment needing refresh (< 15 active opportunities)
+3. Try providers in priority order:
+   - Resolve API key: if value starts with `$`, read from `process.env[KEY_NAME]`
+   - POST to `{base_url}/chat/completions` with OpenAI-compatible payload
+   - If request fails (network error, 4xx, 5xx), log warning and try next provider
+   - If all providers fail, skip that segment until next cron run
+4. Parse JSON response, run dead-link + deadline checks per opportunity
+5. Insert valid AI-generated opportunities with `ai_generated = TRUE`
+6. Mark old AI-generated opportunities as inactive if zero views in 30 days
 
-Before inserting each AI-sourced opportunity, run two deterministic pre-checks:
-
-1. **Dead-link check** — `fetch(application_url, { method: "HEAD" })` must return a 2xx status. If the link is dead (4xx/5xx), skip the opportunity. This prevents broken links from reaching users.
-
-2. **Deadline-in-future check** — if `deadline` is set, it must be in the future (`new Date(deadline) > new Date()`). If the deadline has already passed, skip the opportunity.
-
-Both checks run per opportunity. Opportunities that fail either check are discarded with a log entry. Only opportunities that pass both checks are inserted into the database.
-
-**Anthropic API prompt** (called for each segment with fewer than 15 active opportunities):
+**OpenAI-compatible request payload:**
+```json
+{
+  "model": "gpt-4o",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are a career opportunity researcher. Generate real, current international opportunities for Nigerian professionals. Return ONLY valid JSON."
+    },
+    {
+      "role": "user",
+      "content": "Generate 3 real, current international opportunities for Nigerian [segment_name]. Each opportunity must include: title, organisation, location_country, location_city, type, description (100 words), requirements, salary_range or funding amount, application_url (real URL if known, placeholder if uncertain). Return JSON array."
+    }
+  ],
+  "temperature": 0.3,
+  "response_format": { "type": "json_object" }
+}
 ```
-Generate 3 real, current international opportunities for Nigerian [segment_name].
-Each opportunity should include: title, organisation, location, type, description (100 words),
-requirements, salary or funding amount, application URL (real URL if known, # if uncertain),
-whether it is currently open.
-Return JSON array with these fields: title, organisation, location_country, location_city,
-type, description, requirements, salary_range, application_url, is_featured.
+
+**Admin UI — Provider Management:**
+- **List:** `src/app/(admin)/admin/ai-providers/page.tsx` — Table of all providers with active/priority
+- **Create/Edit:** `src/app/(admin)/admin/ai-providers/[id]/page.tsx` — Form with fields: name, base URL, API key (masked), model, active toggle, priority order
+- **Test:** Each row has "Test Connection" button — sends a minimal request to verify the provider works
+- **Nav:** Add "AI Providers" to admin sidebar after "Campaigns"
+
+**Admin Sidebar nav order:**
+```
+...Promotions → Campaigns → AI Providers → Notifications...
 ```
 
-Parse response, run dead-link and deadline checks, insert with `ai_generated = TRUE`. Mark old AI-generated opportunities as inactive if they have zero views in 30 days.
+**Environment variables needed (set once in Vercel):**
+- `$OPENAI_API_KEY` — OpenAI
+- `$DEEPSEEK_API_KEY` — DeepSeek
+- `$OPENROUTER_API_KEY` — OpenRouter
+- `$NVIDIA_API_KEY` — NVIDIA NIM
+- `$GEMINI_API_KEY` — Google Gemini
+- `$MOONSHOT_API_KEY` — Moonshot (Kimi)
+- Free-form: admin can add any env var name in the API key field using `$VAR_NAME` syntax
 
-**pg_cron job setup** (dropped first for idempotency, runs daily at 6am):
+The refresh endpoint does NOT hardcode any provider. It reads them all from the DB.
+
+**Pre-checks (unchanged from original spec):**
+1. **Dead-link check** — `fetch(application_url, { method: "HEAD" })` must return 2xx
+2. **Deadline-in-future check** — `new Date(deadline) > new Date()`
+
+**pg_cron job (unchanged):**
 ```sql
 SELECT cron.unschedule('refresh-opportunities');
-
-SELECT cron.schedule(
-  'refresh-opportunities',
-  '0 6 * * *',
-  $$
+SELECT cron.schedule('refresh-opportunities', '0 6 * * *', $$
   SELECT net.http_post(
     url := 'https://swiipt.com/api/opportunities/refresh',
     headers := '{"x-internal-secret":"YOUR_SECRET"}',
     body := '{}'
   )
-  $$
-);
+$$);
 ```
 
-**Prerequisites in Supabase:** This requires two extensions to be enabled:
-- `pg_cron` extension (for scheduling)
-- `pg_net` extension (for `net.http_post`)
-
-Run in Supabase SQL Editor to verify:
-```sql
-SELECT * FROM pg_extension WHERE extname IN ('pg_cron', 'pg_net');
-```
-If either is missing, enable via Supabase Dashboard → Database → Extensions.
-
-**Environment variables needed:**
-- `ANTHROPIC_API_KEY` — for AI-sourced opportunities
-- `INTERNAL_API_SECRET` — for securing the cron endpoint
+**Prerequisites:** `pg_cron` and `pg_net` extensions enabled in Supabase.
 
 ---
 
