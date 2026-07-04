@@ -40,12 +40,27 @@ export async function PUT(
       return NextResponse.json({ error: "No fields to update" }, { status: 400 });
     }
 
+    const { data: currentModule } = await (adminSupabase as any)
+      .from("affiliate_modules")
+      .select("title")
+      .eq("id", moduleId)
+      .single();
+
     const { error } = await (adminSupabase as any)
       .from("affiliate_modules")
       .update(updates)
       .eq("id", moduleId);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    await (adminSupabase as any).from("admin_audit_log").insert({
+      admin_id: user.id,
+      action: "affiliate_module_updated",
+      target_user_id: null,
+      previous_value: currentModule?.title || moduleId,
+      new_value: updates.title || currentModule?.title || moduleId,
+      notes: `Updated fields: ${Object.keys(updates).join(", ")}`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
@@ -69,6 +84,12 @@ export async function DELETE(
 
     const moduleId = params.id;
 
+    const { data: delModule } = await (adminSupabase as any)
+      .from("affiliate_modules")
+      .select("title")
+      .eq("id", moduleId)
+      .single();
+
     const { count: progressCount } = await (adminSupabase as any)
       .from("affiliate_module_progress")
       .select("*", { count: "exact", head: true })
@@ -87,6 +108,14 @@ export async function DELETE(
       .eq("id", moduleId);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    await (adminSupabase as any).from("admin_audit_log").insert({
+      admin_id: user.id,
+      action: "affiliate_module_deleted",
+      target_user_id: null,
+      previous_value: delModule?.title || moduleId,
+      notes: `Deleted module "${delModule?.title || moduleId}"`,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

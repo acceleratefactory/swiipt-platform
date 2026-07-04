@@ -65,6 +65,14 @@ export async function POST(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    await (adminSupabase as any).from("admin_audit_log").insert({
+      admin_id: user.id,
+      action: "affiliate_module_created",
+      target_user_id: null,
+      new_value: title,
+      notes: `Module "${title}" created (type: ${content_type})`,
+    });
+
     return NextResponse.json({ success: true, id: data.id });
   } catch (error: any) {
     console.error("Admin create module error:", error);

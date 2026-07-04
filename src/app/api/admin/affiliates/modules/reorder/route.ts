@@ -33,6 +33,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Some modules failed to reorder", details: errors }, { status: 500 });
     }
 
+    await (adminSupabase as any).from("admin_audit_log").insert({
+      admin_id: user.id,
+      action: "affiliate_modules_reordered",
+      target_user_id: null,
+      notes: `Reordered ${moduleIds.length} modules: [${moduleIds.join(", ")}]`,
+    });
+
     return NextResponse.json({ success: true, reordered: moduleIds.length });
   } catch (error: any) {
     console.error("Admin reorder modules error:", error);
