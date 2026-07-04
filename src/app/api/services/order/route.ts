@@ -161,6 +161,16 @@ export async function POST(request: NextRequest) {
     headers: { "Content-Type": "application/json" },
   }).catch(() => {});
 
+  fetch(`${appUrl}/api/achievements/generate-card`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-internal-secret": process.env.INTERNAL_API_SECRET || "" },
+    body: JSON.stringify({
+      userId: user.id,
+      cardType: "service_ordered",
+      data: { serviceName: pkg.name, subtitle: "Swiipt — Plan, fund, and execute your global move" },
+    }),
+  }).catch(() => {});
+
   return NextResponse.json({
     orderId: order.id,
     orderReference,

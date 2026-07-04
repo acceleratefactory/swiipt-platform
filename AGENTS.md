@@ -964,6 +964,43 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Key constraint compliance:** Table name `diaspora_gifts` (not `goal_gifts`), routes at `/api/diaspora-gifts/*` (not `/api/gifts/*`), public page at `/fund/[goalId]` (not `/gift/[goalId]`).
 - **Build verified:** `npm run build` — zero TS errors across all phases.
 
+### Session 28 — Sprint 18 Phase C: The Feed (Completed)
+
+- **C-1:** Created `sprint_18_seed_opportunities.sql` — idempotent seed for 18 opportunities across 10 segments
+- **C-2:** Created `POST /api/opportunities/feed/route.ts` — personalised feed generation with scoring (50 base + 20 featured + 15 country/role match), upserts to `user_opportunity_feed`
+- **C-3:** Created `POST /api/opportunities/track/route.ts` — tracks apply/view clicks on opportunities
+- **C-4:** Created `POST /api/opportunities/save/route.ts` — saves opportunity to user feed
+- **C-5:** Created `OpportunityCard.tsx` — org avatar, title, location, type badge, deadline badges (red ≤7d, amber ≤14d), AI match label, salary, save/apply/share CTAs, WhatsApp share prompt, Boundless source link
+- **C-6:** Created `OpportunityFeed.tsx` — infinite scroll (10 at a time), `AnimatedCard` with fade-up animation, "New this morning" section, featured card every 5th position in midnight gradient with "⭐ Top match" label, single/multi-column responsive, end-of-feed + refresh button, upgrade prompt after 3 apply clicks
+- **C-7:** Upgrade prompt is referral-only ("Refer 3 friends to unlock Plus tier free") — no subscription option per conflict resolution
+- **C-8:** Feed page at `/dashboard/opportunities` + detail page at `[opportunityId]` + `OpportunityFilters.tsx` + `SegmentSelector.tsx`
+- **C-9:** Conflict resolution audit: found 6 discrepancies between build plan and `sprint_16_18_conflict_resolution.md`/`sprint_17_18_priority_order.md`; all fixed (AnimatedCard, featured card, upgrade prompt referral-only, OpportunityScore real count, feed page header count, achievement card trigger on order completion)
+- **C-10:** `OpportunityScore.tsx` now uses real DB count from `user_opportunity_feed` (replaced temporary formula `Math.round((score / 100) * 35)`)
+- **C-11:** Achievement card trigger added to `admin/orders/update-status/route.ts` for service_completed
+- **Build plan:** `docs/sprint_18_complete_build_plan.md` created with all conflict resolutions reflected
+- **Build verified:** `npm run build` — zero TS errors
+
+### Session 29 — Sprint 18 Phase D: Growth Mechanics (Completed)
+
+- **D-1a:** Created `sprint_18_phase_d_achievement_cards.sql` — `achievement_cards` table with `is_dismissed`, `is_shared_whatsapp`, `is_shared_instagram` columns. `success_stories` table already exists from prior work — no new table needed.
+- **D-1b:** Created `POST /api/achievements/generate-card` — 11 card types (`goal_created`, `milestone_25/50/75`, `goal_funded`, `service_ordered`, `service_completed`, `visa_approved`, `certificate_issued`, `joined_swiipt`, `readiness_score`) with `x-internal-secret` guard
+- **D-1c:** Created `AchievementCardSection.tsx` — shows 3 most recent unshared cards on dashboard home, WhatsApp/Instagram share (+ Canvas 1080×1080 PNG download for Instagram), dismiss button
+- **D-1d:** Added trigger in `CreateGoalForm.tsx` for `goal_created`
+- **D-1e:** Added milestone triggers in `admin/deposits/confirm/route.ts` — checks goal milestone columns after `confirm_deposit` RPC
+- **D-1f:** Added trigger in `services/order/route.ts` for `service_ordered`
+- **D-1g:** Added triggers in `certificates/proof-of-funds/route.ts` and `certificates/trust/route.ts` for `certificate_issued`
+- **D-1h:** Added trigger in `auth/callback/route.ts` for `joined_swiipt` (new user signup)
+- **D-3:** Created `SuccessStoryPrompt.tsx` — gradient prompt card shown when user has completed service + no story submitted
+- **D-4:** Created `SuccessStoryForm.tsx` — modal with country, duration, cost, hardest part, advice fields, submits to API
+- **D-5:** Created `POST /api/success-stories/submit` — inserts pending story, fires achievement card, sends admin notification
+- **D-6a:** Created `/admin/campaigns` list page with `CampaignsList.tsx` — table with active/inactive toggle, participants, reward info
+- **D-6b:** Created `/admin/campaigns/new` create form with `CreateCampaignForm.tsx` + `POST /api/admin/campaigns/create` + `POST /api/admin/campaigns/toggle` APIs
+- **D-7:** Created `CampaignBanner.tsx` — fetches active viral campaigns on dashboard home, renders banner with reward details + "Participate →" CTA
+- **D-8:** Added OpportunityScore mini widget in sidebar — shows opportunity count + readiness score above user profile section
+- **Supporting API routes:** `GET /api/achievements/list`, `POST /api/achievements/mark-shared`, `POST /api/achievements/dismiss`
+- **DB types updated:** `achievement_cards` row/insert/update types in `database.ts` (replaced old schema with new columns)
+- **Build verified:** `npm run build` — zero TS errors
+
 ## 12. PENDING / FUTURE BUILD
 
 ### Trade Show Group Booking Phase (Paused — Validate with users first)
@@ -982,23 +1019,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
   - `src/components/dashboard/groups/GroupDetailActions.tsx` — Fix `createClient()` in component body (same pattern as Session 21)
 - **Pattern to follow:** Holiday flow (`HolidayBookingFlow.tsx` lines 24-76 for state + effects; lines 180-203 for conditional UI)
 
-### Sprint 18 Upgrade Path — Replace Temporary Opportunity Count Formula
-- **Current state:** `OpportunityScore.tsx` uses `Math.round((score / 100) * 35)` as a temporary formula
-- **When to build:** Sprint 18, when a real opportunities system is built
-- **What to do:**
-  1. Create `user_opportunity_feed` table with `is_unlocked` (boolean), `is_dismissed` (boolean), `user_id` (FK to users)
-  2. In `src/app/(dashboard)/dashboard/page.tsx`, add a query after the readiness fetch:
-     ```typescript
-     const { count: opportunityCount } = await supabase
-       .from("user_opportunity_feed")
-       .select("*", { count: "exact", head: true })
-       .eq("user_id", user.id)
-       .eq("is_unlocked", true)
-       .eq("is_dismissed", false);
-     ```
-  3. Pass `opportunityCount` as a prop to `OpportunityScore` component
-  4. Remove `getOpportunityCount()` function from `OpportunityScore.tsx` — use the prop instead
-- **Zero rework needed:** Component name, file path, display framing, all props stay the same. Only the data source changes.
+### Sprint 18 Upgrade Path — Replace Temporary Opportunity Count Formula ✅ DONE
+- The temporary formula `Math.round((score / 100) * 35)` has been replaced with a real `user_opportunity_feed` count query. `OpportunityScore` now receives `opportunityCount` as a prop from both the home page and the layout (for sidebar). No further action needed.
 
 ## 13. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors

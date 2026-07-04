@@ -55,6 +55,17 @@ export async function GET(request: NextRequest) {
             referral_code: generateReferralCode(fullName),
             referred_by: null,
           });
+
+          // Fire achievement card for signup
+          fetch(`${origin}/api/achievements/generate-card`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-internal-secret": process.env.INTERNAL_API_SECRET || "" },
+            body: JSON.stringify({
+              userId: user.id,
+              cardType: "joined_swiipt",
+              data: { subtitle: "Swiipt — Plan, fund, and execute your global move" },
+            }),
+          }).catch(() => {});
         }
 
         const redirectUrl = profile

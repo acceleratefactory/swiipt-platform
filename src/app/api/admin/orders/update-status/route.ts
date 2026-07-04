@@ -115,6 +115,13 @@ export async function POST(request: NextRequest) {
       .eq("order_id", orderId);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: pkg } = await (adminSupabase as any)
+    .from("service_packages")
+    .select("name")
+    .eq("id", order.package_id)
+    .single();
+
   if (newStatus === "completed") {
     await supabase.rpc("increment_mobility_score", {
       user_id_input: order.user_id,
@@ -122,14 +129,18 @@ export async function POST(request: NextRequest) {
     });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (adminSupabase as any).from("users").update({ alumni_status: true }).eq("id", order.user_id);
-  }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: pkg } = await (adminSupabase as any)
-    .from("service_packages")
-    .select("name")
-    .eq("id", order.package_id)
-    .single();
+    // Generate achievement card
+    fetch(`${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/achievements/generate-card`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-internal-secret": process.env.INTERNAL_API_SECRET || "" },
+      body: JSON.stringify({
+        userId: order.user_id,
+        cardType: "service_completed",
+        data: { serviceName: pkg?.name || "your service", subtitle: "Swiipt — Plan, fund, and execute your global move" },
+      }),
+    }).catch(() => {});
+  }
 
   const notification = userNotifications[newStatus];
   if (notification) {

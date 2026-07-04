@@ -49,6 +49,17 @@ export async function updateSession(request: NextRequest) {
       url.searchParams.set("error", "account_suspended");
       return NextResponse.redirect(url);
     }
+
+    // Redirect /dashboard root to onboarding or feed based on cookie
+    if (request.nextUrl.pathname === "/dashboard") {
+      const onboardingComplete = request.cookies.get("swiipt_onboarding_complete");
+
+      if (!onboardingComplete) {
+        return NextResponse.redirect(new URL("/dashboard/opportunities/onboarding", request.url));
+      } else {
+        return NextResponse.redirect(new URL("/dashboard/opportunities", request.url));
+      }
+    }
   }
 
   // Protect admin routes

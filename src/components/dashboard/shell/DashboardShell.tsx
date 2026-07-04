@@ -12,11 +12,15 @@ export default function DashboardShell({
   profile,
   wallet,
   unreadNotificationCount,
+  opportunityCount,
+  readinessScore,
   children,
 }: {
-  profile: { id: string; full_name: string; preferred_currency: string; mobility_score: number };
+  profile: { id: string; full_name: string; preferred_currency: string; mobility_score: number; readiness_score?: number };
   wallet: { balance_ngn: number; total_locked_ngn: number } | null;
   unreadNotificationCount: number;
+  opportunityCount: number;
+  readinessScore: number;
   children: ReactNode;
 }) {
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
@@ -30,6 +34,8 @@ export default function DashboardShell({
         wallet={wallet}
         open={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
+        opportunityCount={opportunityCount}
+        readinessScore={readinessScore}
       />
 
       {/* Main content area */}

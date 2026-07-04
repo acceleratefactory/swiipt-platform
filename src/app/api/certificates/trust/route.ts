@@ -141,5 +141,15 @@ export async function POST(request: NextRequest) {
     });
   } catch {} // fire-and-forget
 
+  fetch(`${appUrl}/api/achievements/generate-card`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-internal-secret": process.env.INTERNAL_API_SECRET || "" },
+    body: JSON.stringify({
+      userId: user.id,
+      cardType: "certificate_issued",
+      data: { certificateType: "Trust Certificate", certificateNumber: certNumber, subtitle: "Swiipt — Plan, fund, and execute your global move" },
+    }),
+  }).catch(() => {});
+
   return NextResponse.json({ certificate });
 }

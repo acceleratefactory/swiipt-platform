@@ -27,9 +27,12 @@ export interface Database {
           skills: string[] | null
           languages: string[] | null
           linkedin_url: string | null
+          user_tier: string
+          tier_unlocked_via: string | null
+          tier_unlocked_at: string | null
           created_at: string
         }
-        Insert: Omit<Database["public"]["Tables"]["users"]["Row"], "created_at" | "mobility_score" | "alumni_status" | "readiness_score" | "readiness_destination" | "readiness_last_calculated" | "global_profile_complete" | "trust_score" | "income_estimate_usd_monthly" | "skills" | "languages" | "linkedin_url">
+        Insert: Omit<Database["public"]["Tables"]["users"]["Row"], "created_at" | "mobility_score" | "alumni_status" | "readiness_score" | "readiness_destination" | "readiness_last_calculated" | "global_profile_complete" | "trust_score" | "income_estimate_usd_monthly" | "skills" | "languages" | "linkedin_url" | "user_tier" | "tier_unlocked_via" | "tier_unlocked_at">
         Update: Partial<Omit<Database["public"]["Tables"]["users"]["Row"], "id" | "created_at">>
         Relationships: []
       }
@@ -996,6 +999,257 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["diaspora_gifts"]["Insert"]>
         Relationships: []
       }
+
+      // ── Sprint 18 tables ──
+
+      career_segments: {
+        Row: {
+          id: string
+          slug: string
+          name: string
+          description: string | null
+          icon: string | null
+          is_active: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["career_segments"]["Row"], "id" | "created_at">
+        Update: Partial<Database["public"]["Tables"]["career_segments"]["Insert"]>
+        Relationships: []
+      }
+
+      opportunities: {
+        Row: {
+          id: string
+          segment_slug: string
+          title: string
+          organisation: string
+          location_country: string
+          location_city: string | null
+          type: string
+          description: string
+          requirements: string | null
+          salary_range: string | null
+          funding_amount: string | null
+          deadline: string | null
+          application_url: string
+          is_featured: boolean
+          related_service_slug: string | null
+          related_goal_template_id: string | null
+          source_url: string | null
+          source_name: string | null
+          ai_generated: boolean
+          ai_relevance_score: number | null
+          is_active: boolean
+          view_count: number
+          apply_click_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["opportunities"]["Row"], "id" | "created_at" | "updated_at" | "view_count" | "apply_click_count">
+        Update: Partial<Database["public"]["Tables"]["opportunities"]["Insert"]>
+        Relationships: []
+      }
+
+      user_opportunity_feed: {
+        Row: {
+          id: string
+          user_id: string
+          opportunity_id: string
+          relevance_score: number
+          is_saved: boolean
+          is_applied: boolean
+          is_dismissed: boolean
+          applied_at: string | null
+          saved_at: string | null
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["user_opportunity_feed"]["Row"], "id" | "created_at" | "relevance_score" | "is_saved" | "is_applied" | "is_dismissed">
+        Update: Partial<Database["public"]["Tables"]["user_opportunity_feed"]["Insert"]>
+        Relationships: []
+      }
+
+      career_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          segment_slug: string | null
+          current_role: string | null
+          years_experience: number | null
+          highest_qualification: string | null
+          field_of_study: string | null
+          certifications: string[] | null
+          desired_roles: string[] | null
+          desired_countries: string[] | null
+          desired_salary_usd_monthly: number | null
+          employment_type: string[] | null
+          current_level: string | null
+          gpa: number | null
+          ielts_score: number | null
+          gre_score: number | null
+          study_fields: string[] | null
+          target_universities: string[] | null
+          scholarship_interest: boolean
+          sport: string | null
+          position: string | null
+          current_club: string | null
+          target_leagues: string[] | null
+          video_url: string | null
+          freelancer_platforms: string[] | null
+          hourly_rate_usd: number | null
+          portfolio_url: string | null
+          availability: string | null
+          visa_status: string | null
+          passport_status: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["career_profiles"]["Row"], "id" | "created_at" | "updated_at" | "scholarship_interest">
+        Update: Partial<Database["public"]["Tables"]["career_profiles"]["Insert"]>
+        Relationships: []
+      }
+
+      affiliate_modules: {
+        Row: {
+          id: string
+          title: string
+          subtitle: string | null
+          content_type: string
+          content_url: string | null
+          content_body: string | null
+          duration_minutes: number | null
+          order_in_course: number
+          is_free: boolean
+          min_affiliate_tier: string | null
+          points_on_completion: number
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["affiliate_modules"]["Row"], "id" | "created_at" | "is_free" | "points_on_completion">
+        Update: Partial<Database["public"]["Tables"]["affiliate_modules"]["Insert"]>
+        Relationships: []
+      }
+
+      affiliate_module_progress: {
+        Row: {
+          id: string
+          user_id: string
+          module_id: string
+          status: string
+          score: number | null
+          completed_at: string | null
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["affiliate_module_progress"]["Row"], "id" | "created_at" | "status">
+        Update: Partial<Database["public"]["Tables"]["affiliate_module_progress"]["Insert"]>
+        Relationships: []
+      }
+
+      affiliate_status: {
+        Row: {
+          id: string
+          user_id: string
+          tier: string
+          tier_upgraded_at: string | null
+          total_earned_ngn: number
+          pending_earnings_ngn: number
+          withdrawn_earnings_ngn: number
+          total_referrals: number
+          converting_referrals: number
+          conversion_rate_pct: number
+          custom_affiliate_code: string | null
+          custom_landing_page_slug: string | null
+          tracking_pixel_code: string | null
+          modules_completed: number
+          university_certificate_issued: boolean
+          monthly_rank: number | null
+          all_time_rank: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["affiliate_status"]["Row"], "id" | "created_at" | "updated_at" | "tier" | "total_earned_ngn" | "pending_earnings_ngn" | "withdrawn_earnings_ngn" | "total_referrals" | "converting_referrals" | "conversion_rate_pct" | "modules_completed" | "university_certificate_issued">
+        Update: Partial<Database["public"]["Tables"]["affiliate_status"]["Insert"]>
+        Relationships: []
+      }
+
+      achievement_cards: {
+        Row: {
+          id: string
+          user_id: string
+          card_type: string
+          title: string
+          subtitle: string
+          data: Json
+          is_shared_whatsapp: boolean
+          is_shared_instagram: boolean
+          is_dismissed: boolean
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["achievement_cards"]["Row"], "id" | "created_at">
+        Update: Partial<Database["public"]["Tables"]["achievement_cards"]["Insert"]>
+        Relationships: []
+      }
+
+      viral_campaigns: {
+        Row: {
+          id: string
+          title: string
+          description: string | null
+          reward_type: string
+          reward_amount_ngn: number
+          reward_per_invite: boolean
+          invites_target: number | null
+          requires_segment: string | null
+          min_readiness_score: number
+          starts_at: string
+          ends_at: string
+          max_participants: number | null
+          current_participants: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["viral_campaigns"]["Row"], "id" | "created_at" | "current_participants" | "min_readiness_score" | "reward_per_invite">
+        Update: Partial<Database["public"]["Tables"]["viral_campaigns"]["Insert"]>
+        Relationships: []
+      }
+
+      campaign_participations: {
+        Row: {
+          id: string
+          campaign_id: string
+          user_id: string
+          invites_sent: number
+          invites_converted: number
+          reward_earned_ngn: number
+          reward_paid: boolean
+          joined_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["campaign_participations"]["Row"], "id" | "joined_at" | "invites_sent" | "invites_converted" | "reward_earned_ngn" | "reward_paid">
+        Update: Partial<Database["public"]["Tables"]["campaign_participations"]["Insert"]>
+        Relationships: []
+      }
+
+      success_stories: {
+        Row: {
+          id: string
+          user_id: string
+          order_id: string | null
+          first_name: string
+          destination_country: string
+          service_completed: string
+          journey_duration: string | null
+          approximate_cost_range: string | null
+          hardest_part: string | null
+          advice: string | null
+          photo_url: string | null
+          open_to_contact: boolean
+          status: string
+          published_at: string | null
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["success_stories"]["Row"], "id" | "created_at" | "status" | "open_to_contact">
+        Update: Partial<Database["public"]["Tables"]["success_stories"]["Insert"]>
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: {
@@ -1050,6 +1304,10 @@ export interface Database {
       check_and_update_trade_show_group_funding: {
         Args: { goal_id: string }
         Returns: void
+      }
+      check_and_upgrade_tier: {
+        Args: { user_id_input: string }
+        Returns: string
       }
     }
   }

@@ -139,6 +139,15 @@ export default function CreateGoalForm({
     });
 
     fetch("/api/readiness/recalculate", { method: "POST" }).catch(() => {});
+    fetch("/api/achievements/generate-card", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        userId: user!.id,
+        cardType: "goal_created",
+        data: { goalName, subtitle: "Swiipt — Plan, fund, and execute your global move" },
+      }),
+    }).catch(() => {});
 
     setLoading(false);
     if (onSuccess) {

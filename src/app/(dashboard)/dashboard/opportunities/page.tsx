@@ -1,0 +1,106 @@
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
+import OpportunityFeed from "@/components/dashboard/opportunities/OpportunityFeed";
+
+interface Oppty {
+  id: string;
+  segment_slug: string;
+  title: string;
+  organisation: string;
+  location_country: string;
+  location_city: string | null;
+  type: string;
+  description: string;
+  requirements: string | null;
+  salary_range: string | null;
+  funding_amount: string | null;
+  deadline: string | null;
+  application_url: string;
+  is_featured: boolean;
+  related_service_slug: string | null;
+  related_goal_template_id: string | null;
+  source_url: string | null;
+  source_name: string | null;
+  ai_generated: boolean;
+  ai_relevance_score: number | null;
+  relevanceScore?: number;
+  is_saved?: boolean;
+  is_applied?: boolean;
+  created_at: string;
+}
+
+export default async function OpportunitiesPage() {
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const [
+    profileRes,
+    userRes,
+    oppRes,
+    feedRes,
+  ] = await Promise.all([
+    supabase.from("career_profiles").select("segment_slug").eq("user_id", user.id).single(),
+    supabase.from("users").select("user_tier, referral_code").eq("id", user.id).single(),
+    supabase.from("opportunities").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+    supabase.from("user_opportunity_feed").select("opportunity_id, relevance_score, is_saved, is_applied").eq("user_id", user.id),
+  ]);
+
+  if (!profileRes.data) redirect("/dashboard/opportunities/onboarding");
+
+  const segmentSlug = profileRes.data.segment_slug;
+  const userTier = userRes.data?.user_tier || "free";
+  const referralCode = userRes.data?.referral_code || "";
+  const referralLink = referralCode
+    ? `${process.env.NEXT_PUBLIC_APP_URL || "https://swiipt-platform.vercel.app"}/signup?ref=${referralCode}`
+    : undefined;
+
+  const savedMap = new Map<string, { relevance_score: number; is_saved: boolean; is_applied: boolean }>();
+  for (const f of feedRes.data || []) {
+    savedMap.set(f.opportunity_id, f);
+  }
+
+  const allOpportunities: Oppty[] = (oppRes.data || []).map((opp) => {
+    const feed = savedMap.get(opp.id);
+    return {
+      ...opp,
+      relevanceScore: feed?.relevance_score || opp.ai_relevance_score || undefined,
+      is_saved: feed?.is_saved || false,
+      is_applied: feed?.is_applied || false,
+    };
+  });
+
+  const segmentOpps = allOpportunities.filter((o) => o.segment_slug === segmentSlug);
+
+  const scoredSegment = segmentOpps.map((o) => ({
+    ...o,
+    relevanceScore: o.relevanceScore || 50,
+  }));
+
+  scoredSegment.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
+
+  const opportunityCount = scoredSegment.length;
+
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "1.5rem 1rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+        <div>
+          <h1 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.5rem", fontWeight: 800, color: "var(--midnight)", margin: "0 0 0.25rem 0" }}>
+            Your Opportunities
+          </h1>
+          <p style={{ fontSize: "0.875rem", color: "#64748b", margin: 0 }}>
+            {opportunityCount} matched to your profile &middot; Updated today
+          </p>
+        </div>
+        <a href="/dashboard/opportunities/onboarding" style={{ fontSize: "0.8125rem", color: "var(--teal)", textDecoration: "none", fontWeight: 600, flexShrink: 0 }}>
+          Update interests &rarr;
+        </a>
+      </div>
+      <OpportunityFeed
+        allOpportunities={scoredSegment}
+        userTier={userTier}
+        referralLink={referralLink}
+      />
+    </div>
+  );
+}

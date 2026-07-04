@@ -22,6 +22,8 @@ import {
   BarChart2,
   Handshake,
   Shield,
+  Megaphone,
+  Zap,
 } from "lucide-react";
 
 const navItems: Array<{
@@ -42,10 +44,12 @@ const navItems: Array<{
   { href: "/admin/groups", label: "Groups", icon: <Users size={16} /> },
   { href: "/admin/trade-shows", label: "Trade Shows", icon: <Globe size={16} /> },
   { href: "/admin/content", label: "Content", icon: <FileEdit size={16} /> },
+  { href: "/admin/opportunities", label: "Opportunities", icon: <Zap size={16} /> },
   { href: "/admin/holidays", label: "Holiday Bookings", icon: <Umbrella size={16} /> },
   { href: "/admin/currencies", label: "Currencies", icon: <DollarSign size={16} /> },
   { href: "/admin/leaderboard", label: "Leaderboard", icon: <Trophy size={16} /> },
   { href: "/admin/promotions", label: "Promotions", icon: <Tag size={16} /> },
+  { href: "/admin/campaigns", label: "Campaigns", icon: <Megaphone size={16} /> },
   { href: "/admin/notifications", label: "Notifications", icon: <Bell size={16} /> },
   { href: "/admin/subscribers", label: "Subscribers", icon: <Mail size={16} /> },
   { href: "/admin/partners", label: "Partners", icon: <Handshake size={16} /> },

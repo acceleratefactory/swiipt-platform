@@ -5,13 +5,14 @@ import Link from "next/link";
 import {
   Home, Target, Globe, Plane, Umbrella,
   FileText, Gift, Users, MessageCircle,
-  Settings, Wallet, LogOut, User, Handshake,
+  Settings, Wallet, LogOut, User, Handshake, Zap, DollarSign,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import CurrencyDisplay from "@/components/dashboard/shared/CurrencyDisplay";
 
 const navItems = [
-  { href: "/dashboard", label: "Home", icon: Home },
+  { href: "/dashboard/home", label: "Home", icon: Home },
+  { href: "/dashboard/opportunities", label: "Opportunities", icon: Zap },
   { href: "/dashboard/profile", label: "My Profile", icon: User },
   { href: "/dashboard/profile/certificates", label: "Certificates", icon: FileText },
   { href: "/dashboard/goals", label: "My Goals", icon: Target },
@@ -22,6 +23,7 @@ const navItems = [
   { href: "/dashboard/trade-shows", label: "Trade Shows", icon: Globe },
   { href: "/dashboard/documents", label: "Documents", icon: FileText },
   { href: "/dashboard/rewards", label: "Rewards", icon: Gift },
+  { href: "/dashboard/affiliate", label: "Earn with Swiipt", icon: DollarSign },
   { href: "/dashboard/find-agent", label: "Find an Agent", icon: Handshake },
   { href: "/dashboard/refer", label: "Refer & Earn", icon: Users },
   { href: "/dashboard/community", label: "Community", icon: MessageCircle },
@@ -33,11 +35,15 @@ export default function Sidebar({
   wallet,
   open,
   onClose,
+  opportunityCount,
+  readinessScore,
 }: {
   profile: { id: string; full_name: string; preferred_currency: string; mobility_score: number };
   wallet: { balance_ngn: number; total_locked_ngn: number } | null;
   open: boolean;
   onClose: () => void;
+  opportunityCount: number;
+  readinessScore: number;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -122,6 +128,20 @@ export default function Sidebar({
             );
           })}
         </nav>
+
+        {/* Opportunity Score mini widget */}
+        <div style={{ padding: "0.75rem 1rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+          <p style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.4)", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            Opportunity Score
+          </p>
+          <p style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.25rem", fontWeight: 800, color: "var(--teal)" }}>
+            {opportunityCount}
+            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.4)", fontWeight: 400, marginLeft: "4px" }}>opportunities</span>
+          </p>
+          <p style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.3)", marginTop: "0.125rem" }}>
+            Readiness: {readinessScore}/100
+          </p>
+        </div>
 
         {/* User profile at bottom */}
         <div style={{ padding: "1rem", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
