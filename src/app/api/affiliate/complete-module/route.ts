@@ -26,24 +26,25 @@ export async function POST(request: NextRequest) {
 
     const { data: existing } = await supabase
       .from("affiliate_module_progress")
-      .select("id, status")
+      .select("id, completed_at")
       .eq("user_id", user.id)
       .eq("module_id", moduleId)
       .single();
 
-    if (existing?.status === "completed") {
+    if (existing?.completed_at) {
       return NextResponse.json({ success: true, alreadyCompleted: true });
     }
 
+    const now = new Date().toISOString();
     if (existing) {
       await supabase
         .from("affiliate_module_progress")
-        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .update({ completed_at: now })
         .eq("id", existing.id);
     } else {
       await supabase
         .from("affiliate_module_progress")
-        .insert({ user_id: user.id, module_id: moduleId, status: "completed", completed_at: new Date().toISOString() });
+        .insert({ user_id: user.id, module_id: moduleId, completed_at: now, points_earned: 0 });
     }
 
     await supabase.rpc("increment_mobility_score", { points: module.points_on_completion, user_id_input: user.id });
