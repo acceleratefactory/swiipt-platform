@@ -32,18 +32,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Withdrawals require Bronze tier or higher" }, { status: 403 });
     }
 
-    await supabase
-      .from("affiliate_status")
-      .update({ pending_earnings_ngn: statusRow.pending_earnings_ngn - amount })
-      .eq("user_id", user.id);
+    const { data: withdrawal, error: insertError } = await supabase
+      .from("affiliate_withdrawals")
+      .insert({ user_id: user.id, amount_ngn: amount })
+      .select("id")
+      .single();
+
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 500 });
+    }
 
     await supabase.from("activity_log").insert({
       user_id: user.id,
       event_type: "affiliate_withdrawal_requested",
-      event_data: { amount_ngn: amount, tier: statusRow.tier },
+      event_data: { amount_ngn: amount, tier: statusRow.tier, withdrawal_id: withdrawal.id },
     });
 
-    return NextResponse.json({ success: true, amount });
+    // Admin broadcast notification (E-1)
+    const { data: profile } = await supabase.from("users").select("full_name").eq("id", user.id).single();
+    await supabase.from("notifications").insert({
+      user_id: null,
+      type: "affiliate_withdrawal_requested",
+      title: "New withdrawal request",
+      body: `₦${Number(amount).toLocaleString()} requested by ${profile?.full_name || user.id.slice(0, 8)}`,
+      action_url: "/admin/affiliates/withdrawals",
+      target_segment: null,
+    });
+
+    return NextResponse.json({ success: true, withdrawalId: withdrawal.id, amount });
   } catch (error) {
     console.error("Affiliate withdraw error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

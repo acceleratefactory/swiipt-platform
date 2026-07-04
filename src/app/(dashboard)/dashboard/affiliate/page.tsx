@@ -7,11 +7,10 @@ export default async function AffiliatePage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: status } = await supabase
-    .from("affiliate_status")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
+  const [statusRes, withdrawalsRes] = await Promise.all([
+    supabase.from("affiliate_status").select("*").eq("user_id", user.id).single(),
+    supabase.from("affiliate_withdrawals").select("*").eq("user_id", user.id).order("requested_at", { ascending: false }),
+  ]);
 
   return (
     <div>
@@ -21,7 +20,7 @@ export default async function AffiliatePage() {
       <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
         Refer friends and earn up to 12% commission on every service order.
       </p>
-      <AffiliateHub status={status || {}} />
+      <AffiliateHub status={statusRes.data || {}} withdrawals={withdrawalsRes.data || []} />
     </div>
   );
 }

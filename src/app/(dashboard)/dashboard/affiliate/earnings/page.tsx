@@ -7,17 +7,11 @@ export default async function EarningsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: status } = await supabase
-    .from("affiliate_status")
-    .select("*")
-    .eq("user_id", user.id)
-    .single();
-
-  const { data: referrals } = await supabase
-    .from("referrals")
-    .select("*")
-    .eq("referrer_id", user.id)
-    .order("created_at", { ascending: false });
+  const [statusRes, referralsRes, withdrawalsRes] = await Promise.all([
+    supabase.from("affiliate_status").select("*").eq("user_id", user.id).single(),
+    supabase.from("referrals").select("*").eq("referrer_id", user.id).order("created_at", { ascending: false }),
+    supabase.from("affiliate_withdrawals").select("*").eq("user_id", user.id).order("requested_at", { ascending: false }),
+  ]);
 
   return (
     <div>
@@ -27,7 +21,7 @@ export default async function EarningsPage() {
       <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1.375rem', fontWeight: 800, color: 'var(--midnight)', marginBottom: '1.5rem' }}>
         Earnings
       </h1>
-      <EarningsDashboard status={status || {}} referrals={referrals || []} />
+      <EarningsDashboard status={statusRes.data || {}} referrals={referralsRes.data || []} withdrawals={withdrawalsRes.data || []} />
     </div>
   );
 }
