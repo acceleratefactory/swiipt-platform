@@ -14,10 +14,11 @@ export default async function AdminLeaderboardPage() {
   const periodKey = await (supabase as any).rpc("get_current_period_key");
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const [entriesRes, prizesRes, allTimePrizesRes] = await Promise.all([
+  const [entriesRes, prizesRes, allTimePrizesRes, allTimeRes] = await Promise.all([
     (supabase as any).from("leaderboard_entries").select("*, users(full_name, email)").eq("period_key", periodKey.data).order("rank").limit(20),
     (supabase as any).from("leaderboard_prizes").select("*").eq("is_active", true).eq("period_type", "monthly").order("rank_position"),
     (supabase as any).from("leaderboard_prizes").select("*").eq("period_type", "all_time").order("rank_position"),
+    (supabase as any).from("affiliate_status").select("total_referrals, total_earned_ngn, user_id, users(full_name, email)").order("total_referrals", { ascending: false }).limit(20),
   ]);
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
@@ -31,6 +32,7 @@ export default async function AdminLeaderboardPage() {
       </p>
       <LeaderboardAdmin
         entries={entriesRes.data || []}
+        allTimeEntries={allTimeRes.data || []}
         prizes={prizesRes.data || []}
         allTimePrizes={allTimePrizesRes.data || []}
         periodKey={periodKey.data}

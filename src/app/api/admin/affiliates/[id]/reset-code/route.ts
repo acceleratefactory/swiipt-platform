@@ -29,18 +29,29 @@ export async function POST(
     }
 
     const oldCode = current.custom_affiliate_code;
-    const newCode = `AFF-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+    let newCode = "";
+    let inserted = false;
 
-    const { error: updateError } = await (adminSupabase as any)
-      .from("affiliate_status")
-      .update({ custom_affiliate_code: newCode })
-      .eq("user_id", userId);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      newCode = `AFF-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
 
-    if (updateError) {
-      if (updateError.code === "23505") {
-        return NextResponse.json({ error: "Generated code conflicts, try again" }, { status: 409 });
+      const { error: updateError } = await (adminSupabase as any)
+        .from("affiliate_status")
+        .update({ custom_affiliate_code: newCode })
+        .eq("user_id", userId);
+
+      if (!updateError) {
+        inserted = true;
+        break;
       }
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+
+      if (updateError.code !== "23505") {
+        return NextResponse.json({ error: updateError.message }, { status: 500 });
+      }
+    }
+
+    if (!inserted) {
+      return NextResponse.json({ error: "Could not generate a unique code after 3 attempts" }, { status: 409 });
     }
 
     await (adminSupabase as any).from("admin_audit_log").insert({

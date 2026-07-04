@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import AffiliateTierBadge from "./AffiliateTierBadge";
 
-export default function AffiliateHub({ status, withdrawals }: { status: any; withdrawals: any[] }) {
+export default function AffiliateHub({ status, withdrawals, isAdminPreview: _isAdminPreview, previewUserName: _previewUserName }: { status: any; withdrawals: any[]; isAdminPreview?: boolean; previewUserName?: string }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const initialized = useRef(false);
