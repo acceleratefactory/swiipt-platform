@@ -1160,6 +1160,7 @@ export interface Database {
           custom_landing_page_slug: string | null
           tracking_pixel_code: string | null
           modules_completed: number
+          university_points: number
           university_certificate_issued: boolean
           monthly_rank: number | null
           all_time_rank: number | null
@@ -1167,7 +1168,7 @@ export interface Database {
           updated_at: string
         }
         Insert: Omit<Database["public"]["Tables"]["affiliate_status"]["Row"], "id" | "created_at" | "updated_at" | "tier" | "total_earned_ngn" | "pending_earnings_ngn" | "withdrawn_earnings_ngn" | "total_referrals" | "converting_referrals" | "conversion_rate_pct" | "modules_completed" | "university_certificate_issued">
-        Update: Partial<Database["public"]["Tables"]["affiliate_status"]["Insert"]>
+        Update: Partial<Omit<Database["public"]["Tables"]["affiliate_status"]["Row"], "id" | "created_at" | "updated_at">>
         Relationships: []
       }
 
