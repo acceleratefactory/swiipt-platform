@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 
 export default function ModuleDetailView({
   module,
-  progress,
+  progress: _progress,
   isCompleted,
 }: {
   module: any;
