@@ -60,22 +60,42 @@ ALTER TABLE opportunity_signals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_interest_model ENABLE ROW LEVEL SECURITY;
 ALTER TABLE opportunity_comments ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Users can insert own signals"
-  ON opportunity_signals FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'opportunity_signals' AND policyname = 'Users can insert own signals') THEN
+    CREATE POLICY "Users can insert own signals"
+      ON opportunity_signals FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Users can read own signals"
-  ON opportunity_signals FOR SELECT USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'opportunity_signals' AND policyname = 'Users can read own signals') THEN
+    CREATE POLICY "Users can read own signals"
+      ON opportunity_signals FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Users can read own interest model"
-  ON user_interest_model FOR SELECT USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_interest_model' AND policyname = 'Users can read own interest model') THEN
+    CREATE POLICY "Users can read own interest model"
+      ON user_interest_model FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Admins read all signals"
-  ON opportunity_signals FOR SELECT
-  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'opportunity_signals' AND policyname = 'Admins read all signals') THEN
+    CREATE POLICY "Admins read all signals"
+      ON opportunity_signals FOR SELECT
+      USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Admins read all interest models"
-  ON user_interest_model FOR SELECT
-  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'user_interest_model' AND policyname = 'Admins read all interest models') THEN
+    CREATE POLICY "Admins read all interest models"
+      ON user_interest_model FOR SELECT
+      USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+  END IF;
+END $$;
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_signals_user_type ON opportunity_signals(user_id, signal_type, created_at);

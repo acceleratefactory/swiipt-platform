@@ -50,13 +50,21 @@ ALTER TABLE opportunities
 ALTER TABLE opportunity_queue ENABLE ROW LEVEL SECURITY;
 ALTER TABLE opportunity_sources ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Admins manage opportunity queue"
-  ON opportunity_queue FOR ALL
-  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'opportunity_queue' AND policyname = 'Admins manage opportunity queue') THEN
+    CREATE POLICY "Admins manage opportunity queue"
+      ON opportunity_queue FOR ALL
+      USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+  END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Admins manage opportunity sources"
-  ON opportunity_sources FOR ALL
-  USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'opportunity_sources' AND policyname = 'Admins manage opportunity sources') THEN
+    CREATE POLICY "Admins manage opportunity sources"
+      ON opportunity_sources FOR ALL
+      USING (EXISTS (SELECT 1 FROM user_roles WHERE user_id = auth.uid() AND role = 'admin'));
+  END IF;
+END $$;
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_queue_status ON opportunity_queue(status, ingested_at);
