@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import type { TypeStyleMap } from "@/lib/opportunity-types";
+import OpportunityDetailModal from "./OpportunityDetailModal";
+import FallbackTile from "./FallbackTile";
+import ServiceCTA from "./ServiceCTA";
 
 interface Oppty {
   id: string;
@@ -25,11 +29,22 @@ interface Oppty {
   relevanceScore?: number;
   is_saved?: boolean;
   is_applied?: boolean;
+  is_liked?: boolean;
+  like_count?: number;
+  cover_image_url?: string | null;
+  video_url?: string | null;
+  media_type?: string | null;
+  thumbnail_url?: string | null;
+  media_source?: string | null;
+  media_aspect_ratio?: string | null;
+  org_logo_url?: string | null;
+  service_cta_type?: string | null;
+  service_url?: string | null;
 }
 
 interface Props {
   opportunity: Oppty;
-  userTier: string;
+  typeStyles: TypeStyleMap;
   onApply: (id: string) => void;
   onSave: (id: string, saved: boolean) => void;
 }
@@ -47,15 +62,6 @@ const COUNTRY_FLAGS: Record<string, string> = {
   uae: "\uD83C\uDDE6\uD83C\uDDEA",
   global: "\uD83C\uDF0D",
   multiple: "\uD83C\uDF0D",
-};
-
-const TYPE_STYLES: Record<string, { bg: string; label: string }> = {
-  job: { bg: "#dbeafe", label: "Job" },
-  scholarship: { bg: "#e9d5ff", label: "Scholarship" },
-  visa_programme: { bg: "#ccfbf1", label: "Visa Programme" },
-  sports_trial: { bg: "#fed7aa", label: "Trial" },
-  remote_work: { bg: "#dbeafe", label: "Remote" },
-  training: { bg: "#fef3c7", label: "Training" },
 };
 
 function getFlag(country: string): string {
@@ -81,22 +87,28 @@ function getMatchLabel(score: number | undefined): { label: string; color: strin
   return { label: "Fair match", color: "#d97706" };
 }
 
-export default function OpportunityCard({ opportunity: opp, userTier, onApply, onSave }: Props) {
+export default function OpportunityCard({ opportunity: opp, typeStyles, onApply, onSave }: Props) {
+  const [detailOpen, setDetailOpen] = useState(false);
   const [saved, setSaved] = useState(opp.is_saved || false);
+  const [liked, setLiked] = useState(opp.is_liked || false);
+  const [likeCount, setLikeCount] = useState(opp.like_count || 0);
   const [applied, setApplied] = useState(opp.is_applied || false);
   const [showSharePrompt, setShowSharePrompt] = useState(false);
+  const [descExpanded, setDescExpanded] = useState(false);
 
   const initials = opp.organisation.charAt(0).toUpperCase();
   const daysLeft = getDaysLeft(opp.deadline);
-  const typeStyle = TYPE_STYLES[opp.type] || { bg: "#f3f4f6", label: opp.type };
+  const typeStyle = typeStyles[opp.type] || { bg: "#f3f4f6", color: "#64748b", label: opp.type };
   const matchInfo = getMatchLabel(opp.relevanceScore);
-  const showAIMatch = matchInfo && (userTier === "plus" || userTier === "pro" || userTier === "ambassador");
   const flag = getFlag(opp.location_country);
+
+  const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
 
   const handleApply = useCallback(async () => {
     if (applied) return;
     setApplied(true);
     onApply(opp.id);
+    window.open(`/api/opportunities/apply?id=${opp.id}`, "_blank");
     try {
       await fetch("/api/opportunities/track", {
         method: "POST",
@@ -120,6 +132,31 @@ export default function OpportunityCard({ opportunity: opp, userTier, onApply, o
     } catch {}
   }, [opp.id, saved, onSave]);
 
+  const handleLike = useCallback(async () => {
+    const prevLiked = liked;
+    const prevCount = likeCount;
+    setLiked(!liked);
+    setLikeCount(c => liked ? c - 1 : c + 1);
+    try {
+      const res = await fetch("/api/opportunities/like", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ opportunityId: opp.id }),
+      });
+      if (!res.ok) {
+        setLiked(prevLiked);
+        setLikeCount(prevCount);
+      } else {
+        const data = await res.json();
+        setLiked(data.liked);
+        setLikeCount(data.like_count);
+      }
+    } catch {
+      setLiked(prevLiked);
+      setLikeCount(prevCount);
+    }
+  }, [opp.id, liked, likeCount]);
+
   const handleShare = useCallback(async () => {
     const text = `${opp.title} at ${opp.organisation} — ${opp.location_country}\n\n${opp.description.slice(0, 200)}...\n\nView on Swiipt: ${window.location.origin}/dashboard/opportunities/${opp.id}`;
     if (navigator.share) {
@@ -140,73 +177,135 @@ export default function OpportunityCard({ opportunity: opp, userTier, onApply, o
   }, [opp]);
 
   return (
-    <div style={{ background: "white", borderRadius: "var(--radius-md)", border: "1px solid #e2e8f0", padding: "1.25rem", position: "relative", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-      <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
-        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--teal)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "1rem", flexShrink: 0 }}>
-          {initials}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--midnight)", lineHeight: 1.3, marginBottom: "0.125rem", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif" }}>
-            {opp.title}
+    <div
+      onClick={() => setDetailOpen(true)}
+      style={{ background: "white", borderRadius: "var(--radius-md)", border: "1px solid #e2e8f0", position: "relative", display: "flex", flexDirection: "column", gap: "0.75rem", width: "100%", cursor: "pointer", overflow: "hidden" }}
+    >
+      {opp.media_type !== "none" && (
+        <div style={{ position: "relative", width: "100%" }}>
+          {hasCover && opp.cover_image_url ? (
+            <div style={{ position: "relative", width: "100%", aspectRatio: opp.media_aspect_ratio === "4:5" ? "4 / 5" : "16 / 9" }}>
+              <img
+                src={opp.cover_image_url}
+                alt=""
+                loading="lazy"
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
+              />
+            </div>
+          ) : (
+            <FallbackTile
+              type={opp.type}
+              organisation={opp.organisation}
+              location_country={opp.location_country}
+              aspectRatio={opp.media_aspect_ratio || undefined}
+            />
+          )}
+          <div style={{ position: "absolute", top: "0.5rem", left: "0.5rem", display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", background: "rgba(0,0,0,0.5)", color: "white", backdropFilter: "blur(4px)" }}>
+              {flag} {opp.location_country}
+            </span>
+            <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", background: typeStyle.bg, color: "#1e293b" }}>
+              {typeStyle.label}
+            </span>
           </div>
-          <div style={{ fontSize: "0.8125rem", color: "#64748b" }}>{opp.organisation}</div>
         </div>
-        <div style={{ display: "flex", gap: "0.25rem", flexShrink: 0 }}>
-          <button onClick={handleSave} title={saved ? "Saved" : "Save"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.125rem", padding: "0.25rem", lineHeight: 1 }}>
-            {saved ? "\uD83D\uDCCD" : "\uD83D\uDCCC"}
+      )}
+
+      <div style={{ padding: opp.media_type !== "none" ? "0 1.25rem 0 1.25rem" : "1.25rem 1.25rem 0 1.25rem" }}>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+          {opp.org_logo_url ? (
+            <img src={opp.org_logo_url} alt="" style={{ width: 48, height: 48, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+          ) : (
+            <div style={{ width: 48, height: 48, borderRadius: 12, background: "var(--teal)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "1.25rem", flexShrink: 0 }}>
+              {initials}
+            </div>
+          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--midnight)", lineHeight: 1.3, marginBottom: "0.125rem", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+              {opp.title}
+            </div>
+            <div style={{ fontSize: "0.8125rem", color: "#64748b", marginBottom: "0.375rem" }}>{opp.organisation}</div>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+              {opp.ai_generated && (
+                <span style={{ fontSize: "0.6875rem", color: "#0d9488", display: "flex", alignItems: "center", gap: "0.125rem" }}>
+                  {"\u2705"} Trusted
+                </span>
+              )}
+              {matchInfo && (
+                <span style={{ fontSize: "0.6875rem", color: matchInfo.color }}>
+                  {"\u25CF".repeat(Math.round((matchInfo.label === "Excellent match" ? 4 : matchInfo.label === "Good match" ? 3 : 2)))} Match
+                </span>
+              )}
+              {daysLeft && (
+                <span style={{ fontSize: "0.6875rem", color: daysLeft.color }}>
+                  {"\u23F3"} {daysLeft.days}d
+                </span>
+              )}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "0.25rem", flexShrink: 0 }}>
+            <button onClick={(e) => { e.stopPropagation(); handleSave(); }} title={saved ? "Saved" : "Save"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.125rem", padding: "0.25rem", lineHeight: 1 }}>
+              {saved ? "\uD83D\uDCCD" : "\uD83D\uDCCC"}
+            </button>
+          </div>
+        </div>
+
+        {opp.salary_range && (
+          <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--teal)", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", marginTop: "0.5rem" }}>
+            {opp.salary_range}
+          </div>
+        )}
+
+        <div style={{ fontSize: "0.8125rem", color: "#64748b", lineHeight: 1.4, margin: "0.5rem 0" }}>
+          <span style={descExpanded ? {} : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {opp.description}
+          </span>
+          {!descExpanded && opp.description.length > 120 && (
+            <span
+              onClick={(e) => { e.stopPropagation(); setDescExpanded(true); }}
+              style={{ color: "var(--teal)", fontWeight: 600, cursor: "pointer", marginLeft: "0.25rem", fontSize: "0.75rem" }}
+            >
+              {"\u2026"}more
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div style={{ padding: "0 1.25rem 1.25rem 1.25rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "0.75rem", paddingBottom: "0.75rem", borderBottom: "1px solid #f1f5f9" }}>
+          <button onClick={(e) => { e.stopPropagation(); handleLike(); }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: liked ? "#ef4444" : "#64748b", fontWeight: liked ? 700 : 400, padding: "0.25rem 0" }}>
+            {liked ? "\u2764\uFE0F" : "\u2661"} <span>{likeCount}</span>
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); handleSave(); }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: saved ? "var(--teal)" : "#64748b", fontWeight: saved ? 700 : 400, padding: "0.25rem 0" }}>
+            {saved ? "\uD83D\uDCCD" : "\uD83D\uDCCC"} <span>Save</span>
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); handleShare(); }} style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.375rem", fontSize: "0.8125rem", color: "#64748b", padding: "0.25rem 0" }}>
+            {"\uD83D\uDD17"} <span>Share</span>
           </button>
         </div>
-      </div>
 
-      {opp.salary_range && (
-        <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--teal)", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif" }}>
-          {opp.salary_range}
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button onClick={(e) => { e.stopPropagation(); handleApply(); }} disabled={applied} style={{ flex: 1, padding: "0.5rem 1rem", borderRadius: "var(--radius-md)", border: "none", background: applied ? "#e2e8f0" : "var(--teal)", color: applied ? "#94a3b8" : "white", fontWeight: 600, fontSize: "0.8125rem", cursor: applied ? "default" : "pointer" }}>
+            {applied ? "Applied \u2705" : "Apply now \u2192"}
+          </button>
         </div>
-      )}
 
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: "0.8125rem", color: "#475569", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          {flag} {opp.location_city ? `${opp.location_city}, ` : ""}{opp.location_country}
-        </span>
-        <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", background: typeStyle.bg, color: "#1e293b" }}>
-          {typeStyle.label}
-        </span>
-        {daysLeft && (
-          <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", background: "#fef3c7", color: daysLeft.color }}>
-            {"\u23F0"} {daysLeft.days}d left
-          </span>
-        )}
-        {showAIMatch && (
-          <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", background: matchInfo!.color + "20", color: matchInfo!.color }}>
-            {matchInfo!.label}
-          </span>
+        <ServiceCTA
+          type={opp.type}
+          location_country={opp.location_country}
+          opportunityId={opp.id}
+          service_url={opp.service_url}
+        />
+
+        {opp.source_name && (
+          <a href={opp.source_url || "#"} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.6875rem", color: "#94a3b8", textDecoration: "none", marginTop: "0.25rem", display: "inline-block" }}>
+            {"\uD83D\uDCD6"} Read the full guide on {opp.source_name} &rarr;
+          </a>
         )}
       </div>
-
-      <p style={{ fontSize: "0.8125rem", color: "#64748b", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", margin: 0 }}>
-        {opp.description}
-      </p>
-
-      <div style={{ display: "flex", gap: "0.5rem", marginTop: "auto" }}>
-        <button onClick={handleApply} disabled={applied} style={{ flex: 1, padding: "0.5rem 1rem", borderRadius: "var(--radius-md)", border: "none", background: applied ? "#e2e8f0" : "var(--teal)", color: applied ? "#94a3b8" : "white", fontWeight: 600, fontSize: "0.8125rem", cursor: applied ? "default" : "pointer" }}>
-          {applied ? "Applied \u2705" : "Apply now \u2192"}
-        </button>
-        <button onClick={handleShare} style={{ padding: "0.5rem 0.75rem", borderRadius: "var(--radius-md)", border: "1px solid #e2e8f0", background: "white", color: "#475569", fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          {"\uD83D\uDD17"} Share
-        </button>
-      </div>
-
-      {opp.related_service_slug && (
-        <a href={`/services/${opp.related_service_slug}`} style={{ fontSize: "0.75rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none", display: "flex", alignItems: "center", gap: "0.25rem" }}>
-          {"\uD83D\uDEE2\uFE0F"} Need a {opp.location_country} visa? We can help &rarr;
-        </a>
-      )}
-
-      {opp.source_name && (
-        <a href={opp.source_url || "#"} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.6875rem", color: "#94a3b8", textDecoration: "none", marginTop: "0.25rem" }}>
-          {"\uD83D\uDCD6"} Read the full guide on {opp.source_name} &rarr;
-        </a>
-      )}
 
       {showSharePrompt && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(6,17,43,0.85)", borderRadius: "var(--radius-md)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem", padding: "1.5rem", zIndex: 10 }}>
@@ -214,14 +313,25 @@ export default function OpportunityCard({ opportunity: opp, userTier, onApply, o
             Share this opportunity with friends!
           </p>
           <div style={{ display: "flex", gap: "0.75rem" }}>
-            <button onClick={handleWhatsAppShare} style={{ padding: "0.625rem 1.25rem", borderRadius: "var(--radius-md)", border: "none", background: "#25D366", color: "white", fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer" }}>
+            <button onClick={(e) => { e.stopPropagation(); handleWhatsAppShare(); }} style={{ padding: "0.625rem 1.25rem", borderRadius: "var(--radius-md)", border: "none", background: "#25D366", color: "white", fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer" }}>
               {"\uD83D\uDCF1"} WhatsApp
             </button>
-            <button onClick={() => setShowSharePrompt(false)} style={{ padding: "0.625rem 1.25rem", borderRadius: "var(--radius-md)", border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "white", fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer" }}>
+            <button onClick={(e) => { e.stopPropagation(); setShowSharePrompt(false); }} style={{ padding: "0.625rem 1.25rem", borderRadius: "var(--radius-md)", border: "1px solid rgba(255,255,255,0.3)", background: "transparent", color: "white", fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer" }}>
               Skip
             </button>
           </div>
         </div>
+      )}
+
+      {detailOpen && (
+        <OpportunityDetailModal
+          opportunity={opp}
+          typeStyles={typeStyles}
+          onClose={() => setDetailOpen(false)}
+          onApply={handleApply}
+          onSave={handleSave}
+          isSaved={saved}
+        />
       )}
     </div>
   );

@@ -1002,6 +1002,24 @@ export interface Database {
 
       // ── Sprint 18 tables ──
 
+      // ── Pre-Sprint 19: Data-driven types ──
+
+      opportunity_types: {
+        Row: {
+          slug: string
+          name: string
+          emoji: string | null
+          bg_color: string
+          text_color: string
+          sort_order: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["opportunity_types"]["Row"], "created_at">
+        Update: Partial<Database["public"]["Tables"]["opportunity_types"]["Insert"]>
+        Relationships: []
+      }
+
       career_segments: {
         Row: {
           id: string
@@ -1009,6 +1027,8 @@ export interface Database {
           name: string
           description: string | null
           icon: string | null
+          bg_color: string | null
+          text_color: string | null
           is_active: boolean
           sort_order: number
           created_at: string
@@ -1043,6 +1063,18 @@ export interface Database {
           is_active: boolean
           view_count: number
           apply_click_count: number
+          cover_image_url: string | null
+          video_url: string | null
+          media_type: string | null
+          thumbnail_url: string | null
+          media_source: string | null
+          media_aspect_ratio: string | null
+          org_logo_url: string | null
+          published_at: string | null
+          service_cta_type: string | null
+          service_url: string | null
+          needs_review: boolean | null
+          review_reason: string | null
           created_at: string
           updated_at: string
         }
@@ -1282,6 +1314,107 @@ export interface Database {
         }
         Insert: Omit<Database["public"]["Tables"]["success_stories"]["Row"], "id" | "created_at" | "status" | "open_to_contact">
         Update: Partial<Database["public"]["Tables"]["success_stories"]["Insert"]>
+        Relationships: []
+      }
+
+      opportunity_signals: {
+        Row: {
+          id: string
+          user_id: string
+          opportunity_id: string
+          signal_type: string
+          opportunity_segment: string | null
+          opportunity_type: string | null
+          opportunity_country: string | null
+          opportunity_organisation: string | null
+          signal_weight: number
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["opportunity_signals"]["Row"], "id" | "created_at" | "signal_weight">
+        Update: Partial<Database["public"]["Tables"]["opportunity_signals"]["Insert"]>
+        Relationships: []
+      }
+
+      user_interest_model: {
+        Row: {
+          id: string
+          user_id: string
+          segment_scores: Json
+          country_scores: Json
+          type_scores: Json
+          org_affinity: Json
+          suppressed_countries: Json
+          suppressed_types: Json
+          total_signals: number
+          last_updated: string
+          model_confidence: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["user_interest_model"]["Row"], "id" | "total_signals" | "last_updated" | "model_confidence">
+        Update: Partial<Database["public"]["Tables"]["user_interest_model"]["Insert"]>
+        Relationships: []
+      }
+
+      opportunity_comments: {
+        Row: {
+          id: string
+          opportunity_id: string
+          user_id: string
+          body: string
+          status: string
+          like_count: number
+          parent_id: string | null
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["opportunity_comments"]["Row"], "id" | "created_at" | "status" | "like_count">
+        Update: Partial<Database["public"]["Tables"]["opportunity_comments"]["Insert"]>
+        Relationships: []
+      }
+
+      opportunity_queue: {
+        Row: {
+          id: string
+          raw_title: string | null
+          raw_organisation: string | null
+          raw_location: string | null
+          raw_description: string | null
+          raw_salary: string | null
+          raw_deadline: string | null
+          raw_url: string
+          raw_requirements: string | null
+          source_name: string
+          source_url: string | null
+          ingest_method: string
+          status: string
+          confidence_score: number | null
+          ai_enriched_data: Json
+          rejection_reason: string | null
+          review_notes: string | null
+          ingested_at: string
+          processed_at: string | null
+          published_opportunity_id: string | null
+        }
+        Insert: Omit<Database["public"]["Tables"]["opportunity_queue"]["Row"], "id" | "ingested_at" | "status" | "processed_at" | "confidence_score" | "ai_enriched_data" | "rejection_reason" | "review_notes" | "published_opportunity_id">
+        Update: Partial<Database["public"]["Tables"]["opportunity_queue"]["Insert"]>
+        Relationships: []
+      }
+
+      opportunity_sources: {
+        Row: {
+          id: string
+          name: string
+          source_type: string
+          source_url: string
+          segment_slug: string | null
+          is_active: boolean
+          pull_frequency_hours: number
+          last_pulled_at: string | null
+          total_ingested: number
+          total_published: number
+          trust_tier: string
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["opportunity_sources"]["Row"], "id" | "created_at" | "is_active" | "total_ingested" | "total_published" | "last_pulled_at">
+        Update: Partial<Database["public"]["Tables"]["opportunity_sources"]["Insert"]>
         Relationships: []
       }
     }

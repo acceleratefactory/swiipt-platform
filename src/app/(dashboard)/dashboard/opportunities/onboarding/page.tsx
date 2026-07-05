@@ -23,10 +23,7 @@ interface GoalTemplate {
   segment: string | null;
 }
 
-type SegmentSlug =
-  | "job_seeker" | "student" | "healthcare" | "tech_professional"
-  | "footballer" | "sports_professional" | "freelancer"
-  | "entrepreneur" | "trade_worker" | "caregiver";
+type SegmentSlug = string;
 
 interface ProfileData {
   current_role?: string;

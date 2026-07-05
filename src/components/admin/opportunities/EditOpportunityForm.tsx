@@ -1,16 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-
-const SEGMENTS = [
-  "job_seeker", "student", "footballer", "healthcare",
-  "tech_professional", "freelancer", "entrepreneur", "trade_worker",
-];
-
-const TYPES = ["job", "scholarship", "visa_programme", "sports_trial", "remote_work", "training"];
+import type { OpportunityType, CareerSegment } from "@/lib/opportunity-types";
 
 export default function EditOpportunityForm({ opportunity }: { opportunity: any }) {
   const router = useRouter();
+  const [oppTypes, setOppTypes] = useState<OpportunityType[]>([]);
+  const [segments, setSegments] = useState<CareerSegment[]>([]);
   const [segmentSlug, setSegmentSlug] = useState(opportunity.segment_slug);
   const [title, setTitle] = useState(opportunity.title);
   const [organisation, setOrganisation] = useState(opportunity.organisation);
@@ -27,6 +23,20 @@ export default function EditOpportunityForm({ opportunity }: { opportunity: any 
   const [isActive, setIsActive] = useState(opportunity.is_active);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      const [tRes, sRes] = await Promise.all([
+        fetch("/api/opportunity-types"),
+        fetch("/api/career-segments"),
+      ]);
+      const types: OpportunityType[] = await tRes.json();
+      const segs: CareerSegment[] = await sRes.json();
+      setOppTypes(types);
+      setSegments(segs);
+    }
+    load();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -91,7 +101,7 @@ export default function EditOpportunityForm({ opportunity }: { opportunity: any 
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', fontWeight: 600, color: 'var(--midnight)', fontSize: '0.875rem', marginBottom: '0.375rem' }}>Segment</label>
           <select value={segmentSlug} onChange={e => setSegmentSlug(e.target.value)} style={{ width: '100%', padding: '0.625rem 0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: '0.875rem' }}>
-            {SEGMENTS.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+            {segments.map(s => <option key={s.slug} value={s.slug}>{s.name}</option>)}
           </select>
         </div>
 
@@ -119,7 +129,7 @@ export default function EditOpportunityForm({ opportunity }: { opportunity: any 
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', fontWeight: 600, color: 'var(--midnight)', fontSize: '0.875rem', marginBottom: '0.375rem' }}>Type</label>
           <select value={type} onChange={e => setType(e.target.value)} style={{ width: '100%', padding: '0.625rem 0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: '0.875rem' }}>
-            {TYPES.map(t => <option key={t} value={t}>{t.replace(/_/g, " ")}</option>)}
+            {oppTypes.map(t => <option key={t.slug} value={t.slug}>{t.name || t.slug.replace(/_/g, " ")}</option>)}
           </select>
         </div>
 

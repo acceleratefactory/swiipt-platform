@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import OpportunityCard from "./OpportunityCard";
+import type { TypeStyleMap } from "@/lib/opportunity-types";
 
 interface Oppty {
   id: string;
@@ -32,6 +33,7 @@ interface Oppty {
 interface Props {
   allOpportunities: Oppty[];
   userTier: string;
+  typeStyles: TypeStyleMap;
   referralLink?: string;
 }
 
@@ -68,7 +70,7 @@ function AnimatedCard({ children, delay }: { children: React.ReactNode; delay: n
   );
 }
 
-export default function OpportunityFeed({ allOpportunities, userTier, referralLink }: Props) {
+export default function OpportunityFeed({ allOpportunities, userTier, typeStyles, referralLink }: Props) {
   const [displayed, setDisplayed] = useState<Oppty[]>([]);
   const [page, setPage] = useState(1);
   const [applyCount, setApplyCount] = useState(0);
@@ -136,18 +138,18 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
   const isDone = displayed.length >= visible.length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "80px" }}>
       {newThisMorning.length > 0 && (
         <div>
           <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--teal)", margin: "0 0 0.75rem 0", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif" }}>
             {"\uD83C\uDF05"} New this morning
           </h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 360px), 1fr))", gap: "1rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxWidth: "680px", margin: "0 auto", width: "100%" }}>
             {newThisMorning.map((opp, i) => (
               <AnimatedCard key={opp.id} delay={i * 80}>
                 <OpportunityCard
                   opportunity={opp}
-                  userTier={userTier}
+                  typeStyles={typeStyles}
                   onApply={handleApply}
                   onSave={handleSave}
                 />
@@ -164,7 +166,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
               All opportunities
             </h3>
           )}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 360px), 1fr))", gap: "1rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxWidth: "680px", margin: "0 auto", width: "100%" }}>
             {displayed.map((opp, index) => {
               const isFeaturedPosition =
                 topMatch.current &&
@@ -177,20 +179,20 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
                   <AnimatedCard delay={(index % 10) * 60}>
                     <OpportunityCard
                       opportunity={opp}
-                      userTier={userTier}
+                      typeStyles={typeStyles}
                       onApply={handleApply}
                       onSave={handleSave}
                     />
                   </AnimatedCard>
                   {isFeaturedPosition && topMatch.current && (
-                    <div style={{ gridColumn: "1 / -1" }}>
+                    <div>
                       <div style={{ background: "linear-gradient(135deg, #06112B, #1A3560)", borderRadius: "var(--radius-md)", padding: "0.5rem" }}>
                         <p style={{ fontSize: "0.625rem", color: "var(--teal)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", padding: "0 0.5rem", marginBottom: "0.25rem" }}>
                           {"\u2B50"} Top match for your profile
                         </p>
                         <OpportunityCard
                           opportunity={topMatch.current}
-                          userTier={userTier}
+                          typeStyles={typeStyles}
                           onApply={handleApply}
                           onSave={handleSave}
                         />
@@ -209,17 +211,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
       )}
 
       {isDone && visible.length > 0 && (
-        <div style={{ textAlign: "center", padding: "2rem 0", color: "#94a3b8" }}>
-          <p style={{ fontSize: "0.875rem", margin: "0 0 0.75rem 0" }}>
-            You have seen all {visible.length} opportunities
-          </p>
-          <button
-            onClick={() => { window.location.reload(); }}
-            style={{ padding: "0.5rem 1.25rem", borderRadius: "var(--radius-md)", border: "1px solid #e2e8f0", background: "white", color: "var(--midnight)", fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer" }}
-          >
-            Refresh for new matches
-          </button>
-        </div>
+        <div style={{ height: 40 }} />
       )}
 
       {showUpgrade && (

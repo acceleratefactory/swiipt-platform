@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import OpportunityFeed from "@/components/dashboard/opportunities/OpportunityFeed";
+import { getOpportunityTypes, buildTypeStyleMap } from "@/lib/opportunity-types";
 
 interface Oppty {
   id: string;
@@ -39,11 +40,13 @@ export default async function OpportunitiesPage() {
     userRes,
     oppRes,
     feedRes,
+    oppTypes,
   ] = await Promise.all([
     supabase.from("career_profiles").select("segment_slug").eq("user_id", user.id).single(),
     supabase.from("users").select("user_tier, referral_code").eq("id", user.id).single(),
     supabase.from("opportunities").select("*").eq("is_active", true).order("created_at", { ascending: false }),
     supabase.from("user_opportunity_feed").select("opportunity_id, relevance_score, is_saved, is_applied").eq("user_id", user.id),
+    getOpportunityTypes(),
   ]);
 
   if (!profileRes.data) redirect("/dashboard/opportunities/onboarding");
@@ -79,26 +82,21 @@ export default async function OpportunitiesPage() {
 
   scoredSegment.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 
-  const opportunityCount = scoredSegment.length;
-
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: "1.5rem 1rem" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <div>
-          <h1 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.5rem", fontWeight: 800, color: "var(--midnight)", margin: "0 0 0.25rem 0" }}>
-            Your Opportunities
-          </h1>
-          <p style={{ fontSize: "0.875rem", color: "#64748b", margin: 0 }}>
-            {opportunityCount} matched to your profile &middot; Updated today
-          </p>
-        </div>
-        <a href="/dashboard/opportunities/onboarding" style={{ fontSize: "0.8125rem", color: "var(--teal)", textDecoration: "none", fontWeight: 600, flexShrink: 0 }}>
-          Update interests &rarr;
+    <div style={{ maxWidth: 680, margin: "0 auto", padding: "1rem 1rem 0" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.75rem" }}>
+        <a
+          href="/dashboard/opportunities/search"
+          title="Search opportunities"
+          style={{ fontSize: "1.25rem", textDecoration: "none", color: "var(--text-muted)", padding: "0.25rem", lineHeight: 1 }}
+        >
+          {"\uD83D\uDD0D"}
         </a>
       </div>
       <OpportunityFeed
         allOpportunities={scoredSegment}
         userTier={userTier}
+        typeStyles={buildTypeStyleMap(oppTypes)}
         referralLink={referralLink}
       />
     </div>

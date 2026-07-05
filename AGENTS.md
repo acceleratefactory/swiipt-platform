@@ -37,7 +37,7 @@
 |----------|------|------|
 | 1 | Trade Show Group Booking Phase (paused) | `reports/sprint_16_trade_show_booking_flow_analysis.md` |
 | 2 | Group Buy ⏱→✅ transition in modal | `reports/group-buy-pending-confirmed-transition-plan.md` |
-| 3 | Sprint 18 — Feed, Onboarding, Campaigns, Success Stories, Affiliate University | Coming next |
+| 3 | Sprint 18 — Feed, Onboarding, Campaigns, Success Stories, Affiliate University | ✅ Built (dev complete — remaining: env vars, pg_cron SQL, test) |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -397,6 +397,12 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Priority 4 — Goal-based holiday payment (Sessions 14-15):** Phase 1: linked_holiday_package_id on savings_goals, duplicate goal prevention, existing goal detection on detail page. Phase 2: goal_id on holiday_bookings, goal_redemption support in booking API, payment method selection UI, admin cancel reverts goal balance.
 - **NicheCTA → Goal Template Connection (Session 26 post-deploy):** `NicheCTA.tsx` and `NicheHero.tsx` updated to pass `recommended_goal_template_id` through signup return URL. NicheHero converted to `"use client"` with auth check — logged-in users go directly to `/dashboard/goals/new?template={id}`, logged-out users go via `/signup?return=...`. Closes Loop 1 end-to-end.
 
+### Sprint 18 — Feed, Growth Mechanics & Affiliate Management (Built)
+- **Phase C — The Feed:** `user_opportunity_feed` table, 18 seeded opportunities, personalised feed generation API (`POST /api/opportunities/feed`), track/save endpoints, `OpportunityCard.tsx` with infinite scroll/animated cards/featured placements, feed page at `/dashboard/opportunities` with filters + segment selector + detail page + onboarding flow. Achievement card triggers on order completion. `OpportunityScore.tsx` upgraded from formula to real DB count.
+- **Phase D — Growth Mechanics:** `achievement_cards` table with 11 card types (`goal_created`, milestones, `goal_funded`, `service_ordered/completed`, `visa_approved`, `certificate_issued`, `joined_swiipt`, `readiness_score`). Auto-generated on key events. WhatsApp/Instagram share with Canvas 1080×1080 PNG download. `SuccessStoryPrompt` + `SuccessStoryForm` for users to share stories after service completion. `CampaignBanner` for viral campaigns. `/admin/campaigns` list + create pages with admin APIs.
+- **Affiliate Management (Phase A–E):** Complete admin panel: `admin_affiliates_phase_a.sql` (RLS + `affiliate_withdrawals` table), 12 API routes (list, detail drill-down, update-tier, adjust-earnings, reset-code, withdrawals queue + process, modules CRUD + reorder), 7 admin pages + 5 components (list with stats/search/filters, detail with 5 tabs + 4 action modals, withdrawals queue with approve/reject, modules list + create/edit forms + preview, sub-affiliate tree). Phase D: pending withdrawal flow (inserts into `affiliate_withdrawals` instead of inline deduction, admin broadcast notification). Phase E: audit logs for all module CRUD. Gap fixes: view-as-user admin preview, reset-code retry loop, all-time leaderboard + reset trigger. Only ops remain: env vars, pg_cron SQL, test.
+- **Commits:** Sprint 18 Phases C+D: Session 28-29 commits; Affiliates Phase A: `1260f22`, Phase B: `4b1ef84`, Phase C: `be6b190`, Phase D: `b48966e`, Phase E: `d075642`, gaps: `1b30bc6`, bottom tabs fix: `e9902b2`
+
 ## 8. API ROUTES — COMPLETE INDEX
 
 ### Auth & User
@@ -456,7 +462,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - `GET /api/messaging/scheduled/expire-deposits` — Cron: expire stale deposits (06:00 UTC)
 - `GET /api/cron/expire-visa-redemptions` — Cron: expire visa redemptions (06:30 UTC)
 
-### Admin APIs (36 routes)
+### Admin APIs (52 routes)
 
 **Deposits:** confirm, reject
 **Withdrawals:** process
@@ -471,7 +477,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **Eligibility:** upsert, delete
 **Goal Templates:** upsert, toggle
 **Groups:** update-status
-**Leaderboard:** award-prize
+**Leaderboard:** award-prize, reset
 **Promotions:** create, toggle
 **Notifications:** broadcast
 **Settings:** update
@@ -480,6 +486,13 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **Corporate:** upsert
 **Float:** entry
 **Visa Redemptions:** update-status
+**Affiliates (12 routes):** list, detail, update-tier, adjust-earnings, reset-code, withdrawals list, withdrawals process, modules list/create, modules update/delete, modules reorder
+**Achievements:** generate-card, list, mark-shared, dismiss
+**Campaigns:** create, toggle
+**Opportunities:** create, toggle, update
+**Certificates:** revoke
+**Partners:** update-status
+**AI Providers:** create, toggle, test, update
 
 ## 9. KEY FILES REFERENCE
 
@@ -554,7 +567,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | W4 | Fire-and-forget server-side fetch | `fetch(url, { method: "POST", ... }).catch(() => {})` | `await fetch(...)` (blocks response) |
 | W5 | Internal API fetch from server components | Uses `process.env.NEXT_PUBLIC_APP_URL` (falls back to `http://localhost:3000`) | Relative URL `/api/...` (does not resolve server-side) |
 | W6 | Dashboard sidebar `navItems` array | `Sidebar.tsx` — 12 items, exact indices matter | Inserting at wrong position breaks nav order |
-| W7 | Admin sidebar `navItems` array | `AdminSidebar.tsx` — 24 items, exact indices matter | Inserting at wrong position breaks nav order |
+| W7 | Admin sidebar `navItems` array | `AdminSidebar.tsx` — 30 items, exact indices matter | Inserting at wrong position breaks nav order |
 | W8 | Build verification | `npm run build` — zero TS errors (no test framework) | Assuming Jest/Vitest/Playwright exist |
 | W9 | Stripe integration | Uses `process.env.STRIPE_SECRET_KEY` and `process.env.STRIPE_WEBHOOK_SECRET` | Environment variables vary by project |
 | W10 | Email (transactional) | Resend via `process.env.RESEND_API_KEY` | Not Brevo for transactional |
@@ -587,23 +600,29 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | 4 | Users | Users |
 | 5 | Orders | Package |
 | 6 | Documents | FileText |
-| 7 | Services | Globe |
-| 8 | Groups | Users |
-| 9 | Trade Shows | Globe |
-| 10 | Content | FileEdit |
-| 11 | Holiday Bookings | Umbrella |
-| 12 | Currencies | DollarSign |
-| 13 | Leaderboard | Trophy |
-| 14 | Promotions | Tag |
-| 15 | Notifications | Bell |
-| 16 | Subscribers | Mail |
-| 17 | Corporate | Building2 |
-| 18 | Float Ledger | TrendingUp |
-| 19 | Settings | Settings |
-| 20 | Analytics | BarChart2 |
-| 21 | Landing Pages | Layout |
-| 22 | Goal Templates | Crosshair |
-| 23 | SEO Manager | Search |
+| 7 | Certificates | Shield |
+| 8 | Services | Globe |
+| 9 | Groups | Users |
+| 10 | Trade Shows | Globe |
+| 11 | Content | FileEdit |
+| 12 | Opportunities | Zap |
+| 13 | Holiday Bookings | Umbrella |
+| 14 | Currencies | DollarSign |
+| 15 | Leaderboard | Trophy |
+| 16 | Promotions | Tag |
+| 17 | Campaigns | Megaphone |
+| 18 | Affiliates | Percent |
+| 19 | AI Providers | Cpu |
+| 20 | Notifications | Bell |
+| 21 | Subscribers | Mail |
+| 22 | Partners | Handshake |
+| 23 | Corporate | Building2 |
+| 24 | Float Ledger | TrendingUp |
+| 25 | Settings | Settings |
+| 26 | Analytics | BarChart2 |
+| 27 | Landing Pages | Layout |
+| 28 | Goal Templates | Crosshair |
+| 29 | SEO Manager | Search |
 
 ### Existing Table Name Registry (Non-Obvious Conflicts)
 *Tables that future sprints might accidentally collide with:*
@@ -626,6 +645,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 4. **Inserting sidebar nav items without checking exact indices** — Dashboard has 12 items, admin has 24. Insert at wrong position = broken nav order.
 5. **Using `price_paid` for service orders** — Column does not exist. Use `final_price`.
 6. **Forgetting `setShowXxx(false)` before `router.refresh()` in pending confirmation modals** — Modal stays open because `router.refresh()` preserves client state.
+7. **Inline `display` style overriding Tailwind responsive classes** — `className="md:hidden"` + `style={{ display: "flex" }}` = always visible because inline styles win. Use `className="md:hidden flex"` instead.
 
 ## 11. SESSION HISTORY — COMPLETED WORK
 
@@ -1000,6 +1020,48 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Supporting API routes:** `GET /api/achievements/list`, `POST /api/achievements/mark-shared`, `POST /api/achievements/dismiss`
 - **DB types updated:** `achievement_cards` row/insert/update types in `database.ts` (replaced old schema with new columns)
 - **Build verified:** `npm run build` — zero TS errors
+
+### Session 30 — Admin Affiliate Management: Phase A (DB/RLS) + Phase B (12 API Routes) (Completed)
+
+- **Phase A — Database & RLS:** Created `admin_affiliates_phase_a.sql` — RLS policies (admin INSERT/UPDATE on `affiliate_status`, admin SELECT on `affiliate_module_progress`, 4 policies on `affiliate_withdrawals`), `affiliate_withdrawals` table with indexes. Types added to `database.ts`. SQL run successfully in Supabase.
+- **Phase B — 12 API routes built, build passes:**
+  - B-1: `GET /api/admin/affiliates` — paginated list with search/tier filter/stats
+  - B-2: `GET /api/admin/affiliates/[id]` — full drill-down (user, referrals, orders, modules, timeline, sub-affiliates, withdrawals)
+  - B-3: `POST /admin/affiliates/[id]/update-tier` — override tier with audit log
+  - B-4: `POST /admin/affiliates/[id]/adjust-earnings` — dispute resolution with mandatory reason + notification
+  - B-5: `POST /admin/affiliates/[id]/reset-code` — generate new AFF-XXXX code with audit log
+  - B-6: `GET /admin/affiliates/withdrawals` — list by status with pagination
+  - B-7: `POST /admin/affiliates/withdrawals/[id]/process` — approve/reject, adjust earnings, notify
+  - B-8: `GET /admin/affiliates/modules` — list all modules
+  - B-9: `POST /admin/affiliates/modules` — create module
+  - B-10: `PUT /admin/affiliates/modules/[id]` — update module
+  - B-11: `DELETE /admin/affiliates/modules/[id]` — delete (blocked if progress exists)
+  - B-12: `POST /admin/affiliates/modules/reorder` — bulk reorder by ID array
+- **Commits:** `1260f22` (Phase A), `4b1ef84` (Phase B)
+
+### Session 31 — Admin Affiliate Management: Phase C (Pages + Components) (Completed)
+
+- **C-1:** AdminSidebar — "Affiliates" nav entry after Campaigns (Percent icon)
+- **C-2:** `/admin/affiliates` — list page with stats bar, search, tier filter, table, pagination (`AffiliatesList.tsx`)
+- **C-3:** `/admin/affiliates/[userId]` — detail page with 5 tabs (Overview, Referrals, Earnings Timeline, University, Sub-Affiliates) + 4 action modals (change tier, adjust earnings, reset code, view as user) (`AffiliateDetail.tsx`)
+- **C-4:** `/admin/affiliates/withdrawals` — pending/processed tables with approve/reject modals (`AffiliateWithdrawals.tsx`)
+- **C-5:** `/admin/affiliates/modules` — table with edit/delete/preview/reorder (`AffiliateModulesList.tsx`)
+- **C-6:** `/admin/affiliates/modules/new` + `/admin/affiliates/modules/[id]` — create/edit form (`ModuleForm.tsx`)
+- **C-7:** SubAffiliateTree component — collapsible tree for gold/platinum affiliates (`SubAffiliateTree.tsx`)
+- **C-8:** `/admin/affiliates/modules/[id]/preview` — preview with admin chrome banner, Complete button hidden
+- **Commit:** `be6b190`
+
+### Session 32 — Admin Affiliate: Phase D (Pending Withdrawal Flow) + Phase E (Audit Logs) + Gap Fixes (Completed)
+
+- **Phase D:** Modified `POST /api/affiliate/withdraw` to insert into `affiliate_withdrawals` (pending) instead of inline deduction, added admin broadcast notification. Updated `AffiliateHub.tsx` to use client-side fetch with loading/success/error states, show ⏱ pending message, added Withdrawal History table. Updated `earnings/page.tsx` + `EarningsDashboard.tsx` with parallel withdrawal history fetch.
+- **Phase E:** Added `admin_audit_log` inserts to module CREATE, UPDATE, DELETE, and REORDER routes (3 files).
+- **Gap 1 — View as user:** Modified `affiliate/page.tsx` to accept `searchParams` (`userId` + `adminOverride`), uses service client to fetch target user's data, renders admin chrome banner ("🔍 Viewing as {name} — Back to admin →").
+- **Gap 2 — Reset-code retry:** Added 3-attempt retry loop on `23505` collision.
+- **Gap 3 — Leaderboard:** Added All-Time Standings section (top 20 by cumulative referrals from `affiliate_status`), "Reset monthly" button with confirmation + audit log, new `POST /api/admin/leaderboard/reset` route.
+- **Bottom tabs mobile fix:** Removed `display: "flex"` from inline styles that was overriding Tailwind's `md:hidden` class.
+- **Commits:** `b48966e` (Phase D), `d075642` (Phase E), `1b30bc6` (gaps), `e9902b2` (bottom tabs)
+
+---
 
 ## 12. PENDING / FUTURE BUILD
 
