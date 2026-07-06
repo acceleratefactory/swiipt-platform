@@ -82,15 +82,6 @@ export default async function OpportunitiesPage() {
   return (
     <div style={{ marginLeft: "-1.5rem", marginRight: "-1.5rem", width: "calc(100% + 3rem)" }}>
       <div style={{ maxWidth: 630, margin: "0 auto" }}>
-        <div style={{ display: "flex", justifyContent: "flex-end", padding: "0.75rem" }}>
-          <a
-            href="/dashboard/opportunities/search"
-            title="Search opportunities"
-            style={{ fontSize: "1.25rem", textDecoration: "none", color: "var(--text-muted)", padding: "0.25rem", lineHeight: 1 }}
-          >
-            {"\uD83D\uDD0D"}
-          </a>
-        </div>
         <OpportunityFeed
           allOpportunities={scoredSegment}
           userTier={userTier}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, Fragment } from "react";
+import { useRouter } from "next/navigation";
 import OpportunityCard from "./OpportunityCard";
 
 interface Oppty {
@@ -75,6 +76,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
   const [showUpgrade, setShowUpgrade] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const topMatch = useRef<Oppty | null>(null);
+  const router = useRouter();
 
   const filtered = allOpportunities;
 
@@ -116,6 +118,20 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
     return () => observer.disconnect();
   }, [page, visible.length]);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    router.refresh();
+  }, []);
+
+  useEffect(() => {
+    const onFocus = () => {
+      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+      router.refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
   const handleApply = useCallback(
     (_id: string) => {
       const next = applyCount + 1;
@@ -138,34 +154,9 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
   const isDone = displayed.length >= visible.length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", paddingBottom: "80px" }}>
-      {newThisMorning.length > 0 && (
-        <div>
-            <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--teal)", margin: "0 0 0.25rem 0", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", padding: "0 0.75rem" }}>
-              {"\uD83C\uDF05"} New this morning
-            </h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "100%" }}>
-            {newThisMorning.map((opp, i) => (
-              <AnimatedCard key={opp.id} delay={i * 80}>
-                <OpportunityCard
-                  opportunity={opp}
-                  onApply={handleApply}
-                  onSave={handleSave}
-                />
-              </AnimatedCard>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {existing.length > 0 && (
-        <div>
-          {newThisMorning.length > 0 && (
-            <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--midnight)", margin: "0 0 0.25rem 0", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", padding: "0 0.75rem" }}>
-              All opportunities
-            </h3>
-          )}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "100%" }}>
+    <div style={{ display: "flex", flexDirection: "column", paddingBottom: "80px" }}>
+      {visible.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
             {displayed.map((opp, index) => {
               const isFeaturedPosition =
                 topMatch.current &&
@@ -200,7 +191,6 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
               );
             })}
           </div>
-        </div>
       )}
 
       {!isDone && (
