@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { TypeStyleMap } from "@/lib/opportunity-types";
 import OpportunityDetailModal from "./OpportunityDetailModal";
 import FallbackTile from "./FallbackTile";
@@ -47,6 +47,7 @@ interface Props {
   typeStyles: TypeStyleMap;
   onApply: (id: string) => void;
   onSave: (id: string, saved: boolean) => void;
+  onDismiss?: (id: string) => void;
 }
 
 const COUNTRY_FLAGS: Record<string, string> = {
@@ -87,7 +88,7 @@ function getMatchLabel(score: number | undefined): { label: string; color: strin
   return { label: "Fair match", color: "#d97706" };
 }
 
-export default function OpportunityCard({ opportunity: opp, typeStyles, onApply, onSave }: Props) {
+export default function OpportunityCard({ opportunity: opp, typeStyles, onApply, onSave, onDismiss }: Props) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [saved, setSaved] = useState(opp.is_saved || false);
   const [liked, setLiked] = useState(opp.is_liked || false);
@@ -95,6 +96,28 @@ export default function OpportunityCard({ opportunity: opp, typeStyles, onApply,
   const [applied, setApplied] = useState(opp.is_applied || false);
   const [showSharePrompt, setShowSharePrompt] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const el = cardRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        timer = setTimeout(() => {
+          fetch("/api/opportunities/signal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ opportunityId: opp.id, signalType: "view" }),
+          }).catch(() => {});
+        }, 2000);
+      } else {
+        clearTimeout(timer);
+      }
+    }, { threshold: 0.5 });
+    observer.observe(el);
+    return () => { observer.disconnect(); clearTimeout(timer); };
+  }, [opp.id]);
 
   const initials = opp.organisation.charAt(0).toUpperCase();
   const daysLeft = getDaysLeft(opp.deadline);
@@ -109,6 +132,11 @@ export default function OpportunityCard({ opportunity: opp, typeStyles, onApply,
     setApplied(true);
     onApply(opp.id);
     window.open(`/api/opportunities/apply?id=${opp.id}`, "_blank");
+    fetch("/api/opportunities/signal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ opportunityId: opp.id, signalType: "apply" }),
+    }).catch(() => {});
     try {
       await fetch("/api/opportunities/track", {
         method: "POST",
@@ -123,6 +151,11 @@ export default function OpportunityCard({ opportunity: opp, typeStyles, onApply,
     const next = !saved;
     setSaved(next);
     onSave(opp.id, next);
+    fetch("/api/opportunities/signal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ opportunityId: opp.id, signalType: "save" }),
+    }).catch(() => {});
     try {
       await fetch("/api/opportunities/save", {
         method: "POST",
@@ -157,8 +190,32 @@ export default function OpportunityCard({ opportunity: opp, typeStyles, onApply,
     }
   }, [opp.id, liked, likeCount]);
 
+  const handleCardClick = useCallback(() => {
+    setDetailOpen(true);
+    fetch("/api/opportunities/signal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ opportunityId: opp.id, signalType: "expand" }),
+    }).catch(() => {});
+  }, [opp.id]);
+
+  const handleDismiss = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    fetch("/api/opportunities/signal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ opportunityId: opp.id, signalType: "dismiss" }),
+    }).catch(() => {});
+    onDismiss?.(opp.id);
+  }, [opp.id, onDismiss]);
+
   const handleShare = useCallback(async () => {
     const text = `${opp.title} at ${opp.organisation} — ${opp.location_country}\n\n${opp.description.slice(0, 200)}...\n\nView on Swiipt: ${window.location.origin}/dashboard/opportunities/${opp.id}`;
+    fetch("/api/opportunities/signal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ opportunityId: opp.id, signalType: "share" }),
+    }).catch(() => {});
     if (navigator.share) {
       try { await navigator.share({ title: opp.title, text }); } catch {}
     } else {
@@ -178,7 +235,8 @@ export default function OpportunityCard({ opportunity: opp, typeStyles, onApply,
 
   return (
     <div
-      onClick={() => setDetailOpen(true)}
+      ref={cardRef}
+      onClick={handleCardClick}
       style={{ background: "white", borderRadius: "var(--radius-md)", border: "1px solid #e2e8f0", position: "relative", display: "flex", flexDirection: "column", gap: "0.75rem", width: "100%", cursor: "pointer", overflow: "hidden" }}
     >
       {opp.media_type !== "none" && (
@@ -208,7 +266,7 @@ export default function OpportunityCard({ opportunity: opp, typeStyles, onApply,
               {flag} {opp.location_country}
             </span>
             <span style={{ fontSize: "0.6875rem", fontWeight: 600, padding: "0.125rem 0.5rem", borderRadius: "999px", background: typeStyle.bg, color: "#1e293b" }}>
-              {typeStyle.label}
+              {(opp as any).is_ad ? "Sponsored" : typeStyle.label}
             </span>
           </div>
         </div>
@@ -249,6 +307,9 @@ export default function OpportunityCard({ opportunity: opp, typeStyles, onApply,
           <div style={{ display: "flex", gap: "0.25rem", flexShrink: 0 }}>
             <button onClick={(e) => { e.stopPropagation(); handleSave(); }} title={saved ? "Saved" : "Save"} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.125rem", padding: "0.25rem", lineHeight: 1 }}>
               {saved ? "\uD83D\uDCCD" : "\uD83D\uDCCC"}
+            </button>
+            <button onClick={handleDismiss} title="Not interested" style={{ background: "none", border: "none", cursor: "pointer", color: "#94a3b8", padding: "0.25rem", fontSize: "0.875rem", lineHeight: 1 }}>
+              {"\u2715"}
             </button>
           </div>
         </div>

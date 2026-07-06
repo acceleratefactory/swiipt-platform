@@ -52,6 +52,7 @@ const navItems: Array<{
   { href: "/admin/leaderboard", label: "Leaderboard", icon: <Trophy size={16} /> },
   { href: "/admin/promotions", label: "Promotions", icon: <Tag size={16} /> },
   { href: "/admin/campaigns", label: "Campaigns", icon: <Megaphone size={16} /> },
+  { href: "/admin/feed-ads", label: "Feed Ads", icon: <TrendingUp size={16} /> },
   { href: "/admin/affiliates", label: "Affiliates", icon: <Percent size={16} /> },
   { href: "/admin/ai-providers", label: "AI Providers", icon: <Cpu size={16} /> },
   { href: "/admin/notifications", label: "Notifications", icon: <Bell size={16} /> },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Bookmark, Share2 } from "lucide-react";
 import type { TypeStyleMap } from "@/lib/opportunity-types";
 
@@ -42,6 +42,22 @@ export default function OpportunityDetailModal({
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
   }, []);
+
+  const openedAt = useRef(Date.now());
+
+  useEffect(() => {
+    return () => {
+      const dwellMs = Date.now() - openedAt.current;
+      const signalType = dwellMs >= 30000 ? "dwell_long" : dwellMs < 5000 ? "dwell_short" : null;
+      if (signalType) {
+        fetch("/api/opportunities/signal", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ opportunityId: opportunity.id, signalType }),
+        }).catch(() => {});
+      }
+    };
+  }, [opportunity.id]);
 
   const type = typeStyles[opportunity.type] || { bg: "#f3f4f6", color: "#64748b", label: opportunity.type || "Opportunity" };
 

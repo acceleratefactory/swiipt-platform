@@ -75,11 +75,14 @@ export default function OpportunityFeed({ allOpportunities, userTier, typeStyles
   const [page, setPage] = useState(1);
   const [applyCount, setApplyCount] = useState(0);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement>(null);
   const topMatch = useRef<Oppty | null>(null);
 
+  const filtered = allOpportunities.filter((o) => !dismissedIds.has(o.id));
+
   const now = Date.now();
-  const newThisMorning = allOpportunities.filter(
+  const newThisMorning = filtered.filter(
     (o) => now - getTimeAgo(o.created_at || o.id) < 24 * 60 * 60 * 1000
   );
 
@@ -98,7 +101,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, typeStyles
     setPage(1);
     setApplyCount(0);
     setShowUpgrade(false);
-  }, [allOpportunities.length]);
+  }, [filtered.length]);
 
   useEffect(() => {
     if (!sentinelRef.current) return;
@@ -129,6 +132,10 @@ export default function OpportunityFeed({ allOpportunities, userTier, typeStyles
 
   const handleSave = useCallback((_id: string, _saved: boolean) => {}, []);
 
+  const handleDismiss = useCallback((id: string) => {
+    setDismissedIds((prev) => new Set(prev).add(id));
+  }, []);
+
   const handleCopyReferral = useCallback(() => {
     if (referralLink) {
       navigator.clipboard.writeText(referralLink).catch(() => {});
@@ -152,6 +159,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, typeStyles
                   typeStyles={typeStyles}
                   onApply={handleApply}
                   onSave={handleSave}
+                  onDismiss={handleDismiss}
                 />
               </AnimatedCard>
             ))}

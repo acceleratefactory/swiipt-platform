@@ -1,12 +1,62 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
-export async function POST(_request: NextRequest) {
+const ADMIN_SUPABASE = createAdminClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const query = body.query?.trim();
+    const typeFilter = body.type?.trim();
+    const countryFilter = body.country?.trim();
+    const isSearch = query || typeFilter || countryFilter;
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("user_tier")
+      .eq("id", user.id)
+      .single();
+
+    const userTier = userData?.user_tier || "free";
+
+    if (isSearch) {
+      let searchQuery = supabase
+        .from("opportunities")
+        .select("*")
+        .eq("is_active", true);
+
+      if (query) {
+        searchQuery = searchQuery.or(
+          `title.ilike.%${query}%,organisation.ilike.%${query}%,description.ilike.%${query}%`
+        );
+      }
+      if (typeFilter) {
+        searchQuery = searchQuery.eq("type", typeFilter);
+      }
+      if (countryFilter) {
+        searchQuery = searchQuery.or(`location_country.ilike.%${countryFilter}%`);
+      }
+
+      const { data: results } = await searchQuery
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      return NextResponse.json({
+        feed: results || [],
+        userReferrals: 0,
+        userTier,
+        segmentSlug: null,
+      });
     }
 
     const { data: profile } = await supabase
@@ -25,14 +75,6 @@ export async function POST(_request: NextRequest) {
       .eq("segment_slug", profile.segment_slug)
       .eq("is_active", true);
 
-    const { data: userData } = await supabase
-      .from("users")
-      .select("user_tier")
-      .eq("id", user.id)
-      .single();
-
-    const userTier = userData?.user_tier || "free";
-
     if (!opportunities || opportunities.length === 0) {
       return NextResponse.json({
         feed: [],
@@ -42,9 +84,36 @@ export async function POST(_request: NextRequest) {
       });
     }
 
-    const scored = opportunities.map((opp) => {
+    const [interestModelRes, seenFeedRes] = await Promise.all([
+      ADMIN_SUPABASE.from("user_interest_model")
+        .select("*")
+        .eq("user_id", user.id)
+        .single(),
+      ADMIN_SUPABASE.from("user_opportunity_feed")
+        .select("opportunity_id, is_dismissed, is_applied")
+        .eq("user_id", user.id),
+    ]);
+
+    const interestModel = interestModelRes.data;
+    const dismissedIds = new Set(
+      (seenFeedRes.data || []).filter((f: any) => f.is_dismissed).map((f: any) => f.opportunity_id)
+    );
+    const appliedIds = new Set(
+      (seenFeedRes.data || []).filter((f: any) => f.is_applied).map((f: any) => f.opportunity_id)
+    );
+
+    const eligible = opportunities.filter((opp: any) => !dismissedIds.has(opp.id));
+
+    const scored = eligible.map((opp: any) => {
       let score = 50;
-      if (opp.is_featured) score += 20;
+
+      if (opp.segment_slug === profile.segment_slug) score += 15;
+
+      if (interestModel?.segment_scores) {
+        const segAff = interestModel.segment_scores[opp.segment_slug] || 0;
+        score += Math.round(segAff * 0.2);
+      }
+
       if (
         profile.desired_countries &&
         profile.desired_countries.some(
@@ -53,12 +122,19 @@ export async function POST(_request: NextRequest) {
       ) {
         score += 15;
       }
+
+      if (interestModel?.country_scores) {
+        const cntAff = interestModel.country_scores[opp.location_country] || 0;
+        score += Math.round(cntAff * 0.15);
+      }
+
       if (
         opp.type === "scholarship" &&
         profile.desired_roles?.includes("scholarship")
       ) {
         score += 15;
       }
+
       if (
         opp.type === "job" &&
         profile.desired_roles?.length &&
@@ -70,12 +146,79 @@ export async function POST(_request: NextRequest) {
       ) {
         score += 10;
       }
-      return { ...opp, relevanceScore: Math.min(score, 100) };
+
+      if (interestModel?.type_scores) {
+        const typAff = interestModel.type_scores[opp.type] || 0;
+        score += Math.round(typAff * 0.1);
+      }
+
+      if (interestModel?.suppressed_countries?.includes(opp.location_country)) score -= 30;
+      if (interestModel?.suppressed_types?.includes(opp.type)) score -= 20;
+
+      const ageHours = (Date.now() - new Date(opp.created_at).getTime()) / (1000 * 60 * 60);
+      if (ageHours < 24) score += 15;
+      else if (ageHours < 72) score += 8;
+
+      if (opp.is_featured) score += 10;
+
+      if (appliedIds.has(opp.id)) score -= 40;
+
+      return { ...opp, relevanceScore: Math.max(0, Math.min(100, score)) };
     });
 
-    scored.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    scored.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
 
-    const feedRecords = scored.map((opp) => ({
+    const sourceCounts: Record<string, number> = {};
+    for (const opp of scored) {
+      const src = opp.source_name || "unknown";
+      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
+    }
+    const totalTop50 = scored.slice(0, 50).length;
+    const diversityCutoff = Math.ceil(totalTop50 * 0.4);
+    for (const opp of scored) {
+      const src = opp.source_name || "unknown";
+      if (sourceCounts[src] > diversityCutoff && opp.relevanceScore > 5) {
+        opp.relevanceScore = Math.max(5, opp.relevanceScore - 15);
+      }
+    }
+
+    scored.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
+
+    const { data: activeAds } = await (supabase as any)
+      .from("feed_ads")
+      .select("*")
+      .eq("status", "active")
+      .order("priority", { ascending: true });
+
+    let adIndex = 0;
+    const adFrequency = 7;
+    const injected: any[] = [];
+    for (let i = 0; i < scored.length; i++) {
+      injected.push(scored[i]);
+      if ((i + 1) % adFrequency === 0 && activeAds && adIndex < activeAds.length) {
+        const ad = activeAds[adIndex % activeAds.length];
+        injected.push({
+          id: `ad-${ad.id}`,
+          title: ad.headline,
+          organisation: ad.advertiser_name || "Sponsored",
+          description: ad.body || "",
+          type: "ad",
+          is_ad: true,
+          ad_data: ad,
+          location_country: "",
+          application_url: ad.cta_url,
+          is_active: true,
+          is_featured: false,
+          created_at: new Date().toISOString(),
+          cover_image_url: ad.cover_image_url || null,
+          media_type: ad.cover_image_url ? "image" : "none",
+          cta_label: ad.cta_label,
+        });
+        adIndex++;
+      }
+    }
+
+    const feedRecords = injected.map((opp: any) => ({
       user_id: user.id,
       opportunity_id: opp.id,
     }));
@@ -92,7 +235,7 @@ export async function POST(_request: NextRequest) {
       .eq("commission_status", "completed");
 
     return NextResponse.json({
-      feed: scored,
+      feed: injected,
       userReferrals: referralCount ?? 0,
       userTier,
       segmentSlug: profile.segment_slug,
