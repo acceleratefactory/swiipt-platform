@@ -76,22 +76,20 @@ interface Props {
   type: string;
   organisation: string;
   location_country: string;
-  aspectRatio?: string;
 }
 
-export default function FallbackTile({ type, organisation, location_country, aspectRatio = "16:9" }: Props) {
+export default function FallbackTile({ type, organisation, location_country }: Props) {
   const [from, to] = getGradient(type);
   const icon = getTypeIcon(type);
   const flag = getFlag(location_country);
-  const ratio = aspectRatio === "4:5" ? "80%" : "56.25%";
 
   return (
     <div
       style={{
         width: "100%",
-        paddingBottom: ratio,
+        height: "100%",
         position: "relative",
-        borderRadius: "var(--radius-md) var(--radius-md) 0 0",
+        borderRadius: 0,
         overflow: "hidden",
       }}
     >

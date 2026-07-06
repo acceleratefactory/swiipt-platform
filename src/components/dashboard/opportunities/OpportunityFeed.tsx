@@ -38,10 +38,6 @@ interface Props {
 
 const PAGE_SIZE = 10;
 
-function getTimeAgo(dateStr: string): number {
-  return new Date(dateStr).getTime();
-}
-
 function AnimatedCard({ children, delay }: { children: React.ReactNode; delay: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
@@ -78,29 +74,19 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
   const topMatch = useRef<Oppty | null>(null);
   const router = useRouter();
 
-  const filtered = allOpportunities;
+  const visible = allOpportunities;
 
-  const now = Date.now();
-  const newThisMorning = filtered.filter(
-    (o) => now - getTimeAgo(o.created_at || o.id) < 24 * 60 * 60 * 1000
-  );
-
-  const freshIds = new Set(newThisMorning.map((o) => o.id));
-  const existing = allOpportunities.filter((o) => !freshIds.has(o.id));
-
-  const bestOpp = existing.length > 0
-    ? existing.reduce((a, b) => ((a.relevanceScore || 0) >= (b.relevanceScore || 0) ? a : b))
+  const bestOpp = visible.length > 0
+    ? visible.reduce((a, b) => ((a.relevanceScore || 0) >= (b.relevanceScore || 0) ? a : b))
     : null;
   topMatch.current = bestOpp;
-
-  const visible = [...newThisMorning, ...existing];
 
   useEffect(() => {
     setDisplayed(visible.slice(0, PAGE_SIZE));
     setPage(1);
     setApplyCount(0);
     setShowUpgrade(false);
-  }, [filtered.length]);
+  }, [visible.length]);
 
   useEffect(() => {
     if (!sentinelRef.current) return;

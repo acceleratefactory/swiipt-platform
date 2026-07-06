@@ -215,7 +215,6 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
               type={opp.type}
               organisation={opp.organisation}
               location_country={opp.location_country}
-              aspectRatio={opp.media_aspect_ratio || undefined}
             />
           )}
         </div>
