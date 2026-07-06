@@ -81,7 +81,7 @@ export default async function OpportunitiesPage() {
 
   return (
     <div style={{ marginLeft: "-1.5rem", marginRight: "-1.5rem", width: "calc(100% + 3rem)" }}>
-      <div style={{ maxWidth: 680, margin: "0 auto" }}>
+      <div style={{ maxWidth: 630, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "flex-end", padding: "0.75rem" }}>
           <a
             href="/dashboard/opportunities/search"

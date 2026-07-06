@@ -138,13 +138,13 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
   const isDone = displayed.length >= visible.length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1rem", paddingBottom: "80px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", paddingBottom: "80px" }}>
       {newThisMorning.length > 0 && (
         <div>
-          <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--teal)", margin: "0 0 0.75rem 0", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", padding: "0 0.75rem" }}>
-            {"\uD83C\uDF05"} New this morning
-          </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", width: "100%" }}>
+            <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--teal)", margin: "0 0 0.25rem 0", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", padding: "0 0.75rem" }}>
+              {"\uD83C\uDF05"} New this morning
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "100%" }}>
             {newThisMorning.map((opp, i) => (
               <AnimatedCard key={opp.id} delay={i * 80}>
                 <OpportunityCard
@@ -161,11 +161,11 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
       {existing.length > 0 && (
         <div>
           {newThisMorning.length > 0 && (
-            <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--midnight)", margin: "0 0 0.75rem 0", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", padding: "0 0.75rem" }}>
+            <h3 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--midnight)", margin: "0 0 0.25rem 0", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", padding: "0 0.75rem" }}>
               All opportunities
             </h3>
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", width: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "100%" }}>
             {displayed.map((opp, index) => {
               const isFeaturedPosition =
                 topMatch.current &&

@@ -177,7 +177,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
       ref={cardRef}
       style={{ display: "flex", flexDirection: "column", width: "100%", position: "relative" }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "4px 0.75rem 4px 0.75rem" }}>
         {opp.org_logo_url ? (
           <img src={opp.org_logo_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
         ) : (
@@ -192,7 +192,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
       </div>
 
       {opp.media_type !== "none" && (
-        <div style={{ width: "100%", aspectRatio: opp.media_aspect_ratio === "4:5" ? "4 / 5" : "16 / 9" }}>
+        <div style={{ width: "100%", aspectRatio: opp.media_aspect_ratio === "16:9" ? "16 / 9" : "4 / 5" }}>
           {opp.video_url ? (
             <video
               src={opp.video_url}
@@ -301,8 +301,6 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
           )}
         </div>
       )}
-
-      <div style={{ height: 1, background: "#e2e8f0", margin: "0.75rem 0.75rem" }} />
 
       {showSharePrompt && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(6,17,43,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem", padding: "1.5rem", zIndex: 10 }}>
