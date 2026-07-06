@@ -175,9 +175,9 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
   return (
     <div
       ref={cardRef}
-      style={{ display: "flex", flexDirection: "column", width: "100%" }}
+      style={{ display: "flex", flexDirection: "column", width: "100%", position: "relative" }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.5rem 0.75rem" }}>
         {opp.org_logo_url ? (
           <img src={opp.org_logo_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
         ) : (
@@ -221,7 +221,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
         </div>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem 0.75rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
           <button onClick={(e) => { e.stopPropagation(); handleLike(); }} title="Like" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: "0.25rem", height: 40 }}>
             <HeartIcon filled={liked} />
@@ -244,23 +244,25 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
         </div>
       </div>
 
-      <div style={{ fontSize: "0.8125rem", color: "#000000", fontWeight: 600 }}>
-        {opp.title}{opp.location_country ? ` — ${opp.location_country}` : ""}
+      <div style={{ padding: "0 0.75rem" }}>
+        <div style={{ fontSize: "0.8125rem", color: "#000000", fontWeight: 600 }}>
+          {opp.title}{opp.location_country ? ` — ${opp.location_country}` : ""}
+        </div>
+
+        {daysLeft && (
+          <div style={{ fontSize: "0.75rem", color: "#8e8e8e" }}>
+            {daysLeft.urgent ? "\u23F0" : "\u23F3"} {daysLeft.days}d
+          </div>
+        )}
+
+        {opp.salary_range && (
+          <div style={{ fontSize: "0.8125rem", color: "#000000", fontWeight: 600 }}>
+            {opp.salary_range}
+          </div>
+        )}
       </div>
 
-      {daysLeft && (
-        <div style={{ fontSize: "0.75rem", color: "#8e8e8e" }}>
-          {daysLeft.urgent ? "\u23F0" : "\u23F3"} {daysLeft.days}d
-        </div>
-      )}
-
-      {opp.salary_range && (
-        <div style={{ fontSize: "0.8125rem", color: "#000000", fontWeight: 600 }}>
-          {opp.salary_range}
-        </div>
-      )}
-
-      <div style={{ fontSize: "0.8125rem", color: "#000000", lineHeight: 1.4, marginTop: "0.25rem" }}>
+      <div style={{ fontSize: "0.8125rem", color: "#000000", lineHeight: 1.4, marginTop: "0.25rem", padding: "0 0.75rem" }}>
         <span style={descExpanded ? {} : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
           {opp.description}
         </span>
@@ -275,7 +277,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
       </div>
 
       {descExpanded && (
-        <div style={{ fontSize: "0.8125rem", color: "#000000", lineHeight: 1.5, marginTop: "0.5rem" }}>
+        <div style={{ fontSize: "0.8125rem", color: "#000000", lineHeight: 1.5, marginTop: "0.5rem", padding: "0 0.75rem" }}>
           {opp.requirements && (
             <p style={{ margin: "0.25rem 0" }}>
               <strong>Requirements:</strong> {opp.requirements}
@@ -300,7 +302,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
         </div>
       )}
 
-      <div style={{ height: 1, background: "#e2e8f0", margin: "0.75rem 0" }} />
+      <div style={{ height: 1, background: "#e2e8f0", margin: "0.75rem 0.75rem" }} />
 
       {showSharePrompt && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(6,17,43,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem", padding: "1.5rem", zIndex: 10 }}>

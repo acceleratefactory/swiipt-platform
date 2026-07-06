@@ -80,8 +80,8 @@ export default async function OpportunitiesPage() {
   scoredSegment.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "1rem 1rem 0" }}>
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "0.75rem" }}>
+    <div style={{ maxWidth: 680, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end", padding: "0.75rem" }}>
         <a
           href="/dashboard/opportunities/search"
           title="Search opportunities"
