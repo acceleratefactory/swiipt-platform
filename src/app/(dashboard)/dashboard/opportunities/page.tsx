@@ -81,7 +81,7 @@ export default async function OpportunitiesPage() {
 
   return (
     <div style={{ marginLeft: "-1.5rem", marginRight: "-1.5rem", width: "calc(100% + 3rem)" }}>
-      <div style={{ maxWidth: 630, margin: "0 auto" }}>
+      <div style={{ maxWidth: 470, margin: "0 auto" }}>
         <OpportunityFeed
           allOpportunities={scoredSegment}
           userTier={userTier}

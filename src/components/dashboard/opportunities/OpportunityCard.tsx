@@ -177,22 +177,8 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
       ref={cardRef}
       style={{ display: "flex", flexDirection: "column", width: "100%", position: "relative", marginBottom: "0.75rem" }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "4px 0.75rem 4px 0.75rem" }}>
-        {opp.org_logo_url ? (
-          <img src={opp.org_logo_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
-        ) : (
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#000000", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "0.75rem", flexShrink: 0 }}>
-            {opp.organisation.charAt(0).toUpperCase()}
-          </div>
-        )}
-        <span style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#000000" }}>{opp.organisation}</span>
-        {(opp as any).is_ad && (
-          <span style={{ fontSize: "0.6875rem", color: "#8e8e8e" }}>· Sponsored</span>
-        )}
-      </div>
-
-      {opp.media_type !== "none" && (
-        <div style={{ width: "100%", aspectRatio: opp.media_aspect_ratio === "16:9" ? "16 / 9" : "4 / 5" }}>
+      {opp.media_type !== "none" ? (
+        <div style={{ width: "100%", aspectRatio: opp.media_aspect_ratio === "16:9" ? "16 / 9" : "4 / 5", position: "relative" }}>
           {opp.video_url ? (
             <video
               src={opp.video_url}
@@ -217,6 +203,31 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
               location_country={opp.location_country}
             />
           )}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80, background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", pointerEvents: "none", zIndex: 1 }} />
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", alignItems: "center", gap: "0.5rem", padding: "8px 12px", zIndex: 2 }}>
+            {opp.org_logo_url ? (
+              <img src={opp.org_logo_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover", border: "2px solid rgba(255,255,255,0.8)" }} />
+            ) : (
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.9)", display: "flex", alignItems: "center", justifyContent: "center", color: "#000000", fontWeight: 700, fontSize: "0.75rem", flexShrink: 0 }}>
+                {opp.organisation.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span style={{ fontWeight: 600, fontSize: "0.8125rem", color: "white", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>{opp.organisation}</span>
+            {(opp as any).is_ad && (
+              <span style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.7)" }}>· Sponsored</span>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "4px 0.75rem" }}>
+          {opp.org_logo_url ? (
+            <img src={opp.org_logo_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
+          ) : (
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#000000", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "0.75rem", flexShrink: 0 }}>
+              {opp.organisation.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <span style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#000000" }}>{opp.organisation}</span>
         </div>
       )}
 
@@ -248,15 +259,12 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
           {opp.title}{opp.location_country ? ` — ${opp.location_country}` : ""}
         </div>
 
-        {daysLeft && (
-          <div style={{ fontSize: "0.75rem", color: "#8e8e8e" }}>
-            {daysLeft.urgent ? "\u23F0" : "\u23F3"} {daysLeft.days}d
-          </div>
-        )}
-
-        {opp.salary_range && (
-          <div style={{ fontSize: "0.8125rem", color: "#000000", fontWeight: 600 }}>
-            {opp.salary_range}
+        {(daysLeft || opp.salary_range) && (
+          <div style={{ fontSize: "0.75rem", color: "#8e8e8e", display: "flex", alignItems: "center", gap: "0.375rem", marginTop: "0.125rem" }}>
+            {opp.salary_range && <span style={{ color: "#000000", fontWeight: 600, fontSize: "0.8125rem" }}>{opp.salary_range}</span>}
+            {daysLeft && (
+              <span>{daysLeft.urgent ? "\u23F0" : "\u23F3"} {daysLeft.days}d</span>
+            )}
           </div>
         )}
       </div>
