@@ -80,6 +80,7 @@ export default function TopBar({
 
       {/* Page title */}
       <h1
+        className="hidden md:block"
         style={{
           fontSize: "1rem",
           fontWeight: 700,
@@ -96,18 +97,26 @@ export default function TopBar({
       {/* Add funds button */}
       <Link
         href="/dashboard/goals"
+        className="md:rounded-[var(--radius-md)]"
         style={{
-          padding: "0.5rem 1rem",
+          padding: "0.5rem",
           background: "var(--teal)",
           color: "var(--midnight)",
           fontWeight: 700,
           fontSize: "0.8125rem",
-          borderRadius: "var(--radius-md)",
+          borderRadius: "50%",
           textDecoration: "none",
           whiteSpace: "nowrap",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 36,
+          height: 36,
+          flexShrink: 0,
         }}
       >
-        + Add Funds
+        <span className="md:hidden">+</span>
+        <span className="hidden md:inline" style={{ width: "auto", height: "auto" }}>+ Add Funds</span>
       </Link>
 
       {/* Notification bell */}

@@ -80,7 +80,7 @@ export default async function OpportunitiesPage() {
   scoredSegment.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 
   return (
-    <div style={{ marginLeft: "-1.5rem", marginRight: "-1.5rem", width: "calc(100% + 3rem)" }}>
+    <div style={{ marginLeft: "-1.5rem", marginRight: "-1.5rem", marginTop: "-1.5rem", width: "calc(100% + 3rem)" }}>
       <div style={{ maxWidth: 470, margin: "0 auto" }}>
         <OpportunityFeed
           allOpportunities={scoredSegment}
