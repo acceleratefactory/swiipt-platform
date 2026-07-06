@@ -2,13 +2,13 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-**You are joining after System 3 (Opportunity Score) delivery.** Do not start from scratch. Read this first.
+**You are joining after Sprint 19 (Opportunity Feed, Pipeline, AI Service, Ads).** Do not start from scratch. Read this first.
 
 ### Current State
-- **Sprint 16, System 2 (Trade Show Group Savings)** — fully built and deployed to production
-- All 5 gap phases (Create Group Modal, Join Flow, Admin CRUD, Payment Modal, Discount Settings) are complete
-- Post-deployment bugs fixed: ambiguous `deposit_id`, wrong `referrals` column, missing `goal_id` in select, admin notification FK
-- **Sprint 16, System 3 (Opportunity Score)** — fully built and deployed (see System 3 section below)
+- **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough.
+- **Sprint 16, System 2 (Trade Show Group Savings)** — built and deployed. Paused before booking phase.
+- **Sprint 16, System 3 (Opportunity Score)** — built and deployed.
+- **Sprint 18 — Feed, Growth Mechanics, Affiliates** — built and deployed.
 - Groups can: form → members join with invite link → members save into locked goals → admin confirms deposits → group reaches `funded`
 - **Paused before booking phase** — the `funded → booking → confirmed → completed` pipeline is NOT built. See `reports/sprint_16_trade_show_booking_flow_analysis.md` for the plan.
 
@@ -28,16 +28,19 @@
 
 ### Where to Start
 1. Read this entire AGENTS.md (platform overview, architecture, all sprints, all sessions)
-2. Read `reports/sprint_16_trade_show_booking_flow_analysis.md` for the booking phase plan
-3. Read the relevant sprint SQL files in `swiipt/` for schema context
-4. Ask the user: "Has the booking phase been validated with real users yet? Or should I build it?"
+2. Read `reports/sprint_19_complete_walkthrough.md` for the full Sprint 19 walkthrough
+3. **To activate Sprint 19:** Run all 10 SQL migrations in Supabase SQL Editor (listed in the walkthrough §15)
+4. Read `reports/sprint_16_trade_show_booking_flow_analysis.md` for the booking phase plan
+5. Read the relevant sprint SQL files in `swiipt/` for schema context
+6. Ask the user: "Has the booking phase been validated with real users yet? Or should I build it?"
 
 ### Current Pending Items
-| Priority | Item | Docs |
-|----------|------|------|
-| 1 | Trade Show Group Booking Phase (paused) | `reports/sprint_16_trade_show_booking_flow_analysis.md` |
-| 2 | Group Buy ⏱→✅ transition in modal | `reports/group-buy-pending-confirmed-transition-plan.md` |
-| 3 | Sprint 18 — Feed, Onboarding, Campaigns, Success Stories, Affiliate University | ✅ Built (dev complete — remaining: env vars, pg_cron SQL, test) |
+| Priority | Item | Status |
+|----------|------|--------|
+| 1 | Sprint 19 — Run 10 SQL migrations in Supabase Editor | ⏳ 10 SQL files ready, execute in order |
+| 2 | Sprint 19 — Verify live: feed, pipeline, signals, ads, search | ⏳ After SQL migrations |
+| 3 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
+| 4 | Group Buy ⏱→✅ transition in modal | ⏳ `reports/group-buy-pending-confirmed-transition-plan.md` |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -397,6 +400,18 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Priority 4 — Goal-based holiday payment (Sessions 14-15):** Phase 1: linked_holiday_package_id on savings_goals, duplicate goal prevention, existing goal detection on detail page. Phase 2: goal_id on holiday_bookings, goal_redemption support in booking API, payment method selection UI, admin cancel reverts goal balance.
 - **NicheCTA → Goal Template Connection (Session 26 post-deploy):** `NicheCTA.tsx` and `NicheHero.tsx` updated to pass `recommended_goal_template_id` through signup return URL. NicheHero converted to `"use client"` with auth check — logged-in users go directly to `/dashboard/goals/new?template={id}`, logged-out users go via `/signup?return=...`. Closes Loop 1 end-to-end.
 
+### Sprint 19 — Opportunity Feed, Pipeline, AI Service, Behavioural Engine & Ads (Built — SQL Pending)
+- **Complete walkthrough:** `reports/sprint_19_complete_walkthrough.md`
+- **Pre-build (data-driven types + AI Service):** SQL migration, DB types, `src/lib/opportunity-types.ts`, shared API routes, `src/lib/ai-service.ts` (OmniRoute), provider adapters (Gemini, DeepSeek), task prompts
+- **§A Feed UI:** Single-column flex (max-width 680px, centered), kill list removed, search icon, detail modal with dwell tracking, media zone (cover image or FallbackTile), engagement rail (Like/Save/Share), ServiceCTA, "…more" inline expand, dismiss button, "Why you're seeing this" text
+- **§B Tracked Redirect:** `GET /api/opportunities/apply` — increments count, upserts feed, redirects; broken link detection via HEAD checks
+- **§C Pipeline:** `opportunity_queue` + `opportunity_sources` tables; tiered AI processing (trusted=auto, standard=format-only, review_all=admin); RSS ingest route; paste-URL AI prefill form; admin queue review page with Publish/Reject; link checker
+- **§D Behavioural Engine:** 11 signal types (view/expand/save/apply/dismiss/share/like/dwell), capture endpoint, 7-layer interest model computation, batch cron-ready endpoint, feed scoring with source diversity penalty
+- **§E Feed Ads:** `feed_ads` table, admin CRUD (list, create, toggle), injection every 7 positions with "Sponsored" label
+- **§F Seed Data:** 62 opportunity sources across all segments, 20 extra seed opportunities
+- **SQL migrations to run:** 10 files (see walkthrough §15)
+- **Git push:** `0d681d1` on `main`
+
 ### Sprint 18 — Feed, Growth Mechanics & Affiliate Management (Built)
 - **Phase C — The Feed:** `user_opportunity_feed` table, 18 seeded opportunities, personalised feed generation API (`POST /api/opportunities/feed`), track/save endpoints, `OpportunityCard.tsx` with infinite scroll/animated cards/featured placements, feed page at `/dashboard/opportunities` with filters + segment selector + detail page + onboarding flow. Achievement card triggers on order completion. `OpportunityScore.tsx` upgraded from formula to real DB count.
 - **Phase D — Growth Mechanics:** `achievement_cards` table with 11 card types (`goal_created`, milestones, `goal_funded`, `service_ordered/completed`, `visa_approved`, `certificate_issued`, `joined_swiipt`, `readiness_score`). Auto-generated on key events. WhatsApp/Instagram share with Canvas 1080×1080 PNG download. `SuccessStoryPrompt` + `SuccessStoryForm` for users to share stories after service completion. `CampaignBanner` for viral campaigns. `/admin/campaigns` list + create pages with admin APIs.
@@ -490,6 +505,13 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **Achievements:** generate-card, list, mark-shared, dismiss
 **Campaigns:** create, toggle
 **Opportunities:** create, toggle, update
+**Opportunity Queue:** list (GET), publish/reject (POST)
+**Link Checker:** check-links (POST, internal)
+**Feed:** generate (POST), signal capture (POST), like toggle (POST), apply redirect (GET), save (POST), track (POST), track-signal (POST), paste-url AI-prefill (POST)
+**Interest Model:** compute-interest (POST), compute-interest-batch (POST, cron)
+**Feed Ads:** list (GET), create (POST), toggle (POST)
+**Opportunity Types:** list (GET)
+**Career Segments:** list (GET)
 **Certificates:** revoke
 **Partners:** update-status
 **AI Providers:** create, toggle, test, update
@@ -1060,6 +1082,68 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Gap 3 — Leaderboard:** Added All-Time Standings section (top 20 by cumulative referrals from `affiliate_status`), "Reset monthly" button with confirmation + audit log, new `POST /api/admin/leaderboard/reset` route.
 - **Bottom tabs mobile fix:** Removed `display: "flex"` from inline styles that was overriding Tailwind's `md:hidden` class.
 - **Commits:** `b48966e` (Phase D), `d075642` (Phase E), `1b30bc6` (gaps), `e9902b2` (bottom tabs)
+
+### Sessions 33-35 — Sprint 19: Full Build (Completed)
+
+**Full walkthrough:** `reports/sprint_19_complete_walkthrough.md`
+
+**Session 33 — Pre-Sprint 19 Phase 1 (Data-Driven Types + Segments):**
+- Created `opportunity_types` table, added `color`/`text_color` to `career_segments`
+- Created `src/lib/opportunity-types.ts` — `getOpportunityTypes()`, `buildTypeStyleMap()`, `buildSegmentMap()`
+- Updated admin forms to fetch from API routes (`/api/opportunity-types`, `/api/career-segments`)
+- Updated onboarding page (`SegmentSlug` → `string`)
+- SQL migration: `sprint_19_pre_data_driven_types.sql`
+- Build verified: zero errors
+
+**Session 34 — Phase 2 (AI Service + OmniRoute):**
+- Created `src/lib/ai-service.ts` — `enrich()`, `isAIAvailable()`, OmniRoute priority fallback
+- Created `src/lib/ai/prompts.ts` — task-specific prompt builders and exports
+- Created provider adapters: `gemini.ts` (Gemini 1.5 Flash), `deepseek.ts` (DeepSeek Chat), `index.ts` (interface)
+- SQL: `sprint_19_phase2_ai_providers_seed.sql`
+- Build verified: zero errors
+
+**Session 35 — Sprint 19 Unified Build (all sections §A–§F):**
+
+**§A.1 Layout:** Grid → single-column flex (max-width 680px), IntersectionObserver outside card container, `width: "100%"` on cards, `paddingBottom: 80px`. Kill list removed: "Your Opportunities" H1, subtitle, "Update interests", "You have seen all N", "Refresh" button.
+
+**§A.2 Detail modal:** `OpportunityDetailModal.tsx` — slide-up mobile / centered desktop, Escape close, body scroll lock, sticky action bar, data-driven typeStyles, dwell time tracking.
+
+**§A.2.1 Card anatomy:** "…more" inline expand on description; signals row (Trust ✅, Match ●●●○, ⏳ days); org logo 48px; redundant chips removed. `showAIMatch` and `userTier` props removed.
+
+**§A.3 Media system:** SQL migration (10 columns), `src/lib/og-fetch.ts` (OG extraction + image validation), `FallbackTile.tsx` (type-colored gradient + emoji + flag + org name), media zone in card with overlaid chips.
+
+**§A.4 Engagement rail:** SQL migration (`opportunity_signals` with like/comment, `user_interest_model`, `opportunity_comments` tables + RLS + indexes). Like button with optimistic UI + toggle endpoint. Engagement rail: Like · Save · Share · Apply.
+
+**§A.5 ServiceCTA:** `ServiceCTA.tsx` (dynamic routing by country+type), `POST /api/opportunities/track-signal`, wired into OpportunityCard.
+
+**§B Tracked Redirect:** `GET /api/opportunities/apply?id={id}` — validates, increments apply_click_count, upserts feed, redirects. `handleApply` calls `window.open("/api/opportunities/apply?id=...", "_blank")`.
+
+**§C Pipeline:** SQL migration (`opportunity_queue`, `opportunity_sources`, needs_review columns, RLS, indexes). `POST /api/admin/opportunities/process-queue` (tiered AI via OmniRoute), `POST /api/admin/opportunities/ingest` (RSS + XML + dedup), `POST /api/admin/opportunities/check-links` (HEAD all URLs). `POST /api/opportunities/paste-url` (AI prefill + OG fetch), `PasteUrlForm.tsx`.
+
+**Amendment 1 — Search:** `POST /api/opportunities/feed` accepts `{query, type, country}` → search mode (text match, no interest model). `/dashboard/opportunities/search` page with SearchBar + filter chips. `SearchExplore.tsx`.
+
+**§D Behavioural Engine:** `POST /api/opportunities/signal` (view/expand/save/apply/dismiss/share/dwell). Signal firing in card (2s viewport view, expand on click, save/apply/share/dismiss). Dismiss button on every card. Dwell tracking in modal (dwell_long ≥30s, dwell_short <5s). `POST /api/opportunities/compute-interest` (7-layer recency-weighted model). `POST /api/opportunities/compute-interest-batch` (cron, max 100 users). Feed scoring: segment, country, type, suppression, freshness, featured, applied + source diversity penalty.
+
+**§E Feed Ads:** `sprint_19_feed_ads.sql` (table + RLS + index). Admin API routes (list GET, create POST, toggle POST). Admin list page with status badges + pause/activate. Create form. Sidebar entry. Injection every 7 positions, "Sponsored" label.
+
+**§F Seed Data:** `sprint_19_seed_sources.sql` (22 sources across all segments). DB types updated for all new columns/tables.
+
+**Build verified:** zero errors. Pushed to `main`.
+
+**Session 36 — Final 6 Gaps (End of Sprint 19):**
+
+| Gap | What Was Built |
+|-----|----------------|
+| **1 — §F Seed SQL** | `sprint_19_seed_opportunities.sql` — 20 extra opportunities as standalone file |
+| **2 — Admin Queue Page** | `/admin/opportunities/queue` — review interface with Publish/Reject, expand/collapse, AI data viewer |
+| **3 — Queue Badge** | Red badge on Opportunities sidebar item (fetched from `opportunity_queue` count) |
+| **4 — "Why You're Seeing This"** | `getReasonText()` utility + italic text in OpportunityCard |
+| **5 — pg_cron SQL** | `sprint_19_cron_compute_interest.sql` — compute-interest-batch every 6h |
+| **6 — 60+ Sources** | `sprint_19_seed_additional_sources.sql` — 40+ additional sources (total ~62) |
+
+**Build verified:** zero errors. Pushed to `main` (`0d681d1`).
+
+**SQL migrations pending:** 10 files. Run in order in Supabase SQL Editor (see walkthrough §15).
 
 ---
 

@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import SearchExplore from "@/components/dashboard/opportunities/SearchExplore";
-import { getOpportunityTypes, buildTypeStyleMap } from "@/lib/opportunity-types";
+import { getOpportunityTypes } from "@/lib/opportunity-types";
 
 export default async function SearchPage() {
   const supabase = createClient();
@@ -29,7 +29,6 @@ export default async function SearchPage() {
         Search Opportunities
       </h1>
       <SearchExplore
-        typeStyles={buildTypeStyleMap(oppTypes)}
         opportunityTypes={oppTypes.filter((t) => t.is_active)}
         countries={uniqueCountries}
       />

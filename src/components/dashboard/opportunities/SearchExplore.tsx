@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import OpportunityCard from "./OpportunityCard";
-import type { TypeStyleMap, OpportunityType } from "@/lib/opportunity-types";
+import type { OpportunityType } from "@/lib/opportunity-types";
 
 interface Oppty {
   id: string;
@@ -31,12 +31,11 @@ interface Oppty {
 }
 
 interface Props {
-  typeStyles: TypeStyleMap;
   opportunityTypes: OpportunityType[];
   countries: string[];
 }
 
-export default function SearchExplore({ typeStyles, opportunityTypes, countries }: Props) {
+export default function SearchExplore({ opportunityTypes, countries }: Props) {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [countryFilter, setCountryFilter] = useState("");
@@ -192,7 +191,6 @@ export default function SearchExplore({ typeStyles, opportunityTypes, countries 
               <OpportunityCard
                 key={opp.id}
                 opportunity={opp}
-                typeStyles={typeStyles}
                 onApply={handleApply}
                 onSave={handleSave}
               />

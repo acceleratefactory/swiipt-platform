@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import OpportunityFeed from "@/components/dashboard/opportunities/OpportunityFeed";
-import { getOpportunityTypes, buildTypeStyleMap } from "@/lib/opportunity-types";
 
 interface Oppty {
   id: string;
@@ -40,13 +39,11 @@ export default async function OpportunitiesPage() {
     userRes,
     oppRes,
     feedRes,
-    oppTypes,
   ] = await Promise.all([
     supabase.from("career_profiles").select("segment_slug").eq("user_id", user.id).single(),
     supabase.from("users").select("user_tier, referral_code").eq("id", user.id).single(),
     supabase.from("opportunities").select("*").eq("is_active", true).order("created_at", { ascending: false }),
     supabase.from("user_opportunity_feed").select("opportunity_id, relevance_score, is_saved, is_applied").eq("user_id", user.id),
-    getOpportunityTypes(),
   ]);
 
   if (!profileRes.data) redirect("/dashboard/opportunities/onboarding");
@@ -96,7 +93,6 @@ export default async function OpportunitiesPage() {
       <OpportunityFeed
         allOpportunities={scoredSegment}
         userTier={userTier}
-        typeStyles={buildTypeStyleMap(oppTypes)}
         referralLink={referralLink}
       />
     </div>

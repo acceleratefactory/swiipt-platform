@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback, Fragment } from "react";
 import OpportunityCard from "./OpportunityCard";
-import type { TypeStyleMap } from "@/lib/opportunity-types";
 
 interface Oppty {
   id: string;
@@ -33,7 +32,6 @@ interface Oppty {
 interface Props {
   allOpportunities: Oppty[];
   userTier: string;
-  typeStyles: TypeStyleMap;
   referralLink?: string;
 }
 
@@ -70,16 +68,15 @@ function AnimatedCard({ children, delay }: { children: React.ReactNode; delay: n
   );
 }
 
-export default function OpportunityFeed({ allOpportunities, userTier, typeStyles, referralLink }: Props) {
+export default function OpportunityFeed({ allOpportunities, userTier, referralLink }: Props) {
   const [displayed, setDisplayed] = useState<Oppty[]>([]);
   const [page, setPage] = useState(1);
   const [applyCount, setApplyCount] = useState(0);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const sentinelRef = useRef<HTMLDivElement>(null);
   const topMatch = useRef<Oppty | null>(null);
 
-  const filtered = allOpportunities.filter((o) => !dismissedIds.has(o.id));
+  const filtered = allOpportunities;
 
   const now = Date.now();
   const newThisMorning = filtered.filter(
@@ -132,10 +129,6 @@ export default function OpportunityFeed({ allOpportunities, userTier, typeStyles
 
   const handleSave = useCallback((_id: string, _saved: boolean) => {}, []);
 
-  const handleDismiss = useCallback((id: string) => {
-    setDismissedIds((prev) => new Set(prev).add(id));
-  }, []);
-
   const handleCopyReferral = useCallback(() => {
     if (referralLink) {
       navigator.clipboard.writeText(referralLink).catch(() => {});
@@ -156,10 +149,8 @@ export default function OpportunityFeed({ allOpportunities, userTier, typeStyles
               <AnimatedCard key={opp.id} delay={i * 80}>
                 <OpportunityCard
                   opportunity={opp}
-                  typeStyles={typeStyles}
                   onApply={handleApply}
                   onSave={handleSave}
-                  onDismiss={handleDismiss}
                 />
               </AnimatedCard>
             ))}
@@ -187,7 +178,6 @@ export default function OpportunityFeed({ allOpportunities, userTier, typeStyles
                   <AnimatedCard delay={(index % 10) * 60}>
                     <OpportunityCard
                       opportunity={opp}
-                      typeStyles={typeStyles}
                       onApply={handleApply}
                       onSave={handleSave}
                     />
@@ -200,7 +190,6 @@ export default function OpportunityFeed({ allOpportunities, userTier, typeStyles
                         </p>
                         <OpportunityCard
                           opportunity={topMatch.current}
-                          typeStyles={typeStyles}
                           onApply={handleApply}
                           onSave={handleSave}
                         />
