@@ -81,6 +81,14 @@ function getDaysLeft(deadline: string | null): { days: number; color: string } |
   return { days, color };
 }
 
+function getReasonText(opp: Oppty): string | null {
+  if (opp.is_featured) return "Featured opportunity — top pick for you";
+  if (opp.ai_relevance_score && opp.ai_relevance_score >= 80) return "Excellent match based on your interests";
+  if (opp.ai_relevance_score && opp.ai_relevance_score >= 60) return "Good match based on your profile";
+  if (opp.is_saved) return "Saved for later";
+  return null;
+}
+
 function getMatchLabel(score: number | undefined): { label: string; color: string } | null {
   if (score === undefined || score === null) return null;
   if (score >= 80) return { label: "Excellent match", color: "#0d9488" };
@@ -124,6 +132,7 @@ export default function OpportunityCard({ opportunity: opp, typeStyles, onApply,
   const typeStyle = typeStyles[opp.type] || { bg: "#f3f4f6", color: "#64748b", label: opp.type };
   const matchInfo = getMatchLabel(opp.relevanceScore);
   const flag = getFlag(opp.location_country);
+  const reasonText = getReasonText(opp);
 
   const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
 
@@ -313,6 +322,12 @@ export default function OpportunityCard({ opportunity: opp, typeStyles, onApply,
             </button>
           </div>
         </div>
+
+        {reasonText && (
+          <p style={{ padding: "0 0 0.5rem 0", fontSize: "0.6875rem", color: "var(--gray-400)", fontStyle: "italic" }}>
+            {reasonText}
+          </p>
+        )}
 
         {opp.salary_range && (
           <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--teal)", fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", marginTop: "0.5rem" }}>

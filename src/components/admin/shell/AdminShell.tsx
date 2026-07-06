@@ -10,12 +10,14 @@ export default function AdminShell({
   adminRole,
   pendingDeposits,
   pendingWithdrawals,
+  pendingQueue,
   children,
 }: {
   adminEmail: string;
   adminRole: string;
   pendingDeposits: number;
   pendingWithdrawals: number;
+  pendingQueue?: number;
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -33,6 +35,7 @@ export default function AdminShell({
       <AdminSidebar
         pendingDeposits={pendingDeposits}
         pendingWithdrawals={pendingWithdrawals}
+        pendingQueue={pendingQueue}
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />

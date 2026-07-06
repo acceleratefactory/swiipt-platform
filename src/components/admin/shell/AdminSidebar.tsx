@@ -70,11 +70,13 @@ const navItems: Array<{
 export default function AdminSidebar({
   pendingDeposits,
   pendingWithdrawals,
+  pendingQueue,
   open,
   onClose,
 }: {
   pendingDeposits: number;
   pendingWithdrawals: number;
+  pendingQueue?: number;
   open: boolean;
   onClose: () => void;
 }) {
@@ -84,6 +86,7 @@ export default function AdminSidebar({
     let badge = item.badge;
     if (item.href === "/admin/deposits") badge = pendingDeposits;
     if (item.href === "/admin/withdrawals") badge = pendingWithdrawals;
+    if (item.href === "/admin/opportunities") badge = pendingQueue;
     const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
 
     return (

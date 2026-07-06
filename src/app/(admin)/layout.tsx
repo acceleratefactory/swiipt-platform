@@ -41,12 +41,18 @@ export default async function AdminLayout({
     .select("*", { count: "exact", head: true })
     .eq("status", "requested");
 
+  const { count: pendingQueue } = await adminSupabase
+    .from("opportunity_queue")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "needs_review");
+
   return (
     <AdminShell
       adminEmail={user.email!}
       adminRole={role.role}
       pendingDeposits={pendingDeposits || 0}
       pendingWithdrawals={pendingWithdrawals || 0}
+      pendingQueue={pendingQueue || 0}
     >
       {children}
     </AdminShell>
