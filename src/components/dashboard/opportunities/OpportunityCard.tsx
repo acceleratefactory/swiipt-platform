@@ -175,7 +175,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
   return (
     <div
       ref={cardRef}
-      style={{ display: "flex", flexDirection: "column", width: "100%", position: "relative", marginBottom: "0.25rem" }}
+      style={{ display: "flex", flexDirection: "column", width: "100%", position: "relative", marginBottom: "0.75rem" }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "4px 0.75rem 4px 0.75rem" }}>
         {opp.org_logo_url ? (

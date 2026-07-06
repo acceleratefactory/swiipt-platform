@@ -108,7 +108,7 @@ export default function ServiceCTA({ type, location_country, opportunityId, serv
       onClick={handleClick}
       style={{
         fontSize: "0.75rem",
-        color: "var(--teal)",
+        color: "#000000",
         fontWeight: 600,
         textDecoration: "none",
         display: "flex",

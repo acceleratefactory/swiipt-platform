@@ -176,7 +176,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
                   {isFeaturedPosition && topMatch.current && (
                     <div>
                       <div style={{ background: "linear-gradient(135deg, #06112B, #1A3560)", borderRadius: "var(--radius-md)", padding: "0.5rem" }}>
-                        <p style={{ fontSize: "0.625rem", color: "var(--teal)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", padding: "0 0.5rem", marginBottom: "0.25rem" }}>
+                        <p style={{ fontSize: "0.625rem", color: "#8e8e8e", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", padding: "0 0.5rem", marginBottom: "0.25rem" }}>
                           {"\u2B50"} Top match for your profile
                         </p>
                         <OpportunityCard
@@ -215,7 +215,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
           <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
             <button
               onClick={handleCopyReferral}
-              style={{ padding: "0.625rem 1.25rem", borderRadius: "var(--radius-md)", border: "none", background: "var(--teal)", color: "var(--midnight)", fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer" }}
+              style={{ padding: "0.625rem 1.25rem", borderRadius: "var(--radius-md)", border: "none", background: "#000000", color: "white", fontWeight: 600, fontSize: "0.8125rem", cursor: "pointer" }}
             >
               Share my referral link
             </button>
