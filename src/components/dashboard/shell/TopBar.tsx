@@ -97,26 +97,10 @@ export default function TopBar({
       {/* Add funds button */}
       <Link
         href="/dashboard/goals"
-        className="md:rounded-[var(--radius-md)]"
-        style={{
-          padding: "0.5rem",
-          background: "var(--teal)",
-          color: "var(--midnight)",
-          fontWeight: 700,
-          fontSize: "0.8125rem",
-          borderRadius: "50%",
-          textDecoration: "none",
-          whiteSpace: "nowrap",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 36,
-          height: 36,
-          flexShrink: 0,
-        }}
+        className="flex items-center justify-center flex-shrink-0 text-[0.8125rem] font-bold no-underline whitespace-nowrap bg-[var(--teal)] text-[var(--midnight)] w-9 h-9 rounded-full md:w-auto md:h-auto md:px-4 md:py-2 md:rounded-[var(--radius-md)]"
       >
         <span className="md:hidden">+</span>
-        <span className="hidden md:inline" style={{ width: "auto", height: "auto" }}>+ Add Funds</span>
+        <span className="hidden md:inline">+ Add Funds</span>
       </Link>
 
       {/* Notification bell */}
