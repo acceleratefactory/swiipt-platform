@@ -258,7 +258,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
               playsInline
               autoPlay={videoAutoPlay}
               preload={videoAutoPlay ? "metadata" : "none"}
-              onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) v.paused ? v.play() : v.pause(); }}
+              onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { if (v.paused) { v.play(); } else { v.pause(); } } }}
               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "pointer" }}
             />
           ) : hasCover && opp.cover_image_url ? (
@@ -321,7 +321,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
           <button onClick={(e) => { e.stopPropagation(); handleSave(); }} title={saved ? "Saved" : "Save"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, height: 40 }}>
             <SaveIcon filled={saved} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); (opp as any).is_ad ? handleAdClick() : handleApply(); }} title="Apply" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, height: 40 }}>
+          <button onClick={(e) => { e.stopPropagation(); if ((opp as any).is_ad) { handleAdClick(); } else { handleApply(); } }} title="Apply" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, height: 40 }}>
             <ApplyIcon />
           </button>
         </div>
