@@ -1,16 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AIEnrichRequest, AIEnrichResponse, AIProviderAdapter } from "./ai/providers/index";
+import { omnirouteProvider } from "./ai/providers/omniroute";
 import { geminiProvider } from "./ai/providers/gemini";
 import { deepseekProvider } from "./ai/providers/deepseek";
+import { qwenProvider } from "./ai/providers/qwen";
 
 const ADAPTERS: Record<string, AIProviderAdapter> = {
+  omniroute: omnirouteProvider,
   gemini: geminiProvider,
   deepseek: deepseekProvider,
+  qwen: qwenProvider,
 };
 
 const API_KEY_ENV_MAP: Record<string, string> = {
+  omniroute: "OMNIROUTE_API_KEY",
   gemini: "GEMINI_API_KEY",
   deepseek: "DEEPSEEK_API_KEY",
+  qwen: "QWEN_API_KEY",
 };
 
 interface ActiveProvider {

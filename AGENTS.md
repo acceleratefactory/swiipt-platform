@@ -5,7 +5,7 @@
 **You are joining after Sprint 19 (Opportunity Feed, Pipeline, AI Service, Ads).** Do not start from scratch. Read this first.
 
 ### Current State
-- **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough.
+- **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (14 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
 - **Sprint 16, System 2 (Trade Show Group Savings)** — built and deployed. Paused before booking phase.
 - **Sprint 16, System 3 (Opportunity Score)** — built and deployed.
 - **Sprint 18 — Feed, Growth Mechanics, Affiliates** — built and deployed.
@@ -29,7 +29,7 @@
 ### Where to Start
 1. Read this entire AGENTS.md (platform overview, architecture, all sprints, all sessions)
 2. Read `reports/sprint_19_complete_walkthrough.md` for the full Sprint 19 walkthrough
-3. **To activate Sprint 19:** Run all 10 SQL migrations in Supabase SQL Editor (listed in the walkthrough §15)
+3. **To activate Sprint 19:** Run all 14 SQL migrations in Supabase SQL Editor in order (listed in the walkthrough §15)
 4. Read `reports/sprint_16_trade_show_booking_flow_analysis.md` for the booking phase plan
 5. Read the relevant sprint SQL files in `swiipt/` for schema context
 6. Ask the user: "Has the booking phase been validated with real users yet? Or should I build it?"
@@ -37,10 +37,12 @@
 ### Current Pending Items
 | Priority | Item | Status |
 |----------|------|--------|
-| 1 | Sprint 19 — Run 10 SQL migrations in Supabase Editor | ⏳ 10 SQL files ready, execute in order |
+| 1 | Sprint 19 — Run 14 SQL migrations in Supabase Editor | ⏳ 14 SQL files ready, execute in order (see §15 of walkthrough) |
 | 2 | Sprint 19 — Verify live: feed, pipeline, signals, ads, search | ⏳ After SQL migrations |
 | 3 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
 | 4 | Group Buy ⏱→✅ transition in modal | ⏳ `reports/group-buy-pending-confirmed-transition-plan.md` |
+| 5 | Dashboard Home Restructure — feed as primary screen | ⏳ `docs/sprint_17_18_priority_order.md` (routing change in middleware.ts) |
+| 6 | Affiliate Management — env vars, pg_cron SQL, e2e testing | ⏳ Sessions 30-32 ops remain |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -103,7 +105,7 @@ On every new `auth.users` insert, `handle_new_user()` trigger:
 - Grants +20 mobility score for account creation
 
 ### Database
-- **36 tables** total (Sprint 0 foundation: 24 tables; expanded through sprints)
+- **43 tables** total (Sprint 0 foundation: 24 tables; expanded through sprints — see §6 for full list)
 - RLS enabled on all tables — service client bypasses for admin operations
 - Realtime enabled on: `deposits`, `notifications`, `document_requests`, `savings_goals`, `leaderboard_entries`, `holiday_bookings`
 - All pricing: multi-currency columns (NGN, USD, AED, QAR, GBP, CAD, EUR)
@@ -215,6 +217,17 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `leaderboard_prizes` | Monthly prize configuration |
 | `leaderboard_entries` | Rankings per period |
 | `user_preferences` | Notification preferences |
+
+### Opportunity Feed & Intelligence (Sprint 19)
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `opportunity_types` | Data-driven opportunity type catalog (9 seed types) | id, slug, label, emoji, bg_color, text_color, is_active |
+| `opportunity_signals` | User behavioural signals on opportunities | user_id, opportunity_id, signal_type (view/expand/save/apply/dismiss/share/like/dwell_short/dwell_long/comment), metadata JSONB |
+| `user_interest_model` | Per-user 7-layer interest scores | user_id, scores JSONB (segment, country, type, recency, engagement, source, diversity), last_computed_at |
+| `opportunity_comments` | Phase B comments on opportunities (table only, no UI yet) | user_id, opportunity_id, body, is_flagged |
+| `opportunity_queue` | Raw ingested items awaiting processing | source_id, raw_data JSONB, status (pending/processing/published/rejected/error), ai_result JSONB, needs_review, review_reason |
+| `opportunity_sources` | Source registry with trust tiers | name, url, source_type, trust_tier (trusted/standard/review_all), default_segment, format (rss/json/api/manual), is_active, last_error, error_count, is_degraded |
+| `feed_ads` | Injected sponsored ads | headline, body, cta_label, cta_url, cover_image_url, status (active/paused/ended/draft), impressions, clicks |
 
 ## 7. FEATURE MAP — EVERY SPRINT
 
@@ -401,7 +414,12 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **NicheCTA → Goal Template Connection (Session 26 post-deploy):** `NicheCTA.tsx` and `NicheHero.tsx` updated to pass `recommended_goal_template_id` through signup return URL. NicheHero converted to `"use client"` with auth check — logged-in users go directly to `/dashboard/goals/new?template={id}`, logged-out users go via `/signup?return=...`. Closes Loop 1 end-to-end.
 
 ### Sprint 19 — Opportunity Feed, Pipeline, AI Service, Behavioural Engine & Ads (Built — SQL Pending)
+- **Master spec:** `docs/Sprint_19_Unified.md` (3,320 lines — merged base spec + behavioral learning + pipeline + Feed/Media/Interactivity/Ads)
+- **Implementation plan:** `docs/Sprint_19_Implementation_Plan.md` (817 lines — 9 source docs, phased build, 27-item verification audit, 14-step SQL execution order)
 - **Complete walkthrough:** `reports/sprint_19_complete_walkthrough.md`
+- **Amendments:** `docs/sprint_19_amendment_1_fix3_to_search.md` (Search/Explore replaces filter strip), `docs/sprint_19_amendment_2_zero_ai.md` (OmniRoute zero-cost AI), `docs/sprint_19_amendment_3_15_enhancements_assessment.md` (7 adopted, 8 deferred)
+- **Gap resolution:** `docs/sprint_19_gap_resolution.md` (4 pre-build gaps: DB types, OG fetching, admin ads panel, comments Phase B)
+- **Architecture discussion:** `docs/Sprint 19 resolution` (Opportunity Engine mental model, three-tier trust, provenance record)
 - **Pre-build (data-driven types + AI Service):** SQL migration, DB types, `src/lib/opportunity-types.ts`, shared API routes, `src/lib/ai-service.ts` (OmniRoute), provider adapters (Gemini, DeepSeek), task prompts
 - **§A Feed UI:** Single-column flex (max-width 680px, centered), kill list removed, search icon, detail modal with dwell tracking, media zone (cover image or FallbackTile), engagement rail (Like/Save/Share), ServiceCTA, "…more" inline expand, dismiss button, "Why you're seeing this" text
 - **§B Tracked Redirect:** `GET /api/opportunities/apply` — increments count, upserts feed, redirects; broken link detection via HEAD checks
@@ -409,7 +427,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **§D Behavioural Engine:** 11 signal types (view/expand/save/apply/dismiss/share/like/dwell), capture endpoint, 7-layer interest model computation, batch cron-ready endpoint, feed scoring with source diversity penalty
 - **§E Feed Ads:** `feed_ads` table, admin CRUD (list, create, toggle), injection every 7 positions with "Sponsored" label
 - **§F Seed Data:** 62 opportunity sources across all segments, 20 extra seed opportunities
-- **SQL migrations to run:** 10 files (see walkthrough §15)
+- **SQL migrations to run:** 14 files in order (see walkthrough §15 for full list)
 - **Git push:** `0d681d1` on `main`
 
 ### Sprint 18 — Feed, Growth Mechanics & Affiliate Management (Built)
@@ -506,6 +524,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **Campaigns:** create, toggle
 **Opportunities:** create, toggle, update
 **Opportunity Queue:** list (GET), publish/reject (POST)
+**Ingest:** ingest RSS/API sources (POST, internal)
 **Link Checker:** check-links (POST, internal)
 **Feed:** generate (POST), signal capture (POST), like toggle (POST), apply redirect (GET), save (POST), track (POST), track-signal (POST), paste-url AI-prefill (POST)
 **Interest Model:** compute-interest (POST), compute-interest-batch (POST, cron)
@@ -525,7 +544,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `src/lib/supabase/client.ts` | Browser client (anon key, for client components) |
 | `src/lib/supabase/server.ts` | Server client (anon key, cookie-based for server components) |
 | `src/lib/supabase/service.ts` | **Service client** (service role key, bypasses RLS for admin) |
-| `src/types/database.ts` | Full type definitions for all 36 tables + RPCs |
+| `src/types/database.ts` | Full type definitions for all 43 tables + RPCs |
 | `src/app/(admin)/layout.tsx` | Admin auth gate + sidebar (service client pattern) |
 | `src/components/admin/shell/AdminSidebar.tsx` | Admin sidebar nav (add new entries here) |
 | `src/app/(admin)/admin/` | All 42+ admin page routes |
@@ -567,6 +586,37 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `reports/sprint_16_analysis_and_plan.md` | Sprint 16 investigation with 4 priorities |
 | `reports/group-buy-pending-confirmed-transition-plan.md` | Plan: add ⏱→✅ transition to group buy modal |
 | `reports/findings/realtime-auto-close-not-firing.md` | Superseded: earlier investigation into auto-close (incorrect root cause) |
+| `docs/Sprint_19_Unified.md` | **Sprint 19 master spec** — 3,320 lines, merged base + behavioral + pipeline + Feed/Media/Interactivity/Ads |
+| `docs/Sprint_19_Implementation_Plan.md` | **Sprint 19 implementation plan** — 817 lines, 9 source docs, phased build, 27-item verification audit |
+| `docs/sprint_19_amendment_1_fix3_to_search.md` | Amendment 1 — Search/Explore replaces always-on filter strip |
+| `docs/sprint_19_amendment_2_zero_ai.md` | Amendment 2 — Zero-cost AI via OmniRoute (supersedes Haiku) |
+| `docs/sprint_19_amendment_3_15_enhancements_assessment.md` | Amendment 3 — 15 enhancements assessed (7 adopted, 8 deferred) |
+| `docs/sprint_19_gap_resolution.md` | 4 pre-build gaps resolved (DB types, OG fetching, ads panel, comments) |
+| `docs/pre_sprint_19_data_driven_types.md` | Pre-cleanup spec for data-driven opportunity types |
+| `docs/Sprint 19 resolution` | Architecture discussion — Opportunity Engine model, three-tier trust |
+| `src/lib/opportunity-types.ts` | Data-driven type/segment utilities (getOpportunityTypes, buildTypeStyleMap, buildSegmentMap) |
+| `src/lib/ai-service.ts` | AI Service abstraction — OmniRoute priority fallback, enrich(), isAIAvailable() |
+| `src/lib/ai/prompts.ts` | Task-specific prompt builders for pipeline processing |
+| `src/lib/ai/providers/gemini.ts` | Gemini 1.5 Flash adapter |
+| `src/lib/ai/providers/deepseek.ts` | DeepSeek Chat adapter |
+| `src/lib/og-fetch.ts` | OG tag extraction + image validation + fallback |
+| `src/components/dashboard/opportunities/OpportunityCard.tsx` | Feed card — media, signals, engagement rail, ServiceCTA, dismiss |
+| `src/components/dashboard/opportunities/OpportunityFeed.tsx` | Single-column feed — infinite scroll, ad injection, dismiss filtering |
+| `src/components/dashboard/opportunities/OpportunityDetailModal.tsx` | Slide-up/centered detail modal with dwell tracking |
+| `src/components/dashboard/opportunities/FallbackTile.tsx` | Branded fallback tile for cards without images |
+| `src/components/dashboard/opportunities/ServiceCTA.tsx` | Dynamic service routing by type + country |
+| `src/components/dashboard/opportunities/SearchExplore.tsx` | Search/Explore page with filters + results |
+| `src/components/admin/opportunities/PasteUrlForm.tsx` | AI-prefill paste-URL form for admin |
+| `src/components/admin/opportunities/OpportunitiesList.tsx` | Admin opportunities list table |
+| `src/components/admin/opportunities/CreateOpportunityForm.tsx` | Admin create opportunity form |
+| `src/components/admin/opportunities/EditOpportunityForm.tsx` | Admin edit opportunity form |
+| `src/components/admin/opportunities/OpportunityQueueList.tsx` | Admin queue review list (Publish/Reject) |
+| `src/app/(dashboard)/dashboard/opportunities/page.tsx` | Feed page at `/dashboard/opportunities` |
+| `src/app/(dashboard)/dashboard/opportunities/search/page.tsx` | Search/Explore page |
+| `src/app/(dashboard)/dashboard/opportunities/[opportunityId]/page.tsx` | Opportunity detail page |
+| `src/app/(admin)/admin/opportunities/queue/page.tsx` | Admin queue review page |
+| `src/app/(admin)/admin/feed-ads/page.tsx` | Admin feed ads list page |
+| `src/app/(admin)/admin/feed-ads/new/page.tsx` | Admin feed ads create page |
 
 ## 10. PLATFORM COMPATIBILITY REGISTRY
 
@@ -1143,11 +1193,22 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 
 **Build verified:** zero errors. Pushed to `main` (`0d681d1`).
 
-**SQL migrations pending:** 10 files. Run in order in Supabase SQL Editor (see walkthrough §15).
+**SQL migrations pending:** 14 files. Run in order in Supabase SQL Editor (see walkthrough §15).
 
 ---
 
 ## 12. PENDING / FUTURE BUILD
+
+### Sprint 19 SQL Migrations (14 files — run in order)
+- **Order matters.** Run in Supabase SQL Editor in the sequence listed in `reports/sprint_19_complete_walkthrough.md` §15.
+- Files: `sprint_19_pre_data_driven_types.sql`, `sprint_19_phase2_ai_providers_seed.sql`, `sprint_19_media_system.sql`, `sprint_19_engagement_sql.sql`, `sprint_19_pipeline_sql.sql`, `sprint_19_feed_ads.sql`, `sprint_19_seed_sources.sql`, `sprint_19_seed_opportunities.sql`, `sprint_19_seed_additional_sources.sql`, `sprint_19_cron_compute_interest.sql`, `sprint_19_cron_ingest.sql`, `sprint_19_cron_process_queue.sql`, `sprint_19_cron_check_links.sql`, `sprint_19_source_health.sql`
+
+### Dashboard Home Restructure (Feed as Primary Screen)
+- **Plan file:** `docs/sprint_17_18_priority_order.md` (lines 29-50)
+- **Change:** After login, users who completed career profile onboarding land on `/dashboard/opportunities` (feed) instead of `/dashboard` (metrics home). Users who haven't completed onboarding land on `/dashboard/opportunities/onboarding`.
+- **File to modify:** `src/middleware.ts` — add post-login routing logic after auth confirmation
+- **Existing dashboard home moves to:** `/dashboard/home`
+- **Status:** Planned, not built
 
 ### Trade Show Group Booking Phase (Paused — Validate with users first)
 - **Plan file:** `reports/sprint_16_trade_show_booking_flow_analysis.md`
@@ -1167,6 +1228,12 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 
 ### Sprint 18 Upgrade Path — Replace Temporary Opportunity Count Formula ✅ DONE
 - The temporary formula `Math.round((score / 100) * 35)` has been replaced with a real `user_opportunity_feed` count query. `OpportunityScore` now receives `opportunityCount` as a prop from both the home page and the layout (for sidebar). No further action needed.
+
+### Affiliate Management — Operational Items Remaining
+- **Env vars:** Set up any required environment variables for affiliate system (check `.env.example` for new vars added in Sessions 30-32)
+- **pg_cron SQL:** Run pg_cron SQL for affiliate-related automation (if applicable — check `admin_affiliates_phase_a.sql`)
+- **End-to-end testing:** Test full affiliate flow: signup → referral → commission → withdrawal request → admin approval
+- **Status:** Code complete (Sessions 30-32), ops not verified
 
 ## 13. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors
