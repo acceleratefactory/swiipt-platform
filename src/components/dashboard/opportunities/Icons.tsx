@@ -19,14 +19,21 @@ export function HeartIcon({ filled, size = 24 }: IconProps & { filled: boolean }
   );
 }
 
-export function CommentIcon({ size = 24 }: IconProps) {
+export function CommentIcon({ size = 24, count }: IconProps & { count?: number }) {
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size}
-      fill="none" stroke="#000000" strokeWidth={1.5}
-      strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.5 8.5 0 01-8.5 8.5H6l-4 4V7.5
-        A4.5 4.5 0 016.5 3h6A8.5 8.5 0 0121 11.5z" />
-    </svg>
+    <span style={{ position: "relative", display: "inline-flex" }}>
+      <svg viewBox="0 0 24 24" width={size} height={size}
+        fill="none" stroke="#000000" strokeWidth={1.5}
+        strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 11.5a8.5 8.5 0 01-8.5 8.5H6l-4 4V7.5
+          A4.5 4.5 0 016.5 3h6A8.5 8.5 0 0121 11.5z" />
+      </svg>
+      {count !== undefined && count > 0 && (
+        <span style={{ position: "absolute", top: -4, right: -6, minWidth: 14, height: 14, borderRadius: 7, background: "#000000", color: "#ffffff", fontSize: "0.5625rem", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>
+          {count > 99 ? "99+" : count}
+        </span>
+      )}
+    </span>
   );
 }
 

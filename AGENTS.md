@@ -5,7 +5,8 @@
 **You are joining after Sprint 19 (Opportunity Feed, Pipeline, AI Service, Ads).** Do not start from scratch. Read this first.
 
 ### Current State
-- **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (14 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
+- **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
+- **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed. 5 new DB tables, PDF generation, Stripe integration.
 - **Sprint 16, System 2 (Trade Show Group Savings)** — built and deployed. Paused before booking phase.
 - **Sprint 16, System 3 (Opportunity Score)** — built and deployed.
 - **Sprint 18 — Feed, Growth Mechanics, Affiliates** — built and deployed.
@@ -29,7 +30,7 @@
 ### Where to Start
 1. Read this entire AGENTS.md (platform overview, architecture, all sprints, all sessions)
 2. Read `reports/sprint_19_complete_walkthrough.md` for the full Sprint 19 walkthrough
-3. **To activate Sprint 19:** Run all 14 SQL migrations in Supabase SQL Editor in order (listed in the walkthrough §15)
+3. **To activate Sprint 19:** Run all 10 SQL migrations in Supabase SQL Editor in order (listed in the walkthrough §15)
 4. Read `reports/sprint_16_trade_show_booking_flow_analysis.md` for the booking phase plan
 5. Read the relevant sprint SQL files in `swiipt/` for schema context
 6. Ask the user: "Has the booking phase been validated with real users yet? Or should I build it?"
@@ -37,12 +38,11 @@
 ### Current Pending Items
 | Priority | Item | Status |
 |----------|------|--------|
-| 1 | Sprint 19 — Run 14 SQL migrations in Supabase Editor | ⏳ 14 SQL files ready, execute in order (see §15 of walkthrough) |
-| 2 | Sprint 19 — Verify live: feed, pipeline, signals, ads, search | ⏳ After SQL migrations |
-| 3 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
-| 4 | Group Buy ⏱→✅ transition in modal | ⏳ `reports/group-buy-pending-confirmed-transition-plan.md` |
-| 5 | Dashboard Home Restructure — feed as primary screen | ⏳ `docs/sprint_17_18_priority_order.md` (routing change in middleware.ts) |
-| 6 | Affiliate Management — env vars, pg_cron SQL, e2e testing | ⏳ Sessions 30-32 ops remain |
+| 1 | Sprint 19 — Run 10 SQL migrations in Supabase Editor | ⏳ 10 SQL files ready, execute in order (see §15 of walkthrough) |
+| 2 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
+| 3 | Group Buy ⏱→✅ transition in modal | ⏳ `reports/group-buy-pending-confirmed-transition-plan.md` |
+| 4 | Dashboard Home Restructure — feed as primary screen | ⏳ `docs/sprint_17_18_priority_order.md` (routing change in middleware.ts) |
+| 5 | Affiliate Management — env vars, pg_cron SQL, e2e testing | ⏳ Sessions 30-32 ops remain |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -105,9 +105,9 @@ On every new `auth.users` insert, `handle_new_user()` trigger:
 - Grants +20 mobility score for account creation
 
 ### Database
-- **43 tables** total (Sprint 0 foundation: 24 tables; expanded through sprints — see §6 for full list)
+- **~48 tables** total (Sprint 0 foundation: 24 tables; expanded through sprints — see §6 for full list)
 - RLS enabled on all tables — service client bypasses for admin operations
-- Realtime enabled on: `deposits`, `notifications`, `document_requests`, `savings_goals`, `leaderboard_entries`, `holiday_bookings`
+- Realtime enabled on: `deposits`, `notifications`, `document_requests`, `savings_goals`, `leaderboard_entries`, `holiday_bookings`, `group_buy_members`, `service_orders`
 - All pricing: multi-currency columns (NGN, USD, AED, QAR, GBP, CAD, EUR)
 - Every significant action logged to `activity_log` (user_id, event_type, event_data JSONB)
 - All admin destructive actions recorded in `admin_audit_log` (immutable, with previous/new values)
@@ -120,6 +120,9 @@ On every new `auth.users` insert, `handle_new_user()` trigger:
 - `increment_goal_balance(goal_id, amount)` — Atomic balance increment with return
 - `update_leaderboard_entry(user_id)` — Upserts referral count, recalculates ranks
 - `calculate_readiness_score(user_id)` — Computes 0–100 readiness score (identity/financial/docs/services/engagement)
+- `calculate_financial_profile(user_id)` — Computes financial profile metrics (Sprint 17)
+- `next_certificate_number(cert_prefix)` — Generates sequential certificate numbers with prefix (Sprint 17)
+- `check_and_update_trade_show_group_funding(group_id)` — Checks if all trade show group members are funded, updates group status (Sprint 16)
 - `get_total_aum()` — Sums `total_locked_ngn` across all wallets
 - `get_signups_by_day()` — Daily signup counts for analytics
 
@@ -218,16 +221,29 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `leaderboard_entries` | Rankings per period |
 | `user_preferences` | Notification preferences |
 
-### Opportunity Feed & Intelligence (Sprint 19)
+### Global Profile, Certificates & Escrow (Sprint 17)
+| Table | Purpose |
+|-------|---------|
+| `financial_profiles` | User financial profile metrics (savings velocity, consistency, readiness) |
+| `platform_certificates` | Proof of Funds and Trust Certificates (SWP-PC-, SWP-TC- prefix, expiry) |
+| `platform_partners` | Agent/partner registration, commission rates, status |
+| `escrow_deals` | Milestone-based escrow between users and agents |
+| `diaspora_gifts` | Diaspora gift funding sessions (Stripe Checkout, FX + 1.5% fee) |
+
+### Opportunity Feed & Intelligence (Sprint 18–19)
 | Table | Purpose | Key Columns |
 |-------|---------|-------------|
-| `opportunity_types` | Data-driven opportunity type catalog (9 seed types) | id, slug, label, emoji, bg_color, text_color, is_active |
-| `opportunity_signals` | User behavioural signals on opportunities | user_id, opportunity_id, signal_type (view/expand/save/apply/dismiss/share/like/dwell_short/dwell_long/comment), metadata JSONB |
-| `user_interest_model` | Per-user 7-layer interest scores | user_id, scores JSONB (segment, country, type, recency, engagement, source, diversity), last_computed_at |
+| `career_segments` | Career segment catalog (job_seeker, student, healthcare, etc.) | slug, name, icon, color, text_color |
+| `opportunities` | Opportunity listings (jobs, scholarships, visas, etc.) | title, organisation, type, location_country, application_url, is_featured, cover_image_url, published_at |
+| `user_opportunity_feed` | Personalised feed per user | user_id, opportunity_id, relevance_score, is_saved, is_applied, is_dismissed |
+| `opportunity_types` | Data-driven opportunity type catalog (9 seed types) | slug, label, emoji, bg_color, text_color |
+| `opportunity_signals` | User behavioural signals on opportunities | signal_type (view/expand/save/apply/dismiss/share/like/dwell_short/dwell_long/comment) |
+| `user_interest_model` | Per-user 7-layer interest scores | scores JSONB (segment, country, type, recency, engagement, source, diversity) |
 | `opportunity_comments` | Phase B comments on opportunities (table only, no UI yet) | user_id, opportunity_id, body, is_flagged |
-| `opportunity_queue` | Raw ingested items awaiting processing | source_id, raw_data JSONB, status (pending/processing/published/rejected/error), ai_result JSONB, needs_review, review_reason |
-| `opportunity_sources` | Source registry with trust tiers | name, url, source_type, trust_tier (trusted/standard/review_all), default_segment, format (rss/json/api/manual), is_active, last_error, error_count, is_degraded |
-| `feed_ads` | Injected sponsored ads | headline, body, cta_label, cta_url, cover_image_url, status (active/paused/ended/draft), impressions, clicks |
+| `opportunity_queue` | Raw ingested items awaiting processing | raw_data JSONB, status (pending/processing/published/rejected/error), needs_review |
+| `opportunity_sources` | Source registry with trust tiers | trust_tier (trusted/standard/review_all), format (rss/json/api/manual) |
+| `feed_ads` | Injected sponsored ads | headline, body, cta_label, cta_url, status (active/paused/ended/draft), impressions, clicks |
+| `achievement_cards` | Shareable achievement cards (WhatsApp/Instagram) | card_type, is_shared_whatsapp, is_shared_instagram, is_dismissed |
 
 ## 7. FEATURE MAP — EVERY SPRINT
 
@@ -413,7 +429,23 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Priority 4 — Goal-based holiday payment (Sessions 14-15):** Phase 1: linked_holiday_package_id on savings_goals, duplicate goal prevention, existing goal detection on detail page. Phase 2: goal_id on holiday_bookings, goal_redemption support in booking API, payment method selection UI, admin cancel reverts goal balance.
 - **NicheCTA → Goal Template Connection (Session 26 post-deploy):** `NicheCTA.tsx` and `NicheHero.tsx` updated to pass `recommended_goal_template_id` through signup return URL. NicheHero converted to `"use client"` with auth check — logged-in users go directly to `/dashboard/goals/new?template={id}`, logged-out users go via `/signup?return=...`. Closes Loop 1 end-to-end.
 
-### Sprint 19 — Opportunity Feed, Pipeline, AI Service, Behavioural Engine & Ads (Built — SQL Pending)
+### Sprint 17 — Global Profile, Certificates, Agent Escrow & Diaspora Gifts
+- **Phase 0 — Database:** 5 new tables (`financial_profiles`, `platform_certificates`, `platform_partners`, `escrow_deals`, `diaspora_gifts`) + RLS + 6 users columns + 7 indexes + `certificate_seq` + `calculate_financial_profile()` function
+- **Phase 1 — Global Profile:** `/dashboard/profile/page.tsx` (server, parallel fetches, auto-recalc if stale >24h), `GlobalProfile.tsx` (3-column client: Identity/Financial/Global), `POST /api/financial-profile/recalculate`, fire-and-forget trigger in deposit confirm route, "My Profile" at sidebar index 2
+- **Phase 2 — Proof of Funds:** `POST /api/certificates/proof-of-funds` (validates goal ≥₦50K, fee deposit, 30-day expiry), public verify page at `/verify/[code]`, `ProofOfFundsDocument.tsx` (PDF via `@react-pdf/renderer`), `GET /api/certificates/[code]/download`, certificate list + request page at `/dashboard/profile/certificates`
+- **Phase 3 — Trust Certificate:** `POST /api/certificates/trust` (reads `financial_profiles` + `users`, `SWP-TC-` prefix, 90-day expiry), `TrustCertificateDocument.tsx` (PDF with tenure/trust score/compliance badges)
+- **Phase 4 — Agent Escrow Portal:** Public partner registration (`/partners/apply`), agent directory with filter bar (`/dashboard/find-agent`), `PartnerCard.tsx`, agent detail + escrow deal form with milestone builder, `POST /api/escrow/create-deal`, two-step `POST /api/escrow/complete-milestone` + `POST /api/escrow/admin-confirm-milestone`, admin partners list + detail with commission rate editor and audit log, sidebar entries (Partners at index 23, "Find an Agent" at index 13)
+- **Phase 5 — Diaspora Gift:** Public `/fund/[goalId]` page with amount/currency/giver form, `POST /api/diaspora-gifts/create-session` (Stripe Checkout with FX rate + 1.5% fee), `POST /api/diaspora-gifts/webhook` (signature verify, goal balance increment, milestone checks, notification), "Share gift link" button in `GoalDetailView.tsx`
+- **Key constraint compliance:** Table name `diaspora_gifts` (not `goal_gifts`), routes at `/api/diaspora-gifts/*` (not `/api/gifts/*`), public page at `/fund/[goalId]` (not `/gift/[goalId]`)
+- **Build verified:** `npm run build` — zero TS errors across all phases
+
+### Sprint 18 — Feed, Growth Mechanics & Affiliate Management (Built)
+- **Phase C — The Feed:** `user_opportunity_feed` table, 18 seeded opportunities, personalised feed generation API (`POST /api/opportunities/feed`), track/save endpoints, `OpportunityCard.tsx` with infinite scroll/animated cards/featured placements, feed page at `/dashboard/opportunities` with filters + segment selector + detail page + onboarding flow. Achievement card triggers on order completion. `OpportunityScore.tsx` upgraded from formula to real DB count.
+- **Phase D — Growth Mechanics:** `achievement_cards` table with 11 card types (`goal_created`, milestones, `goal_funded`, `service_ordered/completed`, `visa_approved`, `certificate_issued`, `joined_swiipt`, `readiness_score`). Auto-generated on key events. WhatsApp/Instagram share with Canvas 1080×1080 PNG download. `SuccessStoryPrompt` + `SuccessStoryForm` for users to share stories after service completion. `CampaignBanner` for viral campaigns. `/admin/campaigns` list + create pages with admin APIs.
+- **Affiliate Management (Phase A–E):** Complete admin panel: `admin_affiliates_phase_a.sql` (RLS + `affiliate_withdrawals` table), 12 API routes (list, detail drill-down, update-tier, adjust-earnings, reset-code, withdrawals queue + process, modules CRUD + reorder), 7 admin pages + 5 components (list with stats/search/filters, detail with 5 tabs + 4 action modals, withdrawals queue with approve/reject, modules list + create/edit forms + preview, sub-affiliate tree). Phase D: pending withdrawal flow (inserts into `affiliate_withdrawals` instead of inline deduction, admin broadcast notification). Phase E: audit logs for all module CRUD. Gap fixes: view-as-user admin preview, reset-code retry loop, all-time leaderboard + reset trigger. Only ops remain: env vars, pg_cron SQL, test.
+- **Commits:** Sprint 18 Phases C+D: Session 28-29 commits; Affiliates Phase A: `1260f22`, Phase B: `4b1ef84`, Phase C: `be6b190`, Phase D: `b48966e`, Phase E: `d075642`, gaps: `1b30bc6`, bottom tabs fix: `e9902b2`
+
+### Sprint 19 — Opportunity Feed, Pipeline, AI Service, Behavioural Engine & Ads
 - **Master spec:** `docs/Sprint_19_Unified.md` (3,320 lines — merged base spec + behavioral learning + pipeline + Feed/Media/Interactivity/Ads)
 - **Implementation plan:** `docs/Sprint_19_Implementation_Plan.md` (817 lines — 9 source docs, phased build, 27-item verification audit, 14-step SQL execution order)
 - **Complete walkthrough:** `reports/sprint_19_complete_walkthrough.md`
@@ -427,16 +459,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **§D Behavioural Engine:** 11 signal types (view/expand/save/apply/dismiss/share/like/dwell), capture endpoint, 7-layer interest model computation, batch cron-ready endpoint, feed scoring with source diversity penalty
 - **§E Feed Ads:** `feed_ads` table, admin CRUD (list, create, toggle), injection every 7 positions with "Sponsored" label
 - **§F Seed Data:** 62 opportunity sources across all segments, 20 extra seed opportunities
-- **SQL migrations to run:** 14 files in order (see walkthrough §15 for full list)
+- **SQL migrations to run:** 10 files in order (see walkthrough §15 for full list)
 - **Git push:** `0d681d1` on `main`
-
-### Sprint 18 — Feed, Growth Mechanics & Affiliate Management (Built)
-- **Phase C — The Feed:** `user_opportunity_feed` table, 18 seeded opportunities, personalised feed generation API (`POST /api/opportunities/feed`), track/save endpoints, `OpportunityCard.tsx` with infinite scroll/animated cards/featured placements, feed page at `/dashboard/opportunities` with filters + segment selector + detail page + onboarding flow. Achievement card triggers on order completion. `OpportunityScore.tsx` upgraded from formula to real DB count.
-- **Phase D — Growth Mechanics:** `achievement_cards` table with 11 card types (`goal_created`, milestones, `goal_funded`, `service_ordered/completed`, `visa_approved`, `certificate_issued`, `joined_swiipt`, `readiness_score`). Auto-generated on key events. WhatsApp/Instagram share with Canvas 1080×1080 PNG download. `SuccessStoryPrompt` + `SuccessStoryForm` for users to share stories after service completion. `CampaignBanner` for viral campaigns. `/admin/campaigns` list + create pages with admin APIs.
-- **Affiliate Management (Phase A–E):** Complete admin panel: `admin_affiliates_phase_a.sql` (RLS + `affiliate_withdrawals` table), 12 API routes (list, detail drill-down, update-tier, adjust-earnings, reset-code, withdrawals queue + process, modules CRUD + reorder), 7 admin pages + 5 components (list with stats/search/filters, detail with 5 tabs + 4 action modals, withdrawals queue with approve/reject, modules list + create/edit forms + preview, sub-affiliate tree). Phase D: pending withdrawal flow (inserts into `affiliate_withdrawals` instead of inline deduction, admin broadcast notification). Phase E: audit logs for all module CRUD. Gap fixes: view-as-user admin preview, reset-code retry loop, all-time leaderboard + reset trigger. Only ops remain: env vars, pg_cron SQL, test.
-- **Commits:** Sprint 18 Phases C+D: Session 28-29 commits; Affiliates Phase A: `1260f22`, Phase B: `4b1ef84`, Phase C: `be6b190`, Phase D: `b48966e`, Phase E: `d075642`, gaps: `1b30bc6`, bottom tabs fix: `e9902b2`
-
-## 8. API ROUTES — COMPLETE INDEX
 
 ### Auth & User
 - `POST /api/settings/update-profile` — Update name, phone, country
@@ -458,8 +482,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - `POST /api/flights/book` — Create Duffel booking order
 
 ### Holidays
-- `POST /api/holidays/book` — Create holiday booking
-- `POST /api/holidays/confirm-payment` — Confirm holiday payment
+- `POST /api/holidays/book` — Create holiday booking (supports goal_redemption + direct_payment)
+- `POST /api/holidays/confirm-payment` — Confirm holiday payment (sets payment_submitted)
 
 ### Group Buy & Trade Shows
 - `POST /api/group-buy/create` — Create group with discount
@@ -467,11 +491,12 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - `POST /api/group-buy/leave` — Withdraw from group
 - `POST /api/group-buy/pay` — Initiate payment for filled group
 - `POST /api/group-buy/expire` — Cron: expire stale groups
+- `POST /api/group-buy/confirm-payment` — User confirms bank transfer sent (sets user_confirmed_at)
+- `GET /api/group-buy/payment-status` — Check for existing pending payment (resumable)
+- `POST /api/group-buy/cancel-payment` — Cancel pending payment and revert to `committed`
 - `POST /api/trade-shows/create-group` — Creates trade show group + savings goal + membership for organizer
 - `POST /api/trade-shows/join-group` — Joins via invite code, creates savings goal + membership
 - `POST /api/readiness/recalculate` — Recalculate and return readiness score
-- `GET /api/group-buy/payment-status` — Check for existing pending payment (resumable)
-- `POST /api/group-buy/cancel-payment` — Cancel pending payment and revert to `committed`
 
 ### Rewards & Referrals
 - `POST /api/rewards/convert` — Convert reward to locked credit
@@ -483,19 +508,67 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 
 ### Documents
 - `POST /api/documents/upload` — Upload to document request
-- `POST /api/documents/vault` — Upload to document vault
+- `POST /api/documents/vault-upload` — Upload to document vault
 - `POST /api/documents/use-vault-doc` — Use vault doc for request
 
 ### Community
 - `POST /api/community/thread` — Create thread
 - `POST /api/community/reply` — Reply to thread
 
+### Certificates & Financial Profile
+- `POST /api/certificates/proof-of-funds` — Generate Proof of Funds certificate (requires goal ≥₦50K)
+- `POST /api/certificates/trust` — Generate Trust Certificate
+- `GET /api/certificates/[code]/download` — Download certificate PDF
+- `POST /api/financial-profile/recalculate` — Recalculate financial profile
+
+### Diaspora Gifts (Sprint 17)
+- `POST /api/diaspora-gifts/create-session` — Create Stripe Checkout session for gift
+- `POST /api/diaspora-gifts/webhook` — Stripe webhook handler
+
+### Escrow (Sprint 17)
+- `POST /api/escrow/create-deal` — Create escrow deal with milestones
+- `POST /api/escrow/complete-milestone` — User marks milestone complete
+- `POST /api/escrow/admin-confirm-milestone` — Admin confirms milestone
+- `POST /api/escrow/flag-dispute` — Flag dispute on milestone
+- `POST /api/escrow/resolve-dispute` — Admin resolves dispute
+
+### Partners (Sprint 17)
+- `POST /api/partners/apply` — Public partner/agent registration
+
+### Affiliate (Sprint 18)
+- `POST /api/affiliate/init` — Initialize affiliate status for user
+- `POST /api/affiliate/complete-module` — Mark university module complete
+- `POST /api/affiliate/upgrade-tier` — Upgrade affiliate tier
+- `POST /api/affiliate/withdraw` — Request withdrawal (inserts into affiliate_withdrawals)
+
+### Opportunities & Feed (Sprint 18–19)
+- `POST /api/opportunities/feed` — Generate personalised feed (supports search mode via query/type/country params)
+- `POST /api/opportunities/track` — Track apply/view clicks
+- `POST /api/opportunities/save` — Save opportunity to feed
+- `POST /api/opportunities/like` — Toggle like on opportunity
+- `GET /api/opportunities/apply` — Tracked redirect: increments count, upserts feed, redirects to external URL
+- `POST /api/opportunities/signal` — Capture behavioural signals (view/expand/save/apply/dismiss/share/dwell)
+- `POST /api/opportunities/track-signal` — Fire service_click signal for Service CTA
+- `POST /api/opportunities/refresh` — Refresh feed
+- `POST /api/opportunities/paste-url` — AI-prefill from URL (admin)
+- `POST /api/opportunities/compute-interest` — Compute per-user interest model
+- `POST /api/opportunities/compute-interest-batch` — Cron: batch compute (max 100 users)
+- `GET /api/opportunity-types` — List active opportunity types
+- `GET /api/career-segments` — List active career segments
+
+### Achievements & Success Stories (Sprint 18)
+- `POST /api/achievements/generate-card` — Generate achievement card (11 types)
+- `GET /api/achievements/list` — List user's achievement cards
+- `POST /api/achievements/mark-shared` — Mark card as shared
+- `POST /api/achievements/dismiss` — Dismiss card
+- `POST /api/success-stories/submit` — Submit success story
+
 ### Subscriptions & Cron
 - `POST /api/subscribe` — Email capture
 - `GET /api/messaging/scheduled/expire-deposits` — Cron: expire stale deposits (06:00 UTC)
 - `GET /api/cron/expire-visa-redemptions` — Cron: expire visa redemptions (06:30 UTC)
 
-### Admin APIs (52 routes)
+### Admin APIs (~67 routes)
 
 **Deposits:** confirm, reject
 **Withdrawals:** process
@@ -510,8 +583,10 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **Eligibility:** upsert, delete
 **Goal Templates:** upsert, toggle
 **Groups:** update-status
+**Trade Shows:** upsert, toggle
 **Leaderboard:** award-prize, reset
 **Promotions:** create, toggle
+**Campaigns:** create, toggle
 **Notifications:** broadcast
 **Settings:** update
 **Currencies:** update-rate
@@ -519,21 +594,15 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **Corporate:** upsert
 **Float:** entry
 **Visa Redemptions:** update-status
-**Affiliates (12 routes):** list, detail, update-tier, adjust-earnings, reset-code, withdrawals list, withdrawals process, modules list/create, modules update/delete, modules reorder
-**Achievements:** generate-card, list, mark-shared, dismiss
-**Campaigns:** create, toggle
-**Opportunities:** create, toggle, update
-**Opportunity Queue:** list (GET), publish/reject (POST)
-**Ingest:** ingest RSS/API sources (POST, internal)
-**Link Checker:** check-links (POST, internal)
-**Feed:** generate (POST), signal capture (POST), like toggle (POST), apply redirect (GET), save (POST), track (POST), track-signal (POST), paste-url AI-prefill (POST)
-**Interest Model:** compute-interest (POST), compute-interest-batch (POST, cron)
-**Feed Ads:** list (GET), create (POST), toggle (POST)
-**Opportunity Types:** list (GET)
-**Career Segments:** list (GET)
 **Certificates:** revoke
 **Partners:** update-status
-**AI Providers:** create, toggle, test, update
+**AI Providers:** create, toggle, test, update ([id])
+**Affiliates (12 routes):** list, detail, update-tier, adjust-earnings, reset-code, withdrawals list, withdrawals process, modules list/create, modules update/delete, modules reorder
+**Achievements:** generate-card, list, mark-shared, dismiss
+**Opportunities:** create, toggle, update ([id])
+**Opportunity Queue:** list (GET), publish/reject (POST)
+**Pipeline:** process-queue (POST), ingest (POST), check-links (POST)
+**Feed Ads:** list (GET), create (POST), toggle (POST)
 
 ## 9. KEY FILES REFERENCE
 
@@ -544,19 +613,71 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `src/lib/supabase/client.ts` | Browser client (anon key, for client components) |
 | `src/lib/supabase/server.ts` | Server client (anon key, cookie-based for server components) |
 | `src/lib/supabase/service.ts` | **Service client** (service role key, bypasses RLS for admin) |
-| `src/types/database.ts` | Full type definitions for all 43 tables + RPCs |
+| `src/types/database.ts` | Full type definitions for all ~48 tables + RPCs |
 | `src/app/(admin)/layout.tsx` | Admin auth gate + sidebar (service client pattern) |
-| `src/components/admin/shell/AdminSidebar.tsx` | Admin sidebar nav (add new entries here) |
-| `src/app/(admin)/admin/` | All 42+ admin page routes |
-| `src/app/api/admin/` | All 36 admin API routes |
+| `src/components/admin/shell/AdminSidebar.tsx` | Admin sidebar nav — **31 items, add new entries here** |
+| `src/app/(admin)/admin/` | All 70+ admin page routes |
+| `src/app/api/admin/` | All ~67 admin API routes |
 | `src/app/(dashboard)/layout.tsx` | Dashboard shell layout |
-| `src/components/dashboard/shell/Sidebar.tsx` | Dashboard sidebar nav |
+| `src/components/dashboard/shell/Sidebar.tsx` | Dashboard sidebar nav — **17 items, add new entries here** |
 | `src/app/(public)/page.tsx` | Landing page assembly |
 | `src/components/landing/` | All landing page components (Navbar, Hero, etc.) |
 | `src/components/dashboard/home/OpportunityScore.tsx` | **Opportunity Score widget** — SVG circle, "X opportunities today" framing, 5 tiers, refresh button |
+| `src/lib/opportunity-types.ts` | Data-driven type/segment utilities (getOpportunityTypes, buildTypeStyleMap, buildSegmentMap) |
+| `src/lib/ai-service.ts` | AI Service abstraction — OmniRoute priority fallback, enrich(), isAIAvailable() |
+| `src/lib/ai/prompts.ts` | Task-specific prompt builders for pipeline processing |
+| `src/lib/ai/providers/index.ts` | AI provider adapter interface |
+| `src/lib/ai/providers/gemini.ts` | Gemini 1.5 Flash adapter |
+| `src/lib/ai/providers/deepseek.ts` | DeepSeek Chat adapter |
+| `src/lib/ai/providers/qwen.ts` | Qwen Plus adapter (DashScope, OpenAI-compatible) |
+| `src/lib/ai/providers/omniroute.ts` | OmniRoute provider selection logic |
+| `src/lib/og-fetch.ts` | OG tag extraction + image validation + fallback |
+| `src/lib/pdf/ProofOfFundsDocument.tsx` | PDF generation for Proof of Funds certificate |
+| `src/lib/pdf/TrustCertificateDocument.tsx` | PDF generation for Trust Certificate |
+| `src/lib/integrations/brevo.ts` | Brevo marketing email integration |
+| `src/lib/env.ts` | Environment variable helpers |
+| `src/lib/group-buy-utils.ts` | Group buy + trade show invite code generation |
+| `src/components/dashboard/opportunities/OpportunityCard.tsx` | Feed card — media, signals, engagement rail, ServiceCTA, dismiss |
+| `src/components/dashboard/opportunities/OpportunityFeed.tsx` | Single-column feed — infinite scroll, ad injection, dismiss filtering |
+| `src/components/dashboard/opportunities/OpportunityDetailModal.tsx` | Slide-up/centered detail modal with dwell tracking |
+| `src/components/dashboard/opportunities/FallbackTile.tsx` | Branded fallback tile for cards without images |
+| `src/components/dashboard/opportunities/ServiceCTA.tsx` | Dynamic service routing by type + country |
+| `src/components/dashboard/opportunities/SearchExplore.tsx` | Search/Explore page with filters + results |
+| `src/components/dashboard/opportunities/Icons.tsx` | 5 SVG engagement icons (Heart, Bubble, CurvedArrow, Bookmark, Arrow) |
+| `src/components/admin/opportunities/PasteUrlForm.tsx` | AI-prefill paste-URL form for admin |
+| `src/components/admin/opportunities/OpportunitiesList.tsx` | Admin opportunities list table |
+| `src/components/admin/opportunities/CreateOpportunityForm.tsx` | Admin create opportunity form |
+| `src/components/admin/opportunities/EditOpportunityForm.tsx` | Admin edit opportunity form |
+| `src/components/admin/opportunities/OpportunityQueueList.tsx` | Admin queue review list (Publish/Reject) |
+| `src/components/dashboard/home/AchievementCardSection.tsx` | Achievement cards with WhatsApp/Instagram share |
+| `src/components/dashboard/home/CampaignBanner.tsx` | Viral campaign banner on dashboard home |
+| `src/components/dashboard/affiliate/AffiliateHub.tsx` | Affiliate dashboard with earnings, tools, leaderboard |
+| `src/components/dashboard/profile/GlobalProfile.tsx` | 3-column financial/global profile |
+| `src/components/public/certificates/VerificationPage.tsx` | Public certificate verification page |
+| `src/app/(dashboard)/dashboard/opportunities/page.tsx` | Feed page at `/dashboard/opportunities` |
+| `src/app/(dashboard)/dashboard/opportunities/search/page.tsx` | Search/Explore page |
+| `src/app/(dashboard)/dashboard/opportunities/onboarding/page.tsx` | Feed onboarding flow |
+| `src/app/(dashboard)/dashboard/opportunities/[opportunityId]/page.tsx` | Opportunity detail page |
+| `src/app/(dashboard)/dashboard/affiliate/**` | 6 affiliate pages (hub, tools, earnings, leaderboard, university, module) |
+| `src/app/(dashboard)/dashboard/find-agent/**` | Agent directory pages |
+| `src/app/(public)/fund/[goalId]/**` | Diaspora gift public page |
+| `src/app/(public)/verify/[code]/**` | Certificate verification page |
+| `src/app/(public)/partners/apply/**` | Partner registration page |
+| `src/app/(admin)/admin/opportunities/queue/page.tsx` | Admin queue review page |
+| `src/app/(admin)/admin/feed-ads/page.tsx` | Admin feed ads list page |
+| `src/app/(admin)/admin/feed-ads/new/page.tsx` | Admin feed ads create page |
 | `docs/sprint_16_system3_build_plan.md` | System 3 build plan — conflict analysis, 7-phase implementation, Sprint 18 upgrade path |
 | `docs/sprint_17_build_plan.md` | Sprint 17 build plan — 5 features (Global Profile, Certificates, Agent Escrow, Diaspora Gifts), 5 new DB tables, phase-by-phase implementation |
+| `docs/sprint_18_complete_build_plan.md` | Sprint 18 build plan — Feed, Growth Mechanics, Affiliates |
+| `reports/sprint_19_complete_walkthrough.md` | **Sprint 19 complete walkthrough** — all sections §A–§F, 10 SQL files, file inventory |
+| `reports/sprint_19_coverage_audit.md` | Sprint 19 coverage audit |
+| `reports/sprint_19_gap_analysis_report.md` | Sprint 19 gap analysis |
+| `reports/sprint_19_impl_vs_unified_gap_analysis.md` | Sprint 19 implementation vs unified spec gap analysis |
+| `reports/sprint_19_remaining_gaps_report.md` | Sprint 19 remaining gaps |
 | `reports/opportunity_score_testing_walkthrough.md` | Testing walkthrough for Opportunity Score — 7 trigger points, admin display |
+| `reports/sprint_16_trade_show_booking_flow_analysis.md` | Trade show booking phase plan (paused) |
+| `reports/group-buy-pending-confirmed-transition-plan.md` | Plan: add ⏱→✅ transition to group buy modal |
+| `reports/admin_affiliate_management_build_plan.md` | Affiliate management build plan |
 | `docs/movenaija_claude_code_direction_v2.md` | Master direction document (1933 lines) |
 | `reports/sprint_16_investigation_report.md` | Sprint 16 investigation with 4 priorities |
 | `reports/admin_api_rls_audit.md` | Audit of 33 admin API routes (22 broken) |
@@ -566,26 +687,15 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `reports/holiday_booking_admin_workflow_plan.md` | Admin workflow plan for holiday bookings |
 | `reports/holiday_booking_testing_walkthrough.md` | Testing walkthrough for holiday booking flow |
 | `reports/priority_2_implementation_plan.md` | Group buy payment flow implementation plan (Sprint 16 Priority 2) |
+| `reports/realtime-payment-confirmation-implementation-plan.md` | Implementation plan for Realtime payment confirmation across all 3 flows |
+| `reports/sprint_17_testing_walkthrough.md` | Sprint 17 testing walkthrough |
 | `reports/findings/group-buy-payment-status-inconsistency.md` | Root cause analysis: admin confirmation from Orders/Holidays page doesn't sync group_buy_members |
 | `reports/findings/service-vs-group-buy-payment-flows.md` | Comparison: service flow has same recovery gap as group buy (unfixed) |
 | `reports/findings/realtime-payment-confirmation-pattern.md` | Realtime payment confirmation pattern: goal deposit vs group buy vs service |
-| `reports/realtime-payment-confirmation-implementation-plan.md` | Implementation plan for Realtime payment confirmation across all 3 flows |
 | `reports/findings/goal-deposit-modal-pattern-investigation.md` | Investigation: goal deposit "pending" modal pattern (no X, overlay disabled, hard reload) |
-| `sprint_16_group_buy_payment_recovery.sql` | SQL migration: adds `user_confirmed_at` + `payment_reference` to `group_buy_members` |
-| `sprint_16_group_buy_tables.sql` | SQL migration: creates `group_buys` + `group_buy_members` tables |
-| `reports/priority_2_migration.sql` | SQL: enables Realtime on `group_buy_members` |
-| `reports/holiday_bookings_migration.sql` | SQL migration: creates `holiday_bookings` table |
-| `docs/history/` | Sprint history files (Sprint 10, Sprint 12 phases) |
-| `sprint_16_readiness_score.sql` | SQL: System 3 readiness score columns, function, log table |
-| `sprint_16_trade_show_tables.sql` | SQL: 3 trade show tables + RLS + indexes |
-| `sprint_16_trade_show_seed.sql` | SQL: 6 trade show seed rows |
-| `sprint_16_trade_show_helper_fn.sql` | SQL: check_and_update_trade_show_group_funding helper |
-| `sprint_16_confirm_deposit_mod.sql` | SQL: confirm_deposit updated with trade show + readiness blocks |
-| `reports/sprint_16_system2_conflict_analysis.md` | Conflict analysis: System 2 vs existing codebase (17 findings) |
-| `reports/sprint_16_system2_build_plan.md` | Complete 6-phase build plan with resolved conflicts |
-| `reports/sprint_16_analysis_and_plan.md` | Sprint 16 investigation with 4 priorities |
-| `reports/group-buy-pending-confirmed-transition-plan.md` | Plan: add ⏱→✅ transition to group buy modal |
-| `reports/findings/realtime-auto-close-not-firing.md` | Superseded: earlier investigation into auto-close (incorrect root cause) |
+| `reports/findings/service-goal-redemption-wallet-history-gaps.md` | Wallet balance + transaction history gaps for service goal redemption |
+| `reports/findings/service-credit-double-deduction.md` | Credit double-deduction root cause and fix |
+| `reports/findings/modal-auto-close-investigation.md` | Modal auto-close investigation (router.refresh vs window.location.reload) |
 | `docs/Sprint_19_Unified.md` | **Sprint 19 master spec** — 3,320 lines, merged base + behavioral + pipeline + Feed/Media/Interactivity/Ads |
 | `docs/Sprint_19_Implementation_Plan.md` | **Sprint 19 implementation plan** — 817 lines, 9 source docs, phased build, 27-item verification audit |
 | `docs/sprint_19_amendment_1_fix3_to_search.md` | Amendment 1 — Search/Explore replaces always-on filter strip |
@@ -594,29 +704,6 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `docs/sprint_19_gap_resolution.md` | 4 pre-build gaps resolved (DB types, OG fetching, ads panel, comments) |
 | `docs/pre_sprint_19_data_driven_types.md` | Pre-cleanup spec for data-driven opportunity types |
 | `docs/Sprint 19 resolution` | Architecture discussion — Opportunity Engine model, three-tier trust |
-| `src/lib/opportunity-types.ts` | Data-driven type/segment utilities (getOpportunityTypes, buildTypeStyleMap, buildSegmentMap) |
-| `src/lib/ai-service.ts` | AI Service abstraction — OmniRoute priority fallback, enrich(), isAIAvailable() |
-| `src/lib/ai/prompts.ts` | Task-specific prompt builders for pipeline processing |
-| `src/lib/ai/providers/gemini.ts` | Gemini 1.5 Flash adapter |
-| `src/lib/ai/providers/deepseek.ts` | DeepSeek Chat adapter |
-| `src/lib/og-fetch.ts` | OG tag extraction + image validation + fallback |
-| `src/components/dashboard/opportunities/OpportunityCard.tsx` | Feed card — media, signals, engagement rail, ServiceCTA, dismiss |
-| `src/components/dashboard/opportunities/OpportunityFeed.tsx` | Single-column feed — infinite scroll, ad injection, dismiss filtering |
-| `src/components/dashboard/opportunities/OpportunityDetailModal.tsx` | Slide-up/centered detail modal with dwell tracking |
-| `src/components/dashboard/opportunities/FallbackTile.tsx` | Branded fallback tile for cards without images |
-| `src/components/dashboard/opportunities/ServiceCTA.tsx` | Dynamic service routing by type + country |
-| `src/components/dashboard/opportunities/SearchExplore.tsx` | Search/Explore page with filters + results |
-| `src/components/admin/opportunities/PasteUrlForm.tsx` | AI-prefill paste-URL form for admin |
-| `src/components/admin/opportunities/OpportunitiesList.tsx` | Admin opportunities list table |
-| `src/components/admin/opportunities/CreateOpportunityForm.tsx` | Admin create opportunity form |
-| `src/components/admin/opportunities/EditOpportunityForm.tsx` | Admin edit opportunity form |
-| `src/components/admin/opportunities/OpportunityQueueList.tsx` | Admin queue review list (Publish/Reject) |
-| `src/app/(dashboard)/dashboard/opportunities/page.tsx` | Feed page at `/dashboard/opportunities` |
-| `src/app/(dashboard)/dashboard/opportunities/search/page.tsx` | Search/Explore page |
-| `src/app/(dashboard)/dashboard/opportunities/[opportunityId]/page.tsx` | Opportunity detail page |
-| `src/app/(admin)/admin/opportunities/queue/page.tsx` | Admin queue review page |
-| `src/app/(admin)/admin/feed-ads/page.tsx` | Admin feed ads list page |
-| `src/app/(admin)/admin/feed-ads/new/page.tsx` | Admin feed ads create page |
 
 ## 10. PLATFORM COMPATIBILITY REGISTRY
 
@@ -638,31 +725,36 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | W3 | Notifications insert | `supabase.from("notifications").insert({ user_id, type, title, body, action_url, target_segment })` | Missing fields or different column names |
 | W4 | Fire-and-forget server-side fetch | `fetch(url, { method: "POST", ... }).catch(() => {})` | `await fetch(...)` (blocks response) |
 | W5 | Internal API fetch from server components | Uses `process.env.NEXT_PUBLIC_APP_URL` (falls back to `http://localhost:3000`) | Relative URL `/api/...` (does not resolve server-side) |
-| W6 | Dashboard sidebar `navItems` array | `Sidebar.tsx` — 12 items, exact indices matter | Inserting at wrong position breaks nav order |
-| W7 | Admin sidebar `navItems` array | `AdminSidebar.tsx` — 30 items, exact indices matter | Inserting at wrong position breaks nav order |
+| W6 | Dashboard sidebar `navItems` array | `Sidebar.tsx` — 17 items, exact indices matter | Inserting at wrong position breaks nav order |
+| W7 | Admin sidebar `navItems` array | `AdminSidebar.tsx` — 31 items, exact indices matter | Inserting at wrong position breaks nav order |
 | W8 | Build verification | `npm run build` — zero TS errors (no test framework) | Assuming Jest/Vitest/Playwright exist |
 | W9 | Stripe integration | Uses `process.env.STRIPE_SECRET_KEY` and `process.env.STRIPE_WEBHOOK_SECRET` | Environment variables vary by project |
 | W10 | Email (transactional) | Resend via `process.env.RESEND_API_KEY` | Not Brevo for transactional |
 
 ### Current Sidebar Nav State
 
-**Dashboard (`src/components/dashboard/shell/Sidebar.tsx`):**
+**Dashboard (`src/components/dashboard/shell/Sidebar.tsx`) — 17 items:**
 | Index | Label | Icon |
 |-------|-------|------|
 | 0 | Home | Home |
-| 1 | My Goals | Target |
-| 2 | Services | Globe |
-| 3 | Flights | Plane |
-| 4 | Holidays | Umbrella |
-| 5 | Groups | Users |
-| 6 | Trade Shows | Globe |
-| 7 | Documents | FileText |
-| 8 | Rewards | Gift |
-| 9 | Refer & Earn | Users |
-| 10 | Community | MessageCircle |
-| 11 | Wallet | Wallet |
+| 1 | Opportunities | Zap |
+| 2 | My Profile | User |
+| 3 | Certificates | FileText |
+| 4 | My Goals | Target |
+| 5 | Services | Globe |
+| 6 | Flights | Plane |
+| 7 | Holidays | Umbrella |
+| 8 | Groups | Users |
+| 9 | Trade Shows | Globe |
+| 10 | Documents | FileText |
+| 11 | Rewards | Gift |
+| 12 | Earn with Swiipt | DollarSign |
+| 13 | Find an Agent | Handshake |
+| 14 | Refer & Earn | Users |
+| 15 | Community | MessageCircle |
+| 16 | Wallet | Wallet |
 
-**Admin (`src/components/admin/shell/AdminSidebar.tsx`):**
+**Admin (`src/components/admin/shell/AdminSidebar.tsx`) — 31 items:**
 | Index | Label | Icon |
 |-------|-------|------|
 | 0 | Overview | LayoutDashboard |
@@ -683,18 +775,19 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | 15 | Leaderboard | Trophy |
 | 16 | Promotions | Tag |
 | 17 | Campaigns | Megaphone |
-| 18 | Affiliates | Percent |
-| 19 | AI Providers | Cpu |
-| 20 | Notifications | Bell |
-| 21 | Subscribers | Mail |
-| 22 | Partners | Handshake |
-| 23 | Corporate | Building2 |
-| 24 | Float Ledger | TrendingUp |
-| 25 | Settings | Settings |
-| 26 | Analytics | BarChart2 |
-| 27 | Landing Pages | Layout |
-| 28 | Goal Templates | Crosshair |
-| 29 | SEO Manager | Search |
+| 18 | Feed Ads | TrendingUp |
+| 19 | Affiliates | Percent |
+| 20 | AI Providers | Cpu |
+| 21 | Notifications | Bell |
+| 22 | Subscribers | Mail |
+| 23 | Partners | Handshake |
+| 24 | Corporate | Building2 |
+| 25 | Float Ledger | TrendingUp |
+| 26 | Settings | Settings |
+| 27 | Analytics | BarChart2 |
+| 28 | Landing Pages | Layout |
+| 29 | Goal Templates | Crosshair |
+| 30 | SEO Manager | Search |
 
 ### Existing Table Name Registry (Non-Obvious Conflicts)
 *Tables that future sprints might accidentally collide with:*
@@ -708,16 +801,25 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `niche_pages` | Sprint 14 | 20+ SEO landing pages with JSONB fields | Any new landing page feature |
 | `holiday_bookings` | Sprint 16 | Holiday booking records | Any new booking flow |
 | `readiness_score_log` | Sprint 16 | Score change audit trail | Any new scoring system |
+| `diaspora_gifts` | Sprint 17 | Diaspora gift funding sessions (Stripe) | Do NOT use `goal_gifts` or `/api/gifts/*` |
+| `platform_certificates` | Sprint 17 | Proof of Funds + Trust Certificates | Certificate generation, PDF, verification |
+| `escrow_deals` | Sprint 17 | Milestone-based agent escrow | Any new escrow/payment milestone feature |
+| `achievement_cards` | Sprint 18 | Shareable achievement cards | Any new card/achievement feature |
+| `opportunity_signals` | Sprint 19 | User behavioural signals | Signal weights, interest model, feed scoring |
+| `opportunity_queue` | Sprint 19 | Raw ingested pipeline items | Pipeline processing, trust tiers |
 
 ### Common Mistakes Registry
 
 1. **Using `createServiceClient()` in API routes for auth** — Service client has stub cookies (`getAll` returns `[]`), so `getUser()` fails. Use `createClient()` from `@/lib/supabase/server`.
 2. **Using relative URLs for server-side fetch** — `/api/readiness/recalculate` does not resolve from server components. Must use `process.env.NEXT_PUBLIC_APP_URL` prefix.
 3. **Omitting `id` in Supabase select queries** — Caused deposit `goal_id` to be null (Sprint 16 post-deploy bug). Always include `id` when joining to parent records.
-4. **Inserting sidebar nav items without checking exact indices** — Dashboard has 12 items, admin has 24. Insert at wrong position = broken nav order.
+4. **Inserting sidebar nav items without checking exact indices** — Dashboard has 17 items, admin has 31. Insert at wrong position = broken nav order.
 5. **Using `price_paid` for service orders** — Column does not exist. Use `final_price`.
 6. **Forgetting `setShowXxx(false)` before `router.refresh()` in pending confirmation modals** — Modal stays open because `router.refresh()` preserves client state.
 7. **Inline `display` style overriding Tailwind responsive classes** — `className="md:hidden"` + `style={{ display: "flex" }}` = always visible because inline styles win. Use `className="md:hidden flex"` instead.
+8. **`createClient()` in component body causes subscription churn** — Every React re-render creates a new Supabase client reference, causing Realtime subscriptions to tear down and re-create. Move `createClient()` inside useEffect or use a ref. (Session 21 root cause for holiday/service modal bugs.)
+9. **`window.location.reload()` vs `router.refresh()`** — `window.location.reload()` starts page navigation before React can flush batched state updates (`setShowXxx(false)` never executes). Use `router.refresh()` + `setShowXxx(false)` pattern instead. (Session 19/21.)
+10. **Inline arrow callbacks for Realtime subscription callbacks** — New reference on every render causes subscription teardown. Use `useCallback` or ref-based approach. (Session 21.)
 
 ## 11. SESSION HISTORY — COMPLETED WORK
 
@@ -1193,15 +1295,38 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 
 **Build verified:** zero errors. Pushed to `main` (`0d681d1`).
 
-**SQL migrations pending:** 14 files. Run in order in Supabase SQL Editor (see walkthrough §15).
+**SQL migrations pending:** 10 files. Run in order in Supabase SQL Editor (see walkthrough §15).
+
+**Session 37 — Sprint 19 Gap Fixes (All 4 Phases Completed):**
+
+| Phase | Gap | What Was Built |
+|-------|-----|----------------|
+| **Phase 1** | J.8 Cold-start fallback | `feed/route.ts` — trending fallback when no segment matches, null-safe profile lookups |
+| **Phase 1** | J.7 Expand signal | `OpportunityCard.tsx` — "more" click fires `signalType: "expand"` |
+| **Phase 1** | Dwell tracking | Already built in signal route (no-op) |
+| **Phase 1** | feed_ads types | `database.ts` — `feed_ads` Row/Insert/Update types added |
+| **Phase 2** | §E.5 Ad impression/click tracking | `track-impression/route.ts` + `track-click/route.ts` + IntersectionObserver + CTA click handler |
+| **Phase 3** | J.5 All opportunities list | `GET /api/admin/opportunities/all` with search/type/status filters |
+| **Phase 3** | J.4 Per-item review | `POST /api/admin/opportunities/[id]/review` with approve/reject/request_changes |
+| **Phase 3** | J.10 Individual ad CRUD | `GET/PUT/DELETE /api/admin/feed-ads/[id]` |
+| **Phase 3** | J.11 Degraded source badge | Admin opportunities page fetches degraded sources, amber badge on org column |
+| **Phase 4** | J.14 Cold-start re-ranking | `feed/route.ts` — boosts by `apply_click_count` + `view_count` when `interestModel` is null |
+| **Phase 4** | J.6 Public submission | `POST /api/opportunities/submit` inserts into `opportunity_queue` |
+| **Phase 4** | Video autoplay | Connection-aware `shouldAutoPlay()` with `navigator.connection` checks |
+| **Phase 4** | Tap-to-play | `videoRef` + onClick toggle for play/pause |
+| **Phase 4** | Comment scaffold | `CommentIcon` accepts `count` prop, black badge with 99+ cap |
+| **Phase 4** | "Why you're seeing this" | `getReasonText()` utility + italic text in OpportunityCard |
+| **Phase 4** | Dwell tracking | Invisible timer on expand/collapse, fires `dwell_long`/`dwell_short` signals |
+
+**Build verified:** zero errors. All Sprint 19 unified spec items complete (except §A.7 dismiss button — skipped per user request).
 
 ---
 
 ## 12. PENDING / FUTURE BUILD
 
-### Sprint 19 SQL Migrations (14 files — run in order)
+### Sprint 19 SQL Migrations (10 files — run in order)
 - **Order matters.** Run in Supabase SQL Editor in the sequence listed in `reports/sprint_19_complete_walkthrough.md` §15.
-- Files: `sprint_19_pre_data_driven_types.sql`, `sprint_19_phase2_ai_providers_seed.sql`, `sprint_19_media_system.sql`, `sprint_19_engagement_sql.sql`, `sprint_19_pipeline_sql.sql`, `sprint_19_feed_ads.sql`, `sprint_19_seed_sources.sql`, `sprint_19_seed_opportunities.sql`, `sprint_19_seed_additional_sources.sql`, `sprint_19_cron_compute_interest.sql`, `sprint_19_cron_ingest.sql`, `sprint_19_cron_process_queue.sql`, `sprint_19_cron_check_links.sql`, `sprint_19_source_health.sql`
+- Files: `sprint_19_pre_data_driven_types.sql`, `sprint_19_media_system.sql`, `sprint_19_engagement_sql.sql`, `sprint_19_pipeline_sql.sql`, `sprint_19_phase2_ai_providers_seed.sql`, `sprint_19_feed_ads.sql`, `sprint_19_seed_sources.sql`, `sprint_19_seed_opportunities.sql`, `sprint_19_seed_additional_sources.sql`, `sprint_19_cron_compute_interest.sql`
 
 ### Dashboard Home Restructure (Feed as Primary Screen)
 - **Plan file:** `docs/sprint_17_18_priority_order.md` (lines 29-50)

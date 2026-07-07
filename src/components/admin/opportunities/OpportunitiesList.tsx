@@ -10,7 +10,7 @@ const typeColors: Record<string, string> = {
   training: "#D97706",
 };
 
-export default function OpportunitiesList({ opportunities: initial }: { opportunities: any[] }) {
+export default function OpportunitiesList({ opportunities: initial, degradedSources }: { opportunities: any[]; degradedSources?: Set<string> }) {
   const [opportunities, setOpportunities] = useState(initial);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -57,7 +57,12 @@ export default function OpportunitiesList({ opportunities: initial }: { opportun
                 <td style={{ padding: '0.75rem 1rem', fontWeight: 600, color: 'var(--midnight)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   <a href={`/admin/opportunities/${o.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>{o.title}</a>
                 </td>
-                <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>{o.organisation}</td>
+                <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                  {o.organisation}
+                  {degradedSources?.has(o.source_name) && (
+                    <span title={`Source "${o.source_name}" is degraded`} style={{ display: 'inline-block', marginLeft: '0.375rem', padding: '1px 6px', borderRadius: '10px', fontSize: '0.6rem', fontWeight: 700, background: '#FEF3C7', color: '#D97706', verticalAlign: 'middle' }}>⚠ Source</span>
+                  )}
+                </td>
                 <td style={{ padding: '0.75rem 1rem', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{o.segment_slug}</td>
                 <td style={{ padding: '0.75rem 1rem' }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: `${typeColors[o.type] || 'var(--text-muted)'}18`, color: typeColors[o.type] || 'var(--text-muted)' }}>

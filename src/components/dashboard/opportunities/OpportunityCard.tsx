@@ -39,6 +39,7 @@ interface Oppty {
   org_logo_url?: string | null;
   service_cta_type?: string | null;
   service_url?: string | null;
+  comment_count?: number;
 }
 
 interface Props {
@@ -61,6 +62,14 @@ function formatDeadline(deadline: string): string {
   });
 }
 
+function getReasonText(opp: Oppty): string | null {
+  if (opp.relevanceScore && opp.relevanceScore >= 80) return "Highly relevant to your profile";
+  if (opp.is_featured) return "Featured opportunity";
+  if (opp.type === "scholarship") return "Popular in your segment";
+  if (opp.location_country) return `Trending in ${opp.location_country}`;
+  return null;
+}
+
 export default function OpportunityCard({ opportunity: opp, onApply, onSave }: Props) {
   const [saved, setSaved] = useState(opp.is_saved || false);
   const [liked, setLiked] = useState(opp.is_liked || false);
@@ -69,6 +78,8 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
   const [descExpanded, setDescExpanded] = useState(false);
   const [showSharePrompt, setShowSharePrompt] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const dwellStartedAt = useRef<number | null>(null);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -90,6 +101,65 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
     observer.observe(el);
     return () => { observer.disconnect(); clearTimeout(timer); };
   }, [opp.id]);
+
+  useEffect(() => {
+    if (!(opp as any).is_ad || !(opp as any).ad_data?.id) return;
+    let fired = false;
+    const el = cardRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting && !fired) {
+        fired = true;
+        fetch("/api/feed-ads/track-impression", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ adId: (opp as any).ad_data.id }),
+        }).catch(() => {});
+      }
+    }, { threshold: 0.5 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [opp.id, (opp as any).ad_data?.id, (opp as any).is_ad]);
+
+  useEffect(() => {
+    if (!descExpanded) {
+      if (dwellStartedAt.current !== null) {
+        const elapsed = (Date.now() - dwellStartedAt.current) / 1000;
+        dwellStartedAt.current = null;
+        const signalType = elapsed >= 30 ? "dwell_long" : elapsed < 5 ? "dwell_short" : null;
+        if (signalType) {
+          fetch("/api/opportunities/signal", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ opportunityId: opp.id, signalType }),
+          }).catch(() => {});
+        }
+      }
+      return;
+    }
+    dwellStartedAt.current = Date.now();
+  }, [descExpanded, opp.id]);
+
+  const handleAdClick = useCallback(() => {
+    const adId = (opp as any).ad_data?.id;
+    if (adId) {
+      fetch("/api/feed-ads/track-click", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adId }),
+      }).catch(() => {});
+    }
+    if (opp.application_url) window.open(opp.application_url, "_blank");
+  }, [opp]);
+
+  const videoAutoPlay = (() => {
+    try {
+      const conn = (navigator as any).connection;
+      if (conn?.saveData) return false;
+      if (conn?.effectiveType === "2g" || conn?.effectiveType === "slow-2g") return false;
+    } catch {}
+    return true;
+  })();
 
   const daysLeft = getDaysLeft(opp.deadline);
   const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
@@ -181,12 +251,15 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
         <div style={{ width: "100%", aspectRatio: opp.media_aspect_ratio === "16:9" ? "16 / 9" : "4 / 5", position: "relative" }}>
           {opp.video_url ? (
             <video
+              ref={videoRef}
               src={opp.video_url}
               poster={opp.thumbnail_url || undefined}
               muted
               playsInline
-              preload="none"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              autoPlay={videoAutoPlay}
+              preload={videoAutoPlay ? "metadata" : "none"}
+              onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) v.paused ? v.play() : v.pause(); }}
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "pointer" }}
             />
           ) : hasCover && opp.cover_image_url ? (
             <img
@@ -238,7 +311,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
             <span style={{ fontSize: "0.8125rem", color: "#000000", fontWeight: 400 }}>{likeCount}</span>
           </button>
           <button onClick={(e) => { e.stopPropagation(); }} title="Comment" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: "0.25rem", height: 40 }}>
-            <CommentIcon />
+            <CommentIcon count={opp.comment_count} />
           </button>
           <button onClick={(e) => { e.stopPropagation(); handleShare(); }} title="Share" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, height: 40 }}>
             <ReshareIcon />
@@ -248,7 +321,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
           <button onClick={(e) => { e.stopPropagation(); handleSave(); }} title={saved ? "Saved" : "Save"} style={{ background: "none", border: "none", cursor: "pointer", padding: 0, height: 40 }}>
             <SaveIcon filled={saved} />
           </button>
-          <button onClick={(e) => { e.stopPropagation(); handleApply(); }} title="Apply" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, height: 40 }}>
+          <button onClick={(e) => { e.stopPropagation(); (opp as any).is_ad ? handleAdClick() : handleApply(); }} title="Apply" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, height: 40 }}>
             <ApplyIcon />
           </button>
         </div>
@@ -275,7 +348,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
         </span>
         {!descExpanded && opp.description.length > 120 && (
           <span
-            onClick={(e) => { e.stopPropagation(); setDescExpanded(true); }}
+            onClick={(e) => { e.stopPropagation(); setDescExpanded(true); fetch("/api/opportunities/signal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opportunityId: opp.id, signalType: "expand" }) }).catch(() => {}); }}
             style={{ color: "#8e8e8e", cursor: "pointer", marginLeft: "0.25rem", fontSize: "0.8125rem" }}
           >
             more
@@ -308,6 +381,15 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
           )}
         </div>
       )}
+
+      {(() => {
+        const reason = getReasonText(opp);
+        return reason ? (
+          <div style={{ fontSize: "0.75rem", color: "#8e8e8e", fontStyle: "italic", padding: "0.375rem 0.75rem 0" }}>
+            Why you&apos;re seeing this: {reason}
+          </div>
+        ) : null;
+      })()}
 
       {showSharePrompt && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(6,17,43,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem", padding: "1.5rem", zIndex: 10 }}>

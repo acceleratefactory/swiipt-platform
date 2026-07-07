@@ -1406,6 +1406,7 @@ export interface Database {
           source_url: string
           segment_slug: string | null
           is_active: boolean
+          is_degraded: boolean
           pull_frequency_hours: number
           last_pulled_at: string | null
           total_ingested: number
@@ -1415,6 +1416,35 @@ export interface Database {
         }
         Insert: Omit<Database["public"]["Tables"]["opportunity_sources"]["Row"], "id" | "created_at" | "is_active" | "total_ingested" | "total_published" | "last_pulled_at">
         Update: Partial<Database["public"]["Tables"]["opportunity_sources"]["Insert"]>
+        Relationships: []
+      }
+
+      feed_ads: {
+        Row: {
+          id: string
+          ad_type: string
+          advertiser_name: string | null
+          headline: string
+          body: string | null
+          cover_image_url: string | null
+          video_url: string | null
+          media_type: string
+          cta_label: string
+          cta_url: string
+          target_segments: string[] | null
+          target_countries: string[] | null
+          frequency: number
+          priority: number
+          status: string
+          starts_at: string | null
+          ends_at: string | null
+          budget_impressions: number | null
+          impression_count: number
+          click_count: number
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["feed_ads"]["Row"], "id" | "created_at" | "impression_count" | "click_count">
+        Update: Partial<Database["public"]["Tables"]["feed_ads"]["Insert"]>
         Relationships: []
       }
     }

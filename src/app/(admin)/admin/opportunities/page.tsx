@@ -14,6 +14,13 @@ export default async function OpportunitiesPage() {
     .select("*")
     .order("created_at", { ascending: false });
 
+  const { data: degradedSources } = await (supabase as any)
+    .from("opportunity_sources")
+    .select("name")
+    .eq("is_degraded", true);
+
+  const degradedNames = new Set<string>((degradedSources || []).map((s: any) => s.name));
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
@@ -29,7 +36,7 @@ export default async function OpportunitiesPage() {
           + Create Opportunity
         </a>
       </div>
-      <OpportunitiesList opportunities={opportunities || []} />
+      <OpportunitiesList opportunities={opportunities || []} degradedSources={degradedNames} />
     </div>
   );
 }

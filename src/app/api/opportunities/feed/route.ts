@@ -65,22 +65,52 @@ export async function POST(request: NextRequest) {
       .eq("user_id", user.id)
       .single();
 
-    if (!profile?.segment_slug) {
-      return NextResponse.json({ error: "No career profile found" }, { status: 400 });
-    }
+    const segmentSlug = profile?.segment_slug || null;
 
-    const { data: opportunities } = await supabase
+    let { data: opportunities } = await supabase
       .from("opportunities")
       .select("*")
-      .eq("segment_slug", profile.segment_slug)
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("segment_slug", segmentSlug || "__none__");
 
-    if (!opportunities || opportunities.length === 0) {
+    if (!opportunities) opportunities = [];
+
+    if (segmentSlug && opportunities.length < 5) {
+      const { data: trending } = await supabase
+        .from("opportunities")
+        .select("*")
+        .eq("is_active", true)
+        .neq("segment_slug", segmentSlug)
+        .order("apply_click_count", { ascending: false })
+        .order("published_at", { ascending: false })
+        .limit(30);
+
+      if (trending) {
+        const existingIds = new Set(opportunities.map((o: any) => o.id));
+        for (const t of trending) {
+          if (!existingIds.has(t.id)) opportunities.push(t);
+        }
+      }
+    }
+
+    if (!segmentSlug && opportunities.length === 0) {
+      const { data: trending } = await supabase
+        .from("opportunities")
+        .select("*")
+        .eq("is_active", true)
+        .order("is_featured", { ascending: false })
+        .order("apply_click_count", { ascending: false })
+        .limit(30);
+
+      if (trending) opportunities = trending;
+    }
+
+    if (opportunities.length === 0) {
       return NextResponse.json({
         feed: [],
         userReferrals: 0,
         userTier,
-        segmentSlug: profile.segment_slug,
+        segmentSlug,
       });
     }
 
@@ -107,7 +137,7 @@ export async function POST(request: NextRequest) {
     const scored = eligible.map((opp: any) => {
       let score = 50;
 
-      if (opp.segment_slug === profile.segment_slug) score += 15;
+      if (segmentSlug && opp.segment_slug === segmentSlug) score += 15;
 
       if (interestModel?.segment_scores) {
         const segAff = interestModel.segment_scores[opp.segment_slug] || 0;
@@ -115,7 +145,7 @@ export async function POST(request: NextRequest) {
       }
 
       if (
-        profile.desired_countries &&
+        profile?.desired_countries &&
         profile.desired_countries.some(
           (c: string) => c.toLowerCase() === (opp.location_country || "").toLowerCase()
         )
@@ -130,14 +160,14 @@ export async function POST(request: NextRequest) {
 
       if (
         opp.type === "scholarship" &&
-        profile.desired_roles?.includes("scholarship")
+        profile?.desired_roles?.includes("scholarship")
       ) {
         score += 15;
       }
 
       if (
         opp.type === "job" &&
-        profile.desired_roles?.length &&
+        profile?.desired_roles?.length &&
         profile.desired_roles.some(
           (r: string) =>
             opp.title.toLowerCase().includes(r.toLowerCase()) ||
@@ -162,6 +192,11 @@ export async function POST(request: NextRequest) {
       if (opp.is_featured) score += 10;
 
       if (appliedIds.has(opp.id)) score -= 40;
+
+      if (!interestModel) {
+        score += Math.min(15, Math.round((opp.apply_click_count || 0) * 0.5));
+        score += Math.min(10, Math.round((opp.view_count || 0) * 0.1));
+      }
 
       return { ...opp, relevanceScore: Math.max(0, Math.min(100, score)) };
     });
@@ -238,7 +273,7 @@ export async function POST(request: NextRequest) {
       feed: injected,
       userReferrals: referralCount ?? 0,
       userTier,
-      segmentSlug: profile.segment_slug,
+      segmentSlug,
     });
   } catch (error) {
     console.error("Feed generation error:", error);
