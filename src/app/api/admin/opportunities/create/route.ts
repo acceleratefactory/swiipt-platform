@@ -52,11 +52,12 @@ export async function POST(request: NextRequest) {
   );
 
   if (cover.cover_image_url) {
+    const mediaSource = cover.cover_source === "branded" ? "fallback" : "fetched";
     await (supabase as any)
       .from("opportunities")
       .update({
         cover_image_url: cover.cover_image_url,
-        media_source: cover.cover_source,
+        media_source: mediaSource,
         media_type: "image",
       })
       .eq("id", data.id);
