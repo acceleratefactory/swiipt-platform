@@ -589,12 +589,15 @@ GROUP BY source_id;
 ### Phase 1 — Fix What's Broken (1-2 days)
 - Wire `fetchOGMedia()` into `process-queue/route.ts`
 - Add feed item cap (max 100 per source per run)
+- Increase process-queue batch from 20 to 100 items
+- Remove 1-hour global cooldown (replace with per-source configurable cooldown)
 - Replace hand-rolled RSS parser with `rss-parser` npm package
 - Remove dead sources (GitHub Jobs, Stack Overflow Jobs)
 - Fix type defaulting — AI should classify non-job types correctly
 
 ### Phase 2 — Evidence-First Architecture (3-5 days)
 - Create `evidence` table with columns: `id`, `evidence_type`, `raw_data` (JSONB), `source_url`, `source_name`, `content_hash`, `captured_at`, `enrichment_status`, `opportunity_id`
+- Define `evidence_type` enum with 13 values: `rss`, `api`, `web`, `email`, `partner`, `pdf`, `government`, `social_facebook`, `social_linkedin`, `messaging`, `manual`, `url`, `watcher`
 - Add `provenance` JSONB column to `opportunities` table
 - Create Evidence ingestion adapters for all 6 methods (RSS, API, Watcher, Manual, URL, Partner)
 - Update pipeline to process Evidence → Opportunity (enrichment step)
@@ -622,12 +625,21 @@ GROUP BY source_id;
 ### Phase 5 — Scale Sources by Segment (1-2 weeks)
 - Add 20+ real RSS feeds across ALL segments (not just jobs)
 - Add 15+ free API sources across ALL segments
-- Add scholarship-specific sources (ScholarshipAPI, Scholarship Union, Scholars Portal)
-- Add healthcare-specific sources (NHS, Health Careers UK)
-- Add sports-specific sources (API-Sports, Sportmonks)
-- Add entrepreneur/trade show sources (10times.com, Global Events Pedia)
-- Add caregiver-specific sources
 - Add source health monitoring (error rates, empty feeds)
+- **Job Seekers RSS:** We Work Remotely, FlexJobs, Jobs.ac.uk, UK Government, Govt Jobs Blog
+- **Job Seekers APIs:** Himalayas, Arbeitnow, RemoteOK, Adzuna, Jooble, USAJOBS, Juju, Careerjet
+- **Students RSS:** Scholars4Dev, Opportunity Desk, Scholarship Union, Scholars Portal, Gilman Scholarship
+- **Students APIs:** ScholarshipAPI
+- **Healthcare RSS:** Health Careers UK, NHS Jobs
+- **Healthcare APIs:** Health eCareers
+- **Tech RSS:** Hacker News Who's Hiring, Remote OK Blog
+- **Tech APIs:** Findwork, Remotive
+- **Sports RSS:** FIFA.com, BBC Sport
+- **Sports APIs:** API-Sports, Sportmonks
+- **Entrepreneur RSS:** 10times.com, Global Events Pedia, AngelList
+- **Entrepreneur APIs:** Crunchbase (limited free)
+- **Caregiver RSS:** Care.com, UK Care Jobs
+- **Trade Worker RSS:** GulfTalent, Trade Jobs UK
 
 ### Phase 6 — Cover Image System (3-5 days)
 - Wire OG fetch into pipeline (Layer 1)
@@ -641,11 +653,28 @@ GROUP BY source_id;
 - Update AI prompts to recognise new types
 - Update FallbackTile to use new type gradients only as LAST resort
 
-### Phase 8 — Provenance Analytics (3-5 days)
+### Phase 8 — Partner Submissions (2-3 days)
+- Build `POST /api/opportunities/submit` public endpoint for organisations
+- Add API key authentication for partner organisations
+- Add rate limiting (max 100 submissions per partner per day)
+- Create partner submission queue (separate from admin queue)
+- Add partner submission validation (required fields, URL format, duplicate check)
+- Build partner dashboard showing submission status and published opportunities
+
+### Phase 9 — Provenance Analytics (3-5 days)
 - Build admin dashboard showing source quality metrics (avg confidence, saves per source)
 - Build provenance inspector (click any opportunity to see full history)
 - Build source trust auto-downgrade (if avg confidence < 0.6 for 30 days, auto-downgrade tier)
-- Build re-processing queue (old Evidence can be re-enriched with improved AI)
+- Build re-processing queue UI (old Evidence can be re-enriched with improved AI)
+- Add provenance query endpoints for admin analytics
+- Add provenance export (CSV/JSON for external analysis)
+
+### Phase 10 — Concurrent Processing (2-3 days)
+- Implement parallel source processing with configurable concurrency (default: 5)
+- Add rate limiting per API source (respect API limits)
+- Add priority queue (trusted sources process first)
+- Add processing metrics (items/minute, error rate, avg processing time)
+- Add circuit breaker (pause source if 3 consecutive failures)
 
 ---
 

@@ -945,11 +945,41 @@ export interface Database {
           platform_fee_pct: number
           stripe_account_id: string | null
           is_available: boolean
+          api_key: string | null
+          api_key_hash: string | null
+          daily_submission_limit: number
+          submissions_today: number
+          submission_reset_at: string | null
           created_at: string
           updated_at: string
         }
         Insert: Omit<Database["public"]["Tables"]["platform_partners"]["Row"], "id" | "created_at" | "updated_at">
         Update: Partial<Database["public"]["Tables"]["platform_partners"]["Insert"]>
+        Relationships: []
+      }
+
+      partner_submissions: {
+        Row: {
+          id: string
+          partner_id: string
+          title: string
+          organisation: string | null
+          description: string | null
+          url: string | null
+          location: string | null
+          type: string | null
+          deadline: string | null
+          salary: string | null
+          raw_data: Json
+          status: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          review_notes: string | null
+          opportunity_id: string | null
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["partner_submissions"]["Row"], "id" | "created_at" | "reviewed_by" | "reviewed_at" | "review_notes" | "opportunity_id">
+        Update: Partial<Database["public"]["Tables"]["partner_submissions"]["Insert"]>
         Relationships: []
       }
 
@@ -1073,6 +1103,7 @@ export interface Database {
           published_at: string | null
           service_cta_type: string | null
           service_url: string | null
+          provenance: Json
           needs_review: boolean | null
           review_reason: string | null
           created_at: string
@@ -1370,6 +1401,28 @@ export interface Database {
         Relationships: []
       }
 
+      evidence: {
+        Row: {
+          id: string
+          evidence_type: string
+          raw_data: Json
+          source_url: string | null
+          source_name: string | null
+          content_hash: string | null
+          captured_at: string
+          enrichment_status: string
+          opportunity_id: string | null
+          enriched_data: Json
+          ai_model: string | null
+          ai_confidence: number | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["evidence"]["Row"], "id" | "captured_at" | "created_at" | "updated_at">
+        Update: Partial<Database["public"]["Tables"]["evidence"]["Insert"]>
+        Relationships: []
+      }
+
       opportunity_queue: {
         Row: {
           id: string
@@ -1412,10 +1465,51 @@ export interface Database {
           total_ingested: number
           total_published: number
           trust_tier: string
+          consecutive_errors: number
+          last_error: string | null
+          last_error_at: string | null
+          max_concurrent: number
+          rate_limit_per_hour: number
+          rate_used_this_hour: number
+          rate_window_start: string | null
           created_at: string
         }
-        Insert: Omit<Database["public"]["Tables"]["opportunity_sources"]["Row"], "id" | "created_at" | "is_active" | "total_ingested" | "total_published" | "last_pulled_at">
+        Insert: Omit<Database["public"]["Tables"]["opportunity_sources"]["Row"], "id" | "created_at" | "is_active" | "total_ingested" | "total_published" | "last_pulled_at" | "consecutive_errors" | "rate_used_this_hour">
         Update: Partial<Database["public"]["Tables"]["opportunity_sources"]["Insert"]>
+        Relationships: []
+      }
+
+      source_health_log: {
+        Row: {
+          id: string
+          source_id: string
+          pulled_at: string | null
+          items_found: number
+          items_new: number
+          items_duplicate: number
+          duration_ms: number | null
+          error_message: string | null
+          success: boolean
+        }
+        Insert: Omit<Database["public"]["Tables"]["source_health_log"]["Row"], "id" | "pulled_at">
+        Update: Partial<Database["public"]["Tables"]["source_health_log"]["Insert"]>
+        Relationships: []
+      }
+
+      page_hashes: {
+        Row: {
+          id: string
+          source_id: string
+          page_url: string
+          content_hash: string
+          content_snapshot: string | null
+          last_checked_at: string | null
+          last_changed_at: string | null
+          change_count: number
+          created_at: string
+        }
+        Insert: Omit<Database["public"]["Tables"]["page_hashes"]["Row"], "id" | "created_at" | "change_count">
+        Update: Partial<Database["public"]["Tables"]["page_hashes"]["Insert"]>
         Relationships: []
       }
 

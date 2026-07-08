@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { enrich } from "@/lib/ai-service";
+import { getCoverImage } from "@/lib/cover-image";
 
 export async function POST(request: NextRequest) {
   if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
@@ -9,14 +10,14 @@ export async function POST(request: NextRequest) {
 
   const serviceSupabase = createServiceClient();
 
-  const { data: queueItems } = await (serviceSupabase as any)
-    .from("opportunity_queue")
+  const { data: evidenceItems } = await (serviceSupabase as any)
+    .from("evidence")
     .select("*")
-    .eq("status", "pending")
-    .order("ingested_at", { ascending: true })
-    .limit(20);
+    .eq("enrichment_status", "pending")
+    .order("captured_at", { ascending: true })
+    .limit(100);
 
-  if (!queueItems || queueItems.length === 0) {
+  if (!evidenceItems || evidenceItems.length === 0) {
     return NextResponse.json({ processed: 0 });
   }
 
@@ -24,28 +25,28 @@ export async function POST(request: NextRequest) {
   let needsReview = 0;
   let rejected = 0;
 
-  for (const item of queueItems) {
+  for (const item of evidenceItems) {
     await (serviceSupabase as any)
-      .from("opportunity_queue")
-      .update({ status: "processing" })
+      .from("evidence")
+      .update({ enrichment_status: "processing" })
       .eq("id", item.id);
 
+    const raw = item.raw_data || {};
     const mechanicalChecks = {
-      hasUrl: !!item.raw_url && item.raw_url !== "#",
-      deadlineInFuture: !item.raw_deadline || new Date(item.raw_deadline) > new Date(),
-      hasMeaningfulTitle: !!(item.raw_title && item.raw_title.length > 10),
-      hasMeaningfulDescription: !!(item.raw_description && item.raw_description.length > 50),
+      hasUrl: !!raw.url && raw.url !== "#",
+      deadlineInFuture: !raw.deadline || new Date(raw.deadline) > new Date(),
+      hasMeaningfulTitle: !!(raw.title && raw.title.length > 10),
+      hasMeaningfulDescription: !!(raw.description && raw.description.length > 50),
     };
 
     const mechanicalScore = Object.values(mechanicalChecks).filter(Boolean).length / 4;
 
     if (mechanicalScore < 0.5) {
       await (serviceSupabase as any)
-        .from("opportunity_queue")
+        .from("evidence")
         .update({
-          status: "rejected",
-          rejection_reason: "Failed basic quality checks",
-          processed_at: new Date().toISOString(),
+          enrichment_status: "failed",
+          enriched_data: { rejection_reason: "Failed basic quality checks" },
         })
         .eq("id", item.id);
       rejected++;
@@ -63,7 +64,18 @@ export async function POST(request: NextRequest) {
     try {
       const response = await enrich({
         task: "process-queue",
-        data: item,
+        data: {
+          raw_title: raw.title,
+          raw_organisation: raw.organisation,
+          raw_location: raw.location,
+          raw_description: raw.description,
+          raw_salary: raw.salary,
+          raw_deadline: raw.deadline,
+          raw_url: raw.url,
+          raw_requirements: raw.requirements,
+          source_name: item.source_name,
+          source_url: item.source_url,
+        },
         tier: trustTier,
       });
 
@@ -72,69 +84,91 @@ export async function POST(request: NextRequest) {
 
       if (enriched.is_scam_risk) {
         await (serviceSupabase as any)
-          .from("opportunity_queue")
+          .from("evidence")
           .update({
-            status: "rejected",
-            confidence_score: confidence,
-            ai_enriched_data: enriched,
-            rejection_reason: "Flagged as potential scam",
-            processed_at: new Date().toISOString(),
+            enrichment_status: "failed",
+            enriched_data: enriched,
+            ai_confidence: confidence,
           })
           .eq("id", item.id);
         rejected++;
         continue;
       }
 
+      const provenance = {
+        source_id: item.source_id || null,
+        source_evidence_id: item.id,
+        evidence_type: item.evidence_type,
+        ai_model: enriched.ai_model || null,
+        ai_confidence: confidence,
+        ai_raw_response: enriched,
+        captured_at: item.captured_at,
+        enriched_at: new Date().toISOString(),
+        confidence_history: [
+          { score: confidence, reason: "ai_extraction", timestamp: new Date().toISOString() },
+        ],
+        source_trust_tier: trustTier,
+      };
+
       if (trustTier === "trusted" && mechanicalScore >= 0.75) {
+        const coverTitle = enriched.cleaned_title || raw.title || "";
+        const coverOrg = enriched.cleaned_organisation || raw.organisation || "Unknown";
+        const coverType = enriched.type || inferTypeFromSegment(enriched.segment_slug || item.source_name);
+        const coverCountry = enriched.location_country || raw.location || "Global";
+        const og = raw.url ? await getCoverImage(raw.url, coverTitle, coverOrg, coverType, coverCountry) : { cover_image_url: null };
         const { data: publishedOpp } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
             segment_slug: enriched.segment_slug || item.source_name,
-            title: enriched.cleaned_title || item.raw_title,
-            organisation: enriched.cleaned_organisation || item.raw_organisation || "Unknown",
-            location_country: enriched.location_country || item.raw_location || "Global",
+            title: enriched.cleaned_title || raw.title,
+            organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
+            location_country: enriched.location_country || raw.location || "Global",
             location_city: enriched.location_city || null,
-            type: enriched.type || "job",
-            description: enriched.cleaned_description || item.raw_description || "",
-            requirements: enriched.requirements || item.raw_requirements || null,
-            salary_range: enriched.salary_range || item.raw_salary || null,
-            deadline: enriched.deadline || item.raw_deadline || null,
-            application_url: item.raw_url,
+            type: enriched.type || inferTypeFromSegment(enriched.segment_slug || item.source_name),
+            description: enriched.cleaned_description || raw.description || "",
+            requirements: enriched.requirements || raw.requirements || null,
+            salary_range: enriched.salary_range || raw.salary || null,
+            deadline: enriched.deadline || raw.deadline || null,
+            application_url: raw.url,
+            cover_image_url: og.cover_image_url,
             source_url: item.source_url || null,
             source_name: item.source_name,
             ai_generated: true,
             ai_relevance_score: Math.round(confidence * 100),
             is_active: true,
             published_at: new Date().toISOString(),
+            provenance,
           })
           .select("id")
           .single();
 
         await (serviceSupabase as any)
-          .from("opportunity_queue")
+          .from("evidence")
           .update({
-            status: "approved",
-            confidence_score: confidence,
-            ai_enriched_data: enriched,
-            processed_at: new Date().toISOString(),
-            published_opportunity_id: publishedOpp?.id,
+            enrichment_status: "enriched",
+            enriched_data: enriched,
+            ai_confidence: confidence,
+            opportunity_id: publishedOpp?.id,
           })
           .eq("id", item.id);
 
         published++;
       } else if (trustTier === "review_all") {
         await (serviceSupabase as any)
-          .from("opportunity_queue")
+          .from("evidence")
           .update({
-            status: "needs_review",
-            confidence_score: confidence,
-            ai_enriched_data: enriched,
-            review_notes: "Tier 3 — manual review required",
-            processed_at: new Date().toISOString(),
+            enrichment_status: "failed",
+            enriched_data: enriched,
+            ai_confidence: confidence,
           })
           .eq("id", item.id);
         needsReview++;
       } else if (confidence >= 0.85 && enriched.is_legitimate && enriched.is_relevant_for_nigerians) {
+        const coverTitle2 = enriched.cleaned_title || "";
+        const coverOrg2 = enriched.cleaned_organisation || "";
+        const coverType2 = enriched.type || "job";
+        const coverCountry2 = enriched.location_country || "Global";
+        const og = raw.url ? await getCoverImage(raw.url, coverTitle2, coverOrg2, coverType2, coverCountry2) : { cover_image_url: null };
         const { data: publishedOpp } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
@@ -148,66 +182,78 @@ export async function POST(request: NextRequest) {
             requirements: enriched.requirements || null,
             salary_range: enriched.salary_range || null,
             deadline: enriched.deadline || null,
-            application_url: item.raw_url,
+            application_url: raw.url,
+            cover_image_url: og.cover_image_url,
             source_url: item.source_url || null,
             source_name: item.source_name,
             ai_generated: true,
             ai_relevance_score: Math.round(confidence * 100),
             is_active: true,
             published_at: new Date().toISOString(),
+            provenance,
           })
           .select("id")
           .single();
 
         await (serviceSupabase as any)
-          .from("opportunity_queue")
+          .from("evidence")
           .update({
-            status: "approved",
-            confidence_score: confidence,
-            ai_enriched_data: enriched,
-            processed_at: new Date().toISOString(),
-            published_opportunity_id: publishedOpp?.id,
+            enrichment_status: "enriched",
+            enriched_data: enriched,
+            ai_confidence: confidence,
+            opportunity_id: publishedOpp?.id,
           })
           .eq("id", item.id);
 
         published++;
       } else if (confidence >= 0.60) {
         await (serviceSupabase as any)
-          .from("opportunity_queue")
+          .from("evidence")
           .update({
-            status: "needs_review",
-            confidence_score: confidence,
-            ai_enriched_data: enriched,
-            review_notes: `Confidence: ${confidence}. Reason: ${enriched.rejection_reason || "Below auto-publish threshold"}`,
-            processed_at: new Date().toISOString(),
+            enrichment_status: "failed",
+            enriched_data: enriched,
+            ai_confidence: confidence,
           })
           .eq("id", item.id);
         needsReview++;
       } else {
         await (serviceSupabase as any)
-          .from("opportunity_queue")
+          .from("evidence")
           .update({
-            status: "rejected",
-            confidence_score: confidence,
-            ai_enriched_data: enriched,
-            rejection_reason: enriched.rejection_reason || "Below confidence threshold",
-            processed_at: new Date().toISOString(),
+            enrichment_status: "failed",
+            enriched_data: enriched,
+            ai_confidence: confidence,
           })
           .eq("id", item.id);
         rejected++;
       }
     } catch {
       await (serviceSupabase as any)
-        .from("opportunity_queue")
+        .from("evidence")
         .update({
-          status: "needs_review",
-          review_notes: "AI processing error — needs manual review",
-          processed_at: new Date().toISOString(),
+          enrichment_status: "failed",
+          enriched_data: { error: "AI processing error" },
         })
         .eq("id", item.id);
       needsReview++;
     }
   }
 
-  return NextResponse.json({ processed: queueItems.length, published, needsReview, rejected });
+  return NextResponse.json({ processed: evidenceItems.length, published, needsReview, rejected });
+}
+
+function inferTypeFromSegment(segment: string): string {
+  const segmentTypeMap: Record<string, string> = {
+    job_seeker: "job",
+    student: "scholarship",
+    healthcare: "healthcare",
+    tech_professional: "remote_work",
+    footballer: "sports_trial",
+    sports_professional: "sports_trial",
+    freelancer: "remote_work",
+    entrepreneur: "grant",
+    trade_worker: "training",
+    caregiver: "job",
+  };
+  return segmentTypeMap[segment] || "job";
 }

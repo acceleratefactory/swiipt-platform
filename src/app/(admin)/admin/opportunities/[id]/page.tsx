@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import EditOpportunityForm from "@/components/admin/opportunities/EditOpportunityForm";
+import ProvenanceViewer from "@/components/admin/opportunities/ProvenanceViewer";
 
 export default async function EditOpportunityPage({ params }: { params: { id: string } }) {
   const supabase = createClient();
@@ -25,7 +26,14 @@ export default async function EditOpportunityPage({ params }: { params: { id: st
       <h1 style={{ fontFamily: 'Cabinet Grotesk, Plus Jakarta Sans, sans-serif', fontSize: '1.375rem', fontWeight: 800, color: 'var(--midnight)', marginBottom: '1.5rem' }}>
         Edit Opportunity
       </h1>
-      <EditOpportunityForm opportunity={opportunity} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '1.5rem', alignItems: 'start' }}>
+        <EditOpportunityForm opportunity={opportunity} />
+        <ProvenanceViewer
+          provenance={opportunity.provenance}
+          sourceName={opportunity.source_name}
+          sourceUrl={opportunity.source_url}
+        />
+      </div>
     </div>
   );
 }

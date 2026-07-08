@@ -1,5 +1,174 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createRSSEvidence } from "@/lib/evidence-adapters";
+import { fetchFromAPI } from "@/lib/api-adapters";
+
+const DEGRADE_THRESHOLD = 5;
+const CIRCUIT_BREAKER_THRESHOLD = 3;
+const CONCURRENT_BATCH_SIZE = 5;
+
+interface SourceRecord {
+  id: string;
+  name: string;
+  source_type: string;
+  source_url: string;
+  trust_tier: string;
+  pull_frequency_hours: number;
+  last_pulled_at: string | null;
+  total_ingested: number;
+  consecutive_errors: number;
+  is_degraded: boolean;
+  rate_limit_per_hour: number;
+  rate_used_this_hour: number;
+  rate_window_start: string | null;
+}
+
+function isRateLimited(source: SourceRecord): boolean {
+  const now = Date.now();
+  const windowStart = source.rate_window_start
+    ? new Date(source.rate_window_start).getTime()
+    : 0;
+  const hourMs = 60 * 60 * 1000;
+  if (!windowStart || now - windowStart > hourMs) return false;
+  return source.rate_used_this_hour >= source.rate_limit_per_hour;
+}
+
+function isCircuitOpen(source: SourceRecord): boolean {
+  return source.is_degraded || source.consecutive_errors >= CIRCUIT_BREAKER_THRESHOLD;
+}
+
+function sortByPriority(sources: SourceRecord[]): SourceRecord[] {
+  const tierOrder: Record<string, number> = { trusted: 0, standard: 1, review_all: 2 };
+  return [...sources].sort((a, b) => {
+    const tierA = tierOrder[a.trust_tier] ?? 1;
+    const tierB = tierOrder[b.trust_tier] ?? 1;
+    if (tierA !== tierB) return tierA - tierB;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+async function processSource(
+  serviceSupabase: any,
+  source: SourceRecord
+): Promise<{ itemsNew: number; itemsFound: number; durationMs: number; error: string | null }> {
+  const pullFrequencyHours = source.pull_frequency_hours || 6;
+  const lastPulledAt = source.last_pulled_at ? new Date(source.last_pulled_at).getTime() : 0;
+  const cooldownMs = pullFrequencyHours * 60 * 60 * 1000;
+  if (lastPulledAt && Date.now() - lastPulledAt < cooldownMs) {
+    return { itemsNew: 0, itemsFound: 0, durationMs: 0, error: null };
+  }
+
+  if (isRateLimited(source)) {
+    return { itemsNew: 0, itemsFound: 0, durationMs: 0, error: null };
+  }
+
+  if (isCircuitOpen(source)) {
+    return { itemsNew: 0, itemsFound: 0, durationMs: 0, error: null };
+  }
+
+  const startTime = Date.now();
+  let itemsFound = 0;
+  let itemsNew = 0;
+  let errorMessage: string | null = null;
+
+  try {
+    let evidenceRecords: Array<{
+      evidence_type: string;
+      raw_data: Record<string, any>;
+      source_url: string | null;
+      source_name: string | null;
+      content_hash: string;
+    }> = [];
+
+    if (source.source_type === "rss") {
+      evidenceRecords = await createRSSEvidence(source.source_url, source.name, 100);
+    } else if (source.source_type === "api") {
+      evidenceRecords = await fetchFromAPI(source.name, source.source_url, 100);
+    }
+
+    itemsFound = evidenceRecords.length;
+    let sourceIngested = 0;
+
+    for (const ev of evidenceRecords) {
+      const { data: existing } = await serviceSupabase
+        .from("evidence")
+        .select("id")
+        .eq("content_hash", ev.content_hash)
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) continue;
+
+      const { data: existingOpp } = await serviceSupabase
+        .from("opportunities")
+        .select("id")
+        .eq("application_url", ev.raw_data.url || ev.raw_data.link || "")
+        .limit(1)
+        .maybeSingle();
+
+      if (existingOpp) continue;
+
+      await serviceSupabase.from("evidence").insert({
+        evidence_type: ev.evidence_type,
+        raw_data: ev.raw_data,
+        source_url: ev.source_url,
+        source_name: ev.source_name,
+        content_hash: ev.content_hash,
+        enrichment_status: "pending",
+      });
+
+      sourceIngested++;
+    }
+
+    itemsNew = sourceIngested;
+    const now = new Date();
+    const windowStart = source.rate_window_start ? new Date(source.rate_window_start).getTime() : 0;
+    const hourMs = 60 * 60 * 1000;
+    const inSameWindow = windowStart && now.getTime() - windowStart < hourMs;
+
+    await serviceSupabase
+      .from("opportunity_sources")
+      .update({
+        last_pulled_at: now.toISOString(),
+        total_ingested: (source.total_ingested || 0) + sourceIngested,
+        consecutive_errors: 0,
+        last_error: null,
+        last_error_at: null,
+        rate_used_this_hour: inSameWindow ? source.rate_used_this_hour + itemsFound : itemsFound,
+        rate_window_start: inSameWindow ? source.rate_window_start : now.toISOString(),
+      })
+      .eq("id", source.id);
+  } catch (err: any) {
+    errorMessage = err?.message || "Unknown error";
+    const newErrorCount = (source.consecutive_errors || 0) + 1;
+    const shouldDegrade = newErrorCount >= DEGRADE_THRESHOLD;
+
+    await serviceSupabase
+      .from("opportunity_sources")
+      .update({
+        last_pulled_at: new Date().toISOString(),
+        consecutive_errors: newErrorCount,
+        last_error: errorMessage,
+        last_error_at: new Date().toISOString(),
+        is_degraded: shouldDegrade,
+      })
+      .eq("id", source.id);
+  }
+
+  const durationMs = Date.now() - startTime;
+
+  await serviceSupabase.from("source_health_log").insert({
+    source_id: source.id,
+    items_found: itemsFound,
+    items_new: itemsNew,
+    items_duplicate: itemsFound - itemsNew,
+    duration_ms: durationMs,
+    error_message: errorMessage,
+    success: errorMessage === null,
+  });
+
+  return { itemsNew, itemsFound, durationMs, error: errorMessage };
+}
 
 export async function POST(request: NextRequest) {
   if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
@@ -8,82 +177,45 @@ export async function POST(request: NextRequest) {
 
   const serviceSupabase = createServiceClient();
 
-  const { data: sources } = await (serviceSupabase as any)
+  const { data: sources } = await serviceSupabase
     .from("opportunity_sources")
     .select("*")
     .eq("is_active", true)
-    .in("source_type", ["rss", "api"])
-    .or(`last_pulled_at.is.null,last_pulled_at.lt.${new Date(Date.now() - 60 * 60 * 1000).toISOString()}`);
+    .in("source_type", ["rss", "api"]);
 
+  if (!sources || sources.length === 0) {
+    return NextResponse.json({ ingested: 0 });
+  }
+
+  const sorted = sortByPriority(sources);
   let totalIngested = 0;
+  let totalFound = 0;
+  let totalErrors = 0;
+  let totalDurationMs = 0;
+  const startTime = Date.now();
 
-  for (const source of (sources || [])) {
-    if (source.source_url === "#") continue;
+  for (let i = 0; i < sorted.length; i += CONCURRENT_BATCH_SIZE) {
+    const batch = sorted.slice(i, i + CONCURRENT_BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map((source) => processSource(serviceSupabase, source))
+    );
 
-    try {
-      if (source.source_type === "rss") {
-        const rssResponse = await fetch(source.source_url, {
-          signal: AbortSignal.timeout(10000),
-          headers: { "User-Agent": "Swiipt-Bot/1.0 (opportunities@swiipt.com)" },
-        });
-
-        if (!rssResponse.ok) continue;
-
-        const rssText = await rssResponse.text();
-        const items = parseBasicRSS(rssText);
-
-        let sourceIngested = 0;
-        for (const item of items) {
-          if (!item.url || item.url === "#") continue;
-
-          const { data: existing } = await (serviceSupabase as any)
-            .from("opportunity_queue")
-            .select("id")
-            .eq("raw_url", item.url)
-            .limit(1)
-            .maybeSingle();
-
-          if (existing) continue;
-
-          const { data: existingOpp } = await (serviceSupabase as any)
-            .from("opportunities")
-            .select("id")
-            .eq("application_url", item.url)
-            .limit(1)
-            .maybeSingle();
-
-          if (existingOpp) continue;
-
-          await (serviceSupabase as any).from("opportunity_queue").insert({
-            raw_title: item.title,
-            raw_organisation: item.organisation,
-            raw_location: item.location,
-            raw_description: item.description,
-            raw_salary: item.salary,
-            raw_deadline: item.deadline,
-            raw_url: item.url,
-            raw_requirements: item.requirements,
-            source_name: source.name,
-            source_url: source.source_url,
-            ingest_method: "rss",
-          });
-
-          sourceIngested++;
-          totalIngested++;
-        }
-
-        await (serviceSupabase as any)
-          .from("opportunity_sources")
-          .update({
-            last_pulled_at: new Date().toISOString(),
-            total_ingested: (source.total_ingested || 0) + sourceIngested,
-          })
-          .eq("id", source.id);
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        totalIngested += result.value.itemsNew;
+        totalFound += result.value.itemsFound;
+        if (result.value.error) totalErrors++;
+        totalDurationMs += result.value.durationMs;
+      } else {
+        totalErrors++;
       }
-    } catch {
-      console.error(`Failed to ingest from ${source.name}`);
     }
   }
+
+  const totalDurationSec = (Date.now() - startTime) / 1000;
+  const itemsPerMin = totalDurationSec > 0 ? Math.round((totalIngested / totalDurationSec) * 60) : 0;
+  const errorRate = sorted.length > 0 ? Math.round((totalErrors / sorted.length) * 100) : 0;
+  const avgProcessingTime = totalIngested > 0 ? Math.round(totalDurationMs / totalIngested) : 0;
 
   if (totalIngested > 0) {
     fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/admin/opportunities/process-queue`, {
@@ -92,48 +224,15 @@ export async function POST(request: NextRequest) {
     }).catch(() => {});
   }
 
-  return NextResponse.json({ ingested: totalIngested });
-}
-
-interface RSSItem {
-  title: string;
-  organisation: string;
-  location: string;
-  description: string;
-  salary: string | null;
-  deadline: string | null;
-  url: string;
-  requirements: string | null;
-}
-
-function parseBasicRSS(xml: string): RSSItem[] {
-  const items: RSSItem[] = [];
-  const itemRegex = /<item>([\s\S]*?)<\/item>/gi;
-  let match;
-
-  while ((match = itemRegex.exec(xml)) !== null) {
-    const content = match[1];
-    items.push({
-      title: extractTag(content, "title"),
-      organisation: extractTag(content, "author") || extractTag(content, "dc:creator") || "",
-      location: "",
-      description: stripHtml(extractTag(content, "description") || ""),
-      salary: null,
-      deadline: null,
-      url: extractTag(content, "link"),
-      requirements: null,
-    });
-  }
-
-  return items;
-}
-
-function extractTag(xml: string, tag: string): string {
-  const regex = new RegExp(`<${tag}[^>]*><!\\[CDATA\\[([^\\]]*?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([^<]*)<\\/${tag}>`, "i");
-  const m = xml.match(regex);
-  return (m?.[1] || m?.[2] || "").trim();
-}
-
-function stripHtml(text: string): string {
-  return text.replace(/<[^>]*>/g, "").replace(/&[^;]+;/g, " ").trim();
+  return NextResponse.json({
+    ingested: totalIngested,
+    metrics: {
+      sources_processed: sorted.length,
+      items_found: totalFound,
+      items_per_minute: itemsPerMin,
+      error_rate_pct: errorRate,
+      avg_processing_time_ms: avgProcessingTime,
+      total_duration_sec: Math.round(totalDurationSec * 100) / 100,
+    },
+  });
 }

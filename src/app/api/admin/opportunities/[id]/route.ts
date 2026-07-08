@@ -27,6 +27,23 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }
 
+  // Fetch existing provenance to append edit tracking
+  const { data: existingOpp } = await (supabase as any)
+    .from("opportunities")
+    .select("provenance")
+    .eq("id", params.id)
+    .single();
+
+  const existingProv = existingOpp?.provenance || {};
+  const editedBy = existingProv.edited_by || [];
+  const editedAt = existingProv.edited_at || [];
+
+  updates.provenance = {
+    ...existingProv,
+    edited_by: [...editedBy, user.id],
+    edited_at: [...editedAt, new Date().toISOString()],
+  };
+
   const { error } = await (supabase as any).from("opportunities").update(updates).eq("id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
