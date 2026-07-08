@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCoverImage } from "@/lib/cover-image";
 
 export async function POST(request: NextRequest) {
   const supabase = createClient();
@@ -41,6 +42,25 @@ export async function POST(request: NextRequest) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const cover = await getCoverImage(
+    body.application_url,
+    body.title,
+    body.organisation,
+    body.type || "job",
+    body.location_country || "Global"
+  );
+
+  if (cover.cover_image_url) {
+    await (supabase as any)
+      .from("opportunities")
+      .update({
+        cover_image_url: cover.cover_image_url,
+        media_source: cover.cover_source,
+        media_type: "image",
+      })
+      .eq("id", data.id);
+  }
 
   return NextResponse.json({ success: true, id: data.id });
 }

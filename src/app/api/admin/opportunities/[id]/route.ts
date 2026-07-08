@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getCoverImage } from "@/lib/cover-image";
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient();
@@ -27,10 +28,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }
 
-  // Fetch existing provenance to append edit tracking
   const { data: existingOpp } = await (supabase as any)
     .from("opportunities")
-    .select("provenance")
+    .select("provenance, title, organisation, type, location_country, application_url")
     .eq("id", params.id)
     .single();
 
@@ -46,6 +46,31 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   const { error } = await (supabase as any).from("opportunities").update(updates).eq("id", params.id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const urlChanged = body.application_url && body.application_url !== existingOpp?.application_url;
+  const titleChanged = body.title && body.title !== existingOpp?.title;
+  const shouldRegenerateCover = urlChanged || titleChanged;
+
+  if (shouldRegenerateCover) {
+    const finalTitle = body.title || existingOpp?.title;
+    const finalOrg = body.organisation || existingOpp?.organisation;
+    const finalType = body.type || existingOpp?.type;
+    const finalCountry = body.location_country || existingOpp?.location_country;
+    const finalUrl = body.application_url || existingOpp?.application_url;
+
+    const cover = await getCoverImage(finalUrl, finalTitle, finalOrg, finalType, finalCountry);
+
+    if (cover.cover_image_url) {
+      await (supabase as any)
+        .from("opportunities")
+        .update({
+          cover_image_url: cover.cover_image_url,
+          media_source: cover.cover_source,
+          media_type: "image",
+        })
+        .eq("id", params.id);
+    }
+  }
 
   return NextResponse.json({ success: true });
 }
