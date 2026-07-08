@@ -12,6 +12,8 @@
 - **Sprint 18 — Feed, Growth Mechanics, Affiliates** — built and deployed.
 - Groups can: form → members join with invite link → members save into locked goals → admin confirms deposits → group reaches `funded`
 - **Paused before booking phase** — the `funded → booking → confirmed → completed` pipeline is NOT built. See `reports/sprint_16_trade_show_booking_flow_analysis.md` for the plan.
+- **Evidence-First Architecture Decision** — The platform has adopted an Evidence-first mental model: everything enters as raw Evidence first, only after enrichment does it become an Opportunity. See `reports/opportunity_ingestion_investigation.md` §2 for full details.
+- **Exhaustive Career Segments & Opportunity Types** — Full lists documented: 50+ career segments, 60+ opportunity types. NOT all implemented yet. See `reports/opportunity_ingestion_investigation.md` §10-11 for full lists and §13 for rollout recommendations.
 
 ### What NOT to Touch
 - Existing goal savings + visa redemption flows (Sprint 5)
@@ -43,6 +45,14 @@
 | 3 | Group Buy ⏱→✅ transition in modal | ⏳ `reports/group-buy-pending-confirmed-transition-plan.md` |
 | 4 | Dashboard Home Restructure — feed as primary screen | ⏳ `docs/sprint_17_18_priority_order.md` (routing change in middleware.ts) |
 | 5 | Affiliate Management — env vars, pg_cron SQL, e2e testing | ⏳ Sessions 30-32 ops remain |
+| 6 | Evidence-First Architecture — Build evidence table + pipeline | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 2 |
+| 7 | Watchers — Build page change detection system | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 4 |
+| 8 | API Adapters — Build api source type handler | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 3 |
+| 9 | Cover Image System — OG fetch + logo + AI generation | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 6 |
+| 10 | Provenance Tracking — Add provenance JSONB to opportunities | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 8 |
+| 11 | Scale Sources — Add free APIs + RSS feeds across ALL segments | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 5 |
+| 12 | Expand Career Segments — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more segments when 3+ sources exist per segment |
+| 13 | Expand Opportunity Types — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more types when 3+ sources exist per type |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -674,6 +684,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `reports/sprint_19_gap_analysis_report.md` | Sprint 19 gap analysis |
 | `reports/sprint_19_impl_vs_unified_gap_analysis.md` | Sprint 19 implementation vs unified spec gap analysis |
 | `reports/sprint_19_remaining_gaps_report.md` | Sprint 19 remaining gaps |
+| `reports/opportunity_ingestion_investigation.md` | **Opportunity ingestion pipeline** — Evidence-first architecture, 6 ingestion methods, exhaustive career segments (50+) and opportunity types (60+), cover image system, provenance tracking, implementation roadmap, rollout recommendations |
 | `reports/opportunity_score_testing_walkthrough.md` | Testing walkthrough for Opportunity Score — 7 trigger points, admin display |
 | `reports/sprint_16_trade_show_booking_flow_analysis.md` | Trade show booking phase plan (paused) |
 | `reports/group-buy-pending-confirmed-transition-plan.md` | Plan: add ⏱→✅ transition to group buy modal |

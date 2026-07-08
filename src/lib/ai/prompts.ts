@@ -50,7 +50,7 @@ function buildIngestParsePrompt(data: Record<string, any>, tier?: string): strin
   "description": "cleaned description",
   "organisation": "extracted org name",
   "location_country": "country or null",
-  "type": "job|scholarship|fellowship|visa_programme|sports_trial|remote_work|internship|training|grant",
+  "type": "job|scholarship|fellowship|visa_programme|sports_trial|remote_work|internship|training|grant|competition|conference|exchange|trade_show|trial|healthcare|residency|citizenship|funding|contest|accelerator|award",
   "segment_slug": "best matching segment slug",
   "deadline": "YYYY-MM-DD or null",
   "salary_range": "formatted or null"
@@ -69,7 +69,7 @@ export function buildPasteUrlPrompt(data: Record<string, any>): string {
   "organisation": "org name",
   "location_country": "country",
   "location_city": "city or null",
-  "type": "job|scholarship|fellowship|visa_programme|sports_trial|remote_work|internship|training|grant",
+  "type": "job|scholarship|fellowship|visa_programme|sports_trial|remote_work|internship|training|grant|competition|conference|exchange|trade_show|trial|healthcare|residency|citizenship|funding|contest|accelerator|award",
   "segment_slug": "best segment slug",
   "salary_range": "if available or null",
   "deadline": "YYYY-MM-DD or null",
