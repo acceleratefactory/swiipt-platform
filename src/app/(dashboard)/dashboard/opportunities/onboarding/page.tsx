@@ -70,6 +70,7 @@ export default function OnboardingPage() {
   });
   const [goalTemplates, setGoalTemplates] = useState<GoalTemplate[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -113,9 +114,14 @@ export default function OnboardingPage() {
 
   async function handleComplete() {
     setSubmitting(true);
+    setError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setSubmitting(false);
+        setError("Session expired. Please log in again.");
+        return;
+      }
 
       const careerProfile = {
         user_id: user.id,
@@ -153,8 +159,10 @@ export default function OnboardingPage() {
 
       document.cookie = "swiipt_onboarding_complete=1; path=/; max-age=2592000; samesite=lax";
       window.location.href = "/dashboard/opportunities";
-    } catch {
+    } catch (err: any) {
+      console.error("Onboarding completion failed:", err);
       setSubmitting(false);
+      setError(err?.message || "Something went wrong. Please try again.");
     }
   }
 
@@ -397,6 +405,11 @@ export default function OnboardingPage() {
           >
             {submitting ? "Setting up your feed..." : "Go to my opportunities →"}
           </button>
+          {error && (
+            <p style={{ marginTop: "0.75rem", color: "#DC2626", fontSize: "0.8125rem", textAlign: "center" }}>
+              {error}
+            </p>
+          )}
         </div>
       )}
     </div>
