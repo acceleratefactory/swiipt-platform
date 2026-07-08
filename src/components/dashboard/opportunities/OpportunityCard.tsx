@@ -240,33 +240,37 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
       style={{ display: "flex", flexDirection: "column", width: "100%", position: "relative", marginBottom: "0.75rem" }}
     >
       {opp.media_type !== "none" ? (
-        <div style={{ width: "100%", aspectRatio: opp.media_aspect_ratio === "16:9" ? "16 / 9" : "4 / 5", position: "relative" }}>
+        <div style={{ width: "100%", position: "relative" }}>
           {opp.video_url ? (
-            <video
-              ref={videoRef}
-              src={opp.video_url}
-              poster={opp.thumbnail_url || undefined}
-              muted
-              playsInline
-              autoPlay={videoAutoPlay}
-              preload={videoAutoPlay ? "metadata" : "none"}
-              onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { if (v.paused) { v.play(); } else { v.pause(); } } }}
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "pointer" }}
-            />
+            <div style={{ width: "100%", aspectRatio: "16 / 9", position: "relative" }}>
+              <video
+                ref={videoRef}
+                src={opp.video_url}
+                poster={opp.thumbnail_url || undefined}
+                muted
+                playsInline
+                autoPlay={videoAutoPlay}
+                preload={videoAutoPlay ? "metadata" : "none"}
+                onClick={(e) => { e.stopPropagation(); const v = videoRef.current; if (v) { if (v.paused) { v.play(); } else { v.pause(); } } }}
+                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "pointer" }}
+              />
+            </div>
           ) : hasCover && opp.cover_image_url ? (
             <img
               src={opp.cover_image_url}
               alt=""
               loading="lazy"
-              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+              style={{ width: "100%", display: "block" }}
               onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
             />
           ) : (
-            <FallbackTile
-              type={opp.type}
-              organisation={opp.organisation}
-              location_country={opp.location_country}
-            />
+            <div style={{ width: "100%", aspectRatio: "16 / 9", position: "relative" }}>
+              <FallbackTile
+                type={opp.type}
+                organisation={opp.organisation}
+                location_country={opp.location_country}
+              />
+            </div>
           )}
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 80, background: "linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)", pointerEvents: "none", zIndex: 1 }} />
           <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", alignItems: "center", gap: "0.5rem", padding: "8px 12px", zIndex: 2 }}>
