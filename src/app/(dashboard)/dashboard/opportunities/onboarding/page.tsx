@@ -129,7 +129,11 @@ export default function OnboardingPage() {
         current_role: profileData.current_role || null,
         years_experience: profileData.years_experience || null,
         highest_qualification: profileData.highest_qualification || null,
-        desired_roles: profileData.desired_roles || null,
+        desired_roles: profileData.desired_roles
+          ? (typeof profileData.desired_roles === 'string'
+              ? (profileData.desired_roles as string).split(',').map(s => s.trim()).filter(Boolean)
+              : profileData.desired_roles)
+          : null,
         desired_countries: profileData.desired_countries || null,
         current_level: profileData.current_level || null,
         field_of_study: profileData.field_of_study || null,
