@@ -62,14 +62,6 @@ function formatDeadline(deadline: string): string {
   });
 }
 
-function getReasonText(opp: Oppty): string | null {
-  if (opp.relevanceScore && opp.relevanceScore >= 80) return "Highly relevant to your profile";
-  if (opp.is_featured) return "Featured opportunity";
-  if (opp.type === "scholarship") return "Popular in your segment";
-  if (opp.location_country) return `Trending in ${opp.location_country}`;
-  return null;
-}
-
 export default function OpportunityCard({ opportunity: opp, onApply, onSave }: Props) {
   const [saved, setSaved] = useState(opp.is_saved || false);
   const [liked, setLiked] = useState(opp.is_liked || false);
@@ -381,15 +373,6 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
           )}
         </div>
       )}
-
-      {(() => {
-        const reason = getReasonText(opp);
-        return reason ? (
-          <div style={{ fontSize: "0.75rem", color: "#8e8e8e", fontStyle: "italic", padding: "0.375rem 0.75rem 0" }}>
-            Why you&apos;re seeing this: {reason}
-          </div>
-        ) : null;
-      })()}
 
       {showSharePrompt && (
         <div style={{ position: "absolute", inset: 0, background: "rgba(6,17,43,0.85)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "0.75rem", padding: "1.5rem", zIndex: 10 }}>

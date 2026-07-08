@@ -161,7 +161,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
                   </AnimatedCard>
                   {isFeaturedPosition && topMatch.current && (
                     <div>
-                      <div style={{ background: "linear-gradient(135deg, #06112B, #1A3560)", borderRadius: "var(--radius-md)", padding: "0.5rem" }}>
+                      <div style={{ borderRadius: "var(--radius-md)", padding: "0.5rem" }}>
                         <p style={{ fontSize: "0.625rem", color: "#8e8e8e", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", padding: "0 0.5rem", marginBottom: "0.25rem" }}>
                           {"\u2B50"} Top match for your profile
                         </p>
