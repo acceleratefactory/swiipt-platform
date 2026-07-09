@@ -2,10 +2,11 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-**You are joining after Session 38 (Evidence-First Architecture, Cover Images, Watchers, Source Health).** Do not start from scratch. Read this first.
+**You are joining after Session 39 (Process-Queue Pipeline Fix).** Do not start from scratch. Read this first.
 
 ### Current State
-- **Session 38 — Evidence-First Architecture (✅ Built)** — Evidence table, API adapters (Himalayas, Arbeitnow, RemoteOK, Adzuna, USAJOBS), cover image system (4-layer: OG → Logo → AI → Branded), watcher system (page change detection), source health monitoring, 12 extended opportunity types, 60+ real opportunities seeded, pg_cron pipeline automation, 20+ SQL migrations, verification scripts. See `reports/opportunity_ingestion_investigation.md` for full spec.
+- **Session 39 — Process-Queue Pipeline Fix (⚠️ IN PROGRESS)** — Root cause found: `type` column has FK constraint to `opportunity_types(slug)`. AI enrichment returns free-form types not in the 21 seeded types. Every INSERT fails silently. Code never checked errors, counted all as "published". Fix deployed (commit `7f7e23a`): `safeType()` validation + error checking on both INSERT paths. **Feed still shows only 54 seed items — need to verify deploy is live and re-run process-queue.** See `findings/process-queue-investigation.md` for full analysis.
+- **Session 38 — Evidence-First Architecture (✅ Built, ⚠️ Pipeline Not Yet Working)** — Evidence table, API adapters (Himalayas, Arbeitnow, RemoteOK, Adzuna, USAJOBS), cover image system (4-layer: OG → Logo → AI → Branded), watcher system (page change detection), source health monitoring, 12 extended opportunity types, 60+ real opportunities seeded, pg_cron pipeline automation, 20+ SQL migrations, verification scripts. See `reports/opportunity_ingestion_investigation.md` for full spec.
 - **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
 - **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed. 5 new DB tables, PDF generation, Stripe integration.
 - **Sprint 16, System 2 (Trade Show Group Savings)** — built and deployed. Paused before booking phase.
@@ -40,16 +41,17 @@
 ### Current Pending Items
 | Priority | Item | Status |
 |----------|------|--------|
-| 1 | Sprint 19 — Run 10 SQL migrations in Supabase Editor | ⏳ 10 SQL files ready, execute in order (see §15 of walkthrough) |
-| 2 | Evidence-First — Run 20+ SQL migrations in Supabase Editor | ⏳ Phase2-10, watcher, health, partner subs, seed data (see Session 38) |
-| 3 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
-| 4 | Group Buy ⏱→✅ transition in modal | ⏳ `reports/group-buy-pending-confirmed-transition-plan.md` |
-| 5 | Dashboard Home Restructure — feed as primary screen | ⏳ `docs/sprint_17_18_priority_order.md` (routing change in middleware.ts) |
-| 6 | Affiliate Management — env vars, pg_cron SQL, e2e testing | ⏳ Sessions 30-32 ops remain |
-| 7 | Provenance Tracking — Wire provenance JSONB to opportunities display | ✅ `ProvenanceViewer.tsx` built, needs admin page integration |
-| 8 | Expand Career Segments — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more segments when 3+ sources exist per segment |
-| 9 | Expand Opportunity Types — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more types when 3+ sources exist per type |
-| 10 | **MUST BUILD: Admin Custom Cover Image Upload** | ⏳ Schema ready (`custom` in CHECK), UI not built. See §12 below for full spec. |
+| 1 | **CRITICAL: Pipeline — Process-queue INSERT failures** | ⚠️ Fix deployed (`7f7e23a`), need to verify deploy is live, reset evidence to pending, re-run process-queue. Feed shows only 54 seed items. See `findings/process-queue-investigation.md` |
+| 2 | Sprint 19 — Run 10 SQL migrations in Supabase Editor | ⏳ 10 SQL files ready, execute in order (see §15 of walkthrough) |
+| 3 | Evidence-First — Run 20+ SQL migrations in Supabase Editor | ⏳ Phase2-10, watcher, health, partner subs, seed data (see Session 38) |
+| 4 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
+| 5 | Group Buy ⏱→✅ transition in modal | ⏳ `reports/group-buy-pending-confirmed-transition-plan.md` |
+| 6 | Dashboard Home Restructure — feed as primary screen | ⏳ `docs/sprint_17_18_priority_order.md` (routing change in middleware.ts) |
+| 7 | Affiliate Management — env vars, pg_cron SQL, e2e testing | ⏳ Sessions 30-32 ops remain |
+| 8 | Provenance Tracking — Wire provenance JSONB to opportunities display | ✅ `ProvenanceViewer.tsx` built, needs admin page integration |
+| 9 | Expand Career Segments — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more segments when 3+ sources exist per segment |
+| 10 | Expand Opportunity Types — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more types when 3+ sources exist per type |
+| 11 | **MUST BUILD: Admin Custom Cover Image Upload** | ⏳ Schema ready (`custom` in CHECK), UI not built. See §12 below for full spec. |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -81,6 +83,7 @@ Nigeria (primary), UAE, Qatar, UK, Canada, Portugal, Georgia, St Kitts, Caribbea
 - **Remote:** `https://github.com/acceleratefactory/swiipt-platform.git`
 - **Branches:** `main` (production, protected) ← `staging` ← `develop` ← feature branches
 - **Current branch:** `main`
+- **Latest commit:** `7f7e23a` — fix: process-queue INSERT now checks errors + validates type against FK constraint
 - **Deployment:** Push to `main` auto-deploys to Vercel. No CI/CD scripts — manual git push. No `.github/workflows/`.
 - **Author:** `acceleratefactory` / `tech@acceleratefactory.com`
 
@@ -619,7 +622,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **Opportunity Queue:** list (GET), publish/reject (POST), review ([id])
 **Evidence:** reprocess (POST)
 **Sources:** health (GET), metrics (GET), auto-downgrade (POST)
-**Pipeline:** process-queue (POST), ingest (POST), check-links (POST)
+**Pipeline:** process-queue (POST) — **now checks INSERT errors** (Session 39 fix), ingest (POST), check-links (POST)
 **Watchers:** check-changes (POST)
 **Feed Ads:** list (GET), create (POST), toggle (POST), individual CRUD ([id])
 **Backfill Covers:** POST (batch backfill cover images for opportunities)
@@ -736,6 +739,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `docs/sprint_19_gap_resolution.md` | 4 pre-build gaps resolved (DB types, OG fetching, ads panel, comments) |
 | `docs/pre_sprint_19_data_driven_types.md` | Pre-cleanup spec for data-driven opportunity types |
 | `docs/Sprint 19 resolution` | Architecture discussion — Opportunity Engine model, three-tier trust |
+| `findings/process-queue-investigation.md` | **Session 39** — Process-queue INSERT failure investigation, root cause (type FK), fix plan |
+| `findings/check_opportunities_state.sql` | **Session 39** — 5 diagnostic SQL queries for pipeline state verification |
 
 ## 10. PLATFORM COMPATIBILITY REGISTRY
 
@@ -853,6 +858,8 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 9. **`window.location.reload()` vs `router.refresh()`** — `window.location.reload()` starts page navigation before React can flush batched state updates (`setShowXxx(false)` never executes). Use `router.refresh()` + `setShowXxx(false)` pattern instead. (Session 19/21.)
 10. **Inline arrow callbacks for Realtime subscription callbacks** — New reference on every render causes subscription teardown. Use `useCallback` or ref-based approach. (Session 21.)
 11. **`media_source` CHECK constraint requires `fetched` or `fallback`** — The constraint is `CHECK (media_source IN ('fetched','custom','fallback'))`. `custom` is reserved for future admin manual image upload. When mapping from `cover_source` (og/logo/ai/branded/none), use `cover.cover_source === "branded" || cover.cover_source === "none" ? "fallback" : "fetched"`. The `"none"` case was originally mapped to `"fetched"` which is wrong — no image exists. (Session 38 bug fix.)
+12. **`type` column has FK constraint to `opportunity_types(slug)`** — The `type` column on `opportunities` references `opportunity_types(slug)`. AI enrichment returns free-form types (e.g. "visa" instead of "visa_programme", "remote" instead of "remote_work"). Any value not in the 21 seeded types causes a FK violation. The Supabase JS client returns `{ data: null, error: ... }` on INSERT failure — always check `error` before counting as published. Use `safeType()` to validate against `ALLOWED_TYPES` set before INSERT. (Session 39 root cause — all 495 evidence items were marked "enriched" but zero opportunities were created.)
+13. **Supabase JS client never throws on INSERT errors** — It resolves with `{ data: null, error: PostgrestError }`. If you don't destructure and check `error`, the INSERT appears to succeed but no row is created. Always use `const { data, error } = await supabase.from(...).insert(...)` and check `error` before proceeding. (Session 39 — code marked all items as "published" regardless of INSERT success.)
 
 ## 11. SESSION HISTORY — COMPLETED WORK
 
@@ -1425,6 +1432,53 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **Build verified:** `npm run build` — zero TS errors across all phases.
 **Deployed:** Pushed to `main` for Vercel deployment.
 
+### Session 39 — Process-Queue Pipeline Fix (IN PROGRESS)
+
+- **Date:** July 9, 2026
+- **Goal:** Diagnose and fix why the opportunity feed shows only 54 seed items despite process-queue reporting "published" items.
+- **Commits:** `7f7e23a` (fix: process-queue INSERT now checks errors + validates type against FK constraint)
+
+#### Investigation
+- User triggered process-queue manually 4 times — API returned `{"processed":339,"published":339,"needsReview":0,"rejected":0}` (all items counted as published)
+- Feed still showed only 54 seed items — no AI-generated opportunities visible
+- Ran diagnostic SQL:
+  - `SELECT ai_generated, COUNT(*) FROM opportunities` → 54 seed, 0 AI-generated
+  - `SELECT enrichment_status, COUNT(*) FROM evidence` → 495 enriched, 316 failed
+  - `SELECT enriched_data->>'insert_error' FROM evidence WHERE enriched_data ? 'insert_error'` → 0 rows (no errors captured)
+
+#### Root Cause
+1. **`type` FK constraint:** The `type` column on `opportunities` has a FOREIGN KEY referencing `opportunity_types(slug)`. The `opportunity_types` table has 21 seeded types. The AI enrichment returns free-form type values (e.g. "visa", "remote", "intern"). Any value not in the 21 seeded types causes a FK violation on INSERT.
+2. **No error checking:** The old process-queue code destructured only `data` from the Supabase response, never checked `error`. Every INSERT failed silently, but `published++` incremented unconditionally.
+3. **Path B had no fallbacks:** Path B (standard tier, confidence ≥ 0.85) passed `enriched.title`, `enriched.organisation`, `enriched.location_country`, `enriched.type`, `enriched.cleaned_description` directly. If AI omitted any of these, NOT NULL constraint failed silently.
+
+#### Fix (Commit 7f7e23a)
+- **File:** `src/app/api/admin/opportunities/process-queue/route.ts`
+- **Change 1:** Added `ALLOWED_TYPES` set (21 valid types matching `opportunity_types` table)
+- **Change 2:** Added `safeType(raw, segment)` function — validates AI type against allowed set, falls back to `inferTypeFromSegment()` if invalid
+- **Change 3:** Both INSERT paths (Path A: trusted tier, Path B: standard tier) now check `error` from Supabase response — failed inserts mark evidence as "failed" with `insert_error` message and increment `rejected`, NOT `published`
+- **Change 4:** Path B now has raw data fallbacks for title, organisation, location_country, description (was relying entirely on AI output)
+
+#### Current Issue
+- Deploy completed, but process-queue still shows only seed items
+- Most likely explanation: the curl command ran before the deploy was live (Vercel deploy delay between "build complete" and "deployment serving traffic")
+- **Next steps:**
+  1. Verify deploy is live (check Vercel dashboard for commit `7f7e23a`)
+  2. Check Vercel function logs for `POST /api/admin/opportunities/process-queue` — expand response body to see if `rejected > 0`
+  3. Reset evidence: `UPDATE evidence SET enrichment_status = 'pending' WHERE enrichment_status = 'enriched' AND opportunity_id IS NULL;`
+  4. Re-run process-queue via curl
+  5. Verify: `SELECT ai_generated, COUNT(*) FROM opportunities GROUP BY ai_generated;`
+
+#### Files Modified
+| File | Change |
+|------|--------|
+| `src/app/api/admin/opportunities/process-queue/route.ts` | Added ALLOWED_TYPES, safeType(), error checking on both INSERT paths, Path B raw data fallbacks |
+
+#### Files Created
+| File | Purpose |
+|------|---------|
+| `findings/process-queue-investigation.md` | Full investigation report with SQL queries and fix plan |
+| `findings/check_opportunities_state.sql` | 5 diagnostic SQL queries for Supabase SQL Editor |
+
 ---
 
 ## 12. PENDING / FUTURE BUILD
@@ -1481,9 +1535,10 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 
 ### Evidence-First — Operational Items Remaining
 - **SQL migrations:** Run all 20+ SQL files in Supabase SQL Editor in phase order
+- **CRITICAL: Process-queue pipeline is broken** — See Session 39. The `type` FK constraint causes INSERT failures. Fix deployed but needs verification. After verifying deploy is live, reset evidence to pending and re-run process-queue.
 - **Provenance integration:** Wire `ProvenanceViewer.tsx` into admin opportunity detail page
 - **Testing:** Test ingest → evidence → process-queue → opportunities pipeline end-to-end
-- **Status:** Code complete (Session 38), SQL not yet run
+- **Status:** Code complete (Session 38), pipeline fix deployed (Session 39), needs verification
 
 ### MUST BUILD: Admin Custom Cover Image Upload (Priority 10)
 - **Status:** Schema ready, UI/API not built. DO NOT forget this.
