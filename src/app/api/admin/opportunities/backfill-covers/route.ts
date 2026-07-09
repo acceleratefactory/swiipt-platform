@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       );
 
       if (cover.cover_image_url) {
-        const mediaSource = cover.cover_source === "branded" ? "fallback" : "fetched";
+        const mediaSource = cover.cover_source === "branded" || cover.cover_source === "none" ? "fallback" : "fetched";
         await serviceSupabase
           .from("opportunities")
           .update({

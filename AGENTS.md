@@ -2,9 +2,10 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-**You are joining after Sprint 19 (Opportunity Feed, Pipeline, AI Service, Ads).** Do not start from scratch. Read this first.
+**You are joining after Session 38 (Evidence-First Architecture, Cover Images, Watchers, Source Health).** Do not start from scratch. Read this first.
 
 ### Current State
+- **Session 38 — Evidence-First Architecture (✅ Built)** — Evidence table, API adapters (Himalayas, Arbeitnow, RemoteOK, Adzuna, USAJOBS), cover image system (4-layer: OG → Logo → AI → Branded), watcher system (page change detection), source health monitoring, 12 extended opportunity types, 60+ real opportunities seeded, pg_cron pipeline automation, 20+ SQL migrations, verification scripts. See `reports/opportunity_ingestion_investigation.md` for full spec.
 - **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
 - **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed. 5 new DB tables, PDF generation, Stripe integration.
 - **Sprint 16, System 2 (Trade Show Group Savings)** — built and deployed. Paused before booking phase.
@@ -12,8 +13,7 @@
 - **Sprint 18 — Feed, Growth Mechanics, Affiliates** — built and deployed.
 - Groups can: form → members join with invite link → members save into locked goals → admin confirms deposits → group reaches `funded`
 - **Paused before booking phase** — the `funded → booking → confirmed → completed` pipeline is NOT built. See `reports/sprint_16_trade_show_booking_flow_analysis.md` for the plan.
-- **Evidence-First Architecture Decision** — The platform has adopted an Evidence-first mental model: everything enters as raw Evidence first, only after enrichment does it become an Opportunity. See `reports/opportunity_ingestion_investigation.md` §2 for full details.
-- **Exhaustive Career Segments & Opportunity Types** — Full lists documented: 50+ career segments, 60+ opportunity types. NOT all implemented yet. See `reports/opportunity_ingestion_investigation.md` §10-11 for full lists and §13 for rollout recommendations.
+- **Exhaustive Career Segments & Opportunity Types** — Full lists documented: 50+ career segments, 60+ opportunity types. 12 extended types added to DB in Session 38. See `reports/opportunity_ingestion_investigation.md` §10-11 for full lists and §13 for rollout recommendations.
 
 ### What NOT to Touch
 - Existing goal savings + visa redemption flows (Sprint 5)
@@ -41,18 +41,15 @@
 | Priority | Item | Status |
 |----------|------|--------|
 | 1 | Sprint 19 — Run 10 SQL migrations in Supabase Editor | ⏳ 10 SQL files ready, execute in order (see §15 of walkthrough) |
-| 2 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
-| 3 | Group Buy ⏱→✅ transition in modal | ⏳ `reports/group-buy-pending-confirmed-transition-plan.md` |
-| 4 | Dashboard Home Restructure — feed as primary screen | ⏳ `docs/sprint_17_18_priority_order.md` (routing change in middleware.ts) |
-| 5 | Affiliate Management — env vars, pg_cron SQL, e2e testing | ⏳ Sessions 30-32 ops remain |
-| 6 | Evidence-First Architecture — Build evidence table + pipeline | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 2 |
-| 7 | Watchers — Build page change detection system | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 4 |
-| 8 | API Adapters — Build api source type handler | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 3 |
-| 9 | Cover Image System — OG fetch + logo + AI generation | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 6 |
-| 10 | Provenance Tracking — Add provenance JSONB to opportunities | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 8 |
-| 11 | Scale Sources — Add free APIs + RSS feeds across ALL segments | ⏳ `reports/opportunity_ingestion_investigation.md` §8 Phase 5 |
-| 12 | Expand Career Segments — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more segments when 3+ sources exist per segment |
-| 13 | Expand Opportunity Types — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more types when 3+ sources exist per type |
+| 2 | Evidence-First — Run 20+ SQL migrations in Supabase Editor | ⏳ Phase2-10, watcher, health, partner subs, seed data (see Session 38) |
+| 3 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
+| 4 | Group Buy ⏱→✅ transition in modal | ⏳ `reports/group-buy-pending-confirmed-transition-plan.md` |
+| 5 | Dashboard Home Restructure — feed as primary screen | ⏳ `docs/sprint_17_18_priority_order.md` (routing change in middleware.ts) |
+| 6 | Affiliate Management — env vars, pg_cron SQL, e2e testing | ⏳ Sessions 30-32 ops remain |
+| 7 | Provenance Tracking — Wire provenance JSONB to opportunities display | ✅ `ProvenanceViewer.tsx` built, needs admin page integration |
+| 8 | Expand Career Segments — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more segments when 3+ sources exist per segment |
+| 9 | Expand Opportunity Types — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more types when 3+ sources exist per type |
+| 10 | **MUST BUILD: Admin Custom Cover Image Upload** | ⏳ Schema ready (`custom` in CHECK), UI not built. See §12 below for full spec. |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -157,7 +154,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - Wallet card shows greeting: "Good morning/afternoon/evening, {name} 👋"
 - Data logging mandatory for every significant action
 
-## 6. ALL 36 DATABASE TABLES
+## 6. ALL 52 DATABASE TABLES
 
 ### Core (Sprint 0)
 | Table | Purpose | Key Columns |
@@ -254,6 +251,14 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `opportunity_sources` | Source registry with trust tiers | trust_tier (trusted/standard/review_all), format (rss/json/api/manual) |
 | `feed_ads` | Injected sponsored ads | headline, body, cta_label, cta_url, status (active/paused/ended/draft), impressions, clicks |
 | `achievement_cards` | Shareable achievement cards (WhatsApp/Instagram) | card_type, is_shared_whatsapp, is_shared_instagram, is_dismissed |
+
+### Evidence-First Pipeline (Session 38)
+| Table | Purpose | Key Columns |
+|-------|---------|-------------|
+| `evidence` | Raw evidence storage before enrichment | evidence_type (rss/api/web/email/partner/pdf/government/social_facebook/social_linkedin/messaging/manual/url/watcher), raw_data JSONB, source_url, source_name, content_hash, enrichment_status, opportunity_id |
+| `watchers` | Track URLs for page change detection | url, check_interval_hours, last_checked_at, last_content_hash, is_active |
+| `source_health_log` | Source pull health tracking | source_id, pulled_at, items_found, items_new, duration_ms, error_message, success |
+| `partner_submissions` | External partner opportunity submissions | partner_name, partner_email, raw_data JSONB, status, enriched_opportunity_id |
 
 ## 7. FEATURE MAP — EVERY SPRINT
 
@@ -551,7 +556,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - `POST /api/affiliate/upgrade-tier` — Upgrade affiliate tier
 - `POST /api/affiliate/withdraw` — Request withdrawal (inserts into affiliate_withdrawals)
 
-### Opportunities & Feed (Sprint 18–19)
+### Opportunities & Feed (Sprint 18–19 + Session 38)
 - `POST /api/opportunities/feed` — Generate personalised feed (supports search mode via query/type/country params)
 - `POST /api/opportunities/track` — Track apply/view clicks
 - `POST /api/opportunities/save` — Save opportunity to feed
@@ -563,6 +568,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - `POST /api/opportunities/paste-url` — AI-prefill from URL (admin)
 - `POST /api/opportunities/compute-interest` — Compute per-user interest model
 - `POST /api/opportunities/compute-interest-batch` — Cron: batch compute (max 100 users)
+- `POST /api/opportunities/submit` — Partner submission with validation + enrichment → opportunity_queue
 - `GET /api/opportunity-types` — List active opportunity types
 - `GET /api/career-segments` — List active career segments
 
@@ -578,7 +584,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - `GET /api/messaging/scheduled/expire-deposits` — Cron: expire stale deposits (06:00 UTC)
 - `GET /api/cron/expire-visa-redemptions` — Cron: expire visa redemptions (06:30 UTC)
 
-### Admin APIs (~67 routes)
+### Admin APIs (~75 routes)
 
 **Deposits:** confirm, reject
 **Withdrawals:** process
@@ -609,10 +615,14 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **AI Providers:** create, toggle, test, update ([id])
 **Affiliates (12 routes):** list, detail, update-tier, adjust-earnings, reset-code, withdrawals list, withdrawals process, modules list/create, modules update/delete, modules reorder
 **Achievements:** generate-card, list, mark-shared, dismiss
-**Opportunities:** create, toggle, update ([id])
-**Opportunity Queue:** list (GET), publish/reject (POST)
+**Opportunities:** create, toggle, update ([id]), export
+**Opportunity Queue:** list (GET), publish/reject (POST), review ([id])
+**Evidence:** reprocess (POST)
+**Sources:** health (GET), metrics (GET), auto-downgrade (POST)
 **Pipeline:** process-queue (POST), ingest (POST), check-links (POST)
-**Feed Ads:** list (GET), create (POST), toggle (POST)
+**Watchers:** check-changes (POST)
+**Feed Ads:** list (GET), create (POST), toggle (POST), individual CRUD ([id])
+**Backfill Covers:** POST (batch backfill cover images for opportunities)
 
 ## 9. KEY FILES REFERENCE
 
@@ -642,6 +652,9 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `src/lib/ai/providers/qwen.ts` | Qwen Plus adapter (DashScope, OpenAI-compatible) |
 | `src/lib/ai/providers/omniroute.ts` | OmniRoute provider selection logic |
 | `src/lib/og-fetch.ts` | OG tag extraction + image validation + fallback |
+| `src/lib/evidence-adapters.ts` | **Evidence-First** — RSS, API, manual evidence creation with content hashing |
+| `src/lib/api-adapters.ts` | **Evidence-First** — Himalayas, Arbeitnow, RemoteOK, Adzuna, USAJOBS API adapters |
+| `src/lib/cover-image.ts` | **Evidence-First** — 4-layer cover image system (OG → Clearbit Logo → Pollinations AI → Branded Fallback) |
 | `src/lib/pdf/ProofOfFundsDocument.tsx` | PDF generation for Proof of Funds certificate |
 | `src/lib/pdf/TrustCertificateDocument.tsx` | PDF generation for Trust Certificate |
 | `src/lib/integrations/brevo.ts` | Brevo marketing email integration |
@@ -659,6 +672,14 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `src/components/admin/opportunities/CreateOpportunityForm.tsx` | Admin create opportunity form |
 | `src/components/admin/opportunities/EditOpportunityForm.tsx` | Admin edit opportunity form |
 | `src/components/admin/opportunities/OpportunityQueueList.tsx` | Admin queue review list (Publish/Reject) |
+| `src/components/admin/opportunities/ProvenanceViewer.tsx` | **Evidence-First** — Provenance viewer showing source, AI model, confidence, edit history |
+| `src/app/api/admin/evidence/reprocess/route.ts` | **Evidence-First** — Reprocess evidence queue |
+| `src/app/api/admin/sources/health/route.ts` | **Evidence-First** — Source health summary endpoint |
+| `src/app/api/admin/sources/metrics/route.ts` | **Evidence-First** — Source metrics endpoint |
+| `src/app/api/admin/sources/auto-downgrade/route.ts` | **Evidence-First** — Auto-downgrade degraded sources |
+| `src/app/api/admin/opportunities/backfill-covers/route.ts` | **Evidence-First** — Batch backfill cover images |
+| `src/app/api/admin/opportunities/watcher/route.ts` | **Evidence-First** — Watcher endpoint for page change detection |
+| `src/app/api/admin/opportunities/export/route.ts` | **Evidence-First** — Export opportunities as JSON |
 | `src/components/dashboard/home/AchievementCardSection.tsx` | Achievement cards with WhatsApp/Instagram share |
 | `src/components/dashboard/home/CampaignBanner.tsx` | Viral campaign banner on dashboard home |
 | `src/components/dashboard/affiliate/AffiliateHub.tsx` | Affiliate dashboard with earnings, tools, leaderboard |
@@ -831,6 +852,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 8. **`createClient()` in component body causes subscription churn** — Every React re-render creates a new Supabase client reference, causing Realtime subscriptions to tear down and re-create. Move `createClient()` inside useEffect or use a ref. (Session 21 root cause for holiday/service modal bugs.)
 9. **`window.location.reload()` vs `router.refresh()`** — `window.location.reload()` starts page navigation before React can flush batched state updates (`setShowXxx(false)` never executes). Use `router.refresh()` + `setShowXxx(false)` pattern instead. (Session 19/21.)
 10. **Inline arrow callbacks for Realtime subscription callbacks** — New reference on every render causes subscription teardown. Use `useCallback` or ref-based approach. (Session 21.)
+11. **`media_source` CHECK constraint requires `fetched` or `fallback`** — The constraint is `CHECK (media_source IN ('fetched','custom','fallback'))`. `custom` is reserved for future admin manual image upload. When mapping from `cover_source` (og/logo/ai/branded/none), use `cover.cover_source === "branded" || cover.cover_source === "none" ? "fallback" : "fetched"`. The `"none"` case was originally mapped to `"fetched"` which is wrong — no image exists. (Session 38 bug fix.)
 
 ## 11. SESSION HISTORY — COMPLETED WORK
 
@@ -1331,6 +1353,78 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 
 **Build verified:** zero errors. All Sprint 19 unified spec items complete (except §A.7 dismiss button — skipped per user request).
 
+### Session 38 — Evidence-First Architecture, Cover Images, Watchers, Source Health (Completed)
+
+- **Date:** July 8-9, 2026
+- **Goal:** Implement the Evidence-First architecture from `reports/opportunity_ingestion_investigation.md` — evidence table, API adapters, cover image system, watcher system, source health monitoring, extended opportunity types, seed data, pipeline automation.
+- **Commits:** `d2f5b27` through `0b0b695` (16 commits on `main`)
+
+#### Phase 1 — Evidence-First Architecture (d2f5b27, 1168245)
+- **New table:** `evidence` — Raw evidence storage before enrichment (evidence_type, raw_data JSONB, source_url, source_name, content_hash, enrichment_status, opportunity_id)
+- **New lib:** `src/lib/evidence-adapters.ts` — `createRSSEvidence()`, `createAPIEvidence()`, `createManualEvidence()` with SHA-256 content hashing
+- **New lib:** `src/lib/api-adapters.ts` — `fetchHimalayas()`, `fetchArbeitnow()`, `fetchRemoteOK()`, `fetchAdzuna()`, `fetchUSAJOBS()` adapters normalizing to Evidence format
+- **New API:** `POST /api/admin/evidence/reprocess` — Reprocess failed evidence items
+- **New API:** `POST /api/admin/opportunities/export` — Export opportunities as JSON
+- **SQL:** `swiipt/phase2_evidence_table.sql` (evidence table DDL), `swiipt/phase2_10_migrate_queue_to_evidence.sql` (migrate queue to evidence)
+- **Updated:** `src/app/api/admin/opportunities/process-queue/route.ts` — Now processes from evidence table
+- **Updated:** `src/app/api/admin/opportunities/ingest/route.ts` — Now ingests to evidence table
+- **Updated:** `src/app/api/opportunities/submit/route.ts` — Partner submissions with validation + enrichment
+- **Updated:** `src/types/database.ts` — Added evidence, watchers, source_health_log, partner_submissions types
+
+#### Phase 2 — Cover Image System (b8b1d80, ed21816, ec6c922)
+- **New lib:** `src/lib/cover-image.ts` — 4-layer cover image system:
+  - Layer 1: OG Image (from `og-fetch.ts`)
+  - Layer 2: Clearbit Logo Lookup (org name → domain → logo URL)
+  - Layer 3: Pollinations.ai Generated Cover (AI-generated based on type/country/keywords)
+  - Layer 4: Branded Fallback (category-colored gradient + type emoji + country flag)
+- **New API:** `POST /api/admin/opportunities/backfill-covers` — Batch backfill cover images for opportunities with null cover_image_url
+- **Updated:** `POST /api/admin/opportunities/create` — Auto-generate cover image on creation
+- **Updated:** `PUT /api/admin/opportunities/[id]` — Auto-generate cover image on update
+- **Fix:** `media_source` CHECK constraint violation fixed (allows 'fallback' value)
+- **Fix:** Cover images now render full-bleed (no 16:9 crop)
+
+#### Phase 3 — Watcher System (phase4_*)
+- **New table:** `watchers` — Track URLs for page change detection (url, check_interval_hours, last_checked_at, last_content_hash, is_active)
+- **New table:** `source_health_log` — Source pull health tracking (source_id, pulled_at, items_found, items_new, duration_ms, error_message, success)
+- **New API:** `POST /api/admin/opportunities/watcher` — Check watched URLs for changes
+- **SQL:** `swiipt/phase4_watcher_table.sql`, `swiipt/phase4_watcher_cron.sql`, `swiipt/phase4_seed_watcher_sources.sql`, `swiipt/phase4_add_watcher_type.sql`
+
+#### Phase 4 — Source Health Monitoring (health_monitoring.sql, auto-downgrade)
+- **New API:** `GET /api/admin/sources/health` — Source health summary with success/failure rates, avg duration, last pull times
+- **New API:** `GET /api/admin/sources/metrics` — Source metrics (total ingested, published, health status)
+- **New API:** `POST /api/admin/sources/auto-downgrade` — Auto-downgrade sources with consecutive errors
+- **SQL:** `swiipt/health_monitoring.sql` — source_health_log table, auto-downgrade function
+
+#### Phase 5 — Extended Opportunity Types (03adcd0, extend_opportunities)
+- **12 new types added to `opportunity_types` table:** competition, conference, exchange, trade_show, trial, healthcare, residency, citizenship, funding, contest, accelerator, award
+- **SQL:** `swiipt/extend_opportunities_type_check.sql` (fix CHECK constraint), `swiipt/extended_types_additional_sources.sql` (sources for extended types)
+
+#### Phase 6 — Seed Data (34d3f81, seed_real_opportunities.sql)
+- **60+ real opportunities seeded** across all segments and types (scholarships, jobs, visas, fellowships, grants, sports trials, remote work, healthcare, trade shows)
+- **SQL:** `swiipt/seed_real_opportunities.sql` (430 lines of real opportunity data)
+
+#### Phase 7 — Pipeline Automation (bb9a94a, fcdfbff)
+- **SQL:** `swiipt/phase9_pipeline_automation.sql` — pg_cron jobs for ingest (every 6h) and process-queue (every 4h)
+- **SQL:** `swiipt/activate_pg_cron.sql` — Activate pg_cron extension
+- **SQL:** `swiipt/phase10_concurrency_rate_limit.sql` — Concurrency control for pipeline
+- **Fix:** pg_cron jobs hardcoded with actual values for Supabase compatibility (no variable references)
+
+#### Phase 8 — Verification SQL (a95ab6f, 169d910)
+- **SQL:** `swiipt/VERIFY_ALL_SETUP.sql` — Master verification query checking all tables, columns, RLS policies
+- **SQL:** `swiipt/verify/01-11_*.sql` — 11 individual verification queries (tables, sources, AI providers, opportunity types, type constraint, opportunities count, evidence columns, page hashes, partner submissions, seed opportunities)
+
+#### Phase 9 — Provenance Viewer (ProvenanceViewer.tsx)
+- **New component:** `src/components/admin/opportunities/ProvenanceViewer.tsx` — 236-line admin component showing source, evidence type, AI model, confidence score, edit history, trust tier, degraded status
+
+#### Phase 10 — Bug Fixes & Polish
+- `c890f37` — Removed top match background color and "why you're seeing this" text
+- `c3d1efc` — Split desired_roles string into array for text[] column
+- `0097c51` — Fixed onboarding error display + hardcoded cron values
+- `9fe3236` — Resolved ESLint errors in OpportunityCard (ternary expressions)
+
+**Build verified:** `npm run build` — zero TS errors across all phases.
+**Deployed:** Pushed to `main` for Vercel deployment.
+
 ---
 
 ## 12. PENDING / FUTURE BUILD
@@ -1338,6 +1432,20 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 ### Sprint 19 SQL Migrations (10 files — run in order)
 - **Order matters.** Run in Supabase SQL Editor in the sequence listed in `reports/sprint_19_complete_walkthrough.md` §15.
 - Files: `sprint_19_pre_data_driven_types.sql`, `sprint_19_media_system.sql`, `sprint_19_engagement_sql.sql`, `sprint_19_pipeline_sql.sql`, `sprint_19_phase2_ai_providers_seed.sql`, `sprint_19_feed_ads.sql`, `sprint_19_seed_sources.sql`, `sprint_19_seed_opportunities.sql`, `sprint_19_seed_additional_sources.sql`, `sprint_19_cron_compute_interest.sql`
+
+### Evidence-First SQL Migrations (20+ files — run in order)
+- **Order matters.** Run in Supabase SQL Editor in phase order.
+- **Phase 2:** `phase2_evidence_table.sql`, `phase2_10_migrate_queue_to_evidence.sql`
+- **Phase 4:** `phase4_add_watcher_type.sql`, `phase4_seed_watcher_sources.sql`, `phase4_watcher_table.sql`, `phase4_watcher_cron.sql`
+- **Phase 5:** `phase5_scale_sources.sql`
+- **Phase 7:** `phase7_extended_type_sources.sql`
+- **Phase 9:** `phase9_pipeline_automation.sql`, `activate_pg_cron.sql`
+- **Phase 10:** `phase10_concurrency_rate_limit.sql`
+- **Health:** `health_monitoring.sql`
+- **Extended Types:** `extend_opportunity_types.sql` (already run), `fix_opportunities_type_check.sql`
+- **Partners:** `gap2_5_partner_submissions.sql`
+- **Seed:** `seed_real_opportunities.sql`
+- **Verification:** `VERIFY_ALL_SETUP.sql`, `verify/01-11_*.sql`
 
 ### Dashboard Home Restructure (Feed as Primary Screen)
 - **Plan file:** `docs/sprint_17_18_priority_order.md` (lines 29-50)
@@ -1370,6 +1478,55 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **pg_cron SQL:** Run pg_cron SQL for affiliate-related automation (if applicable — check `admin_affiliates_phase_a.sql`)
 - **End-to-end testing:** Test full affiliate flow: signup → referral → commission → withdrawal request → admin approval
 - **Status:** Code complete (Sessions 30-32), ops not verified
+
+### Evidence-First — Operational Items Remaining
+- **SQL migrations:** Run all 20+ SQL files in Supabase SQL Editor in phase order
+- **Provenance integration:** Wire `ProvenanceViewer.tsx` into admin opportunity detail page
+- **Testing:** Test ingest → evidence → process-queue → opportunities pipeline end-to-end
+- **Status:** Code complete (Session 38), SQL not yet run
+
+### MUST BUILD: Admin Custom Cover Image Upload (Priority 10)
+- **Status:** Schema ready, UI/API not built. DO NOT forget this.
+- **Why it exists:** The `media_source` CHECK constraint includes `'custom'` (reserved for admin manual image override). The `OpportunityCard.tsx` rendering already handles `custom` correctly (`hasCover = cover_image_url && media_source !== "fallback"` — `custom` passes). The schema and rendering are ready; only the admin UI and API layers need to be built.
+- **Two implementation options:**
+
+#### Option A — URL Paste (Recommended, ~68 lines, 4 files)
+Surgical, no new infrastructure. Admin pastes an image URL (Imgur, company CDN, etc.).
+
+| # | File | Change | Lines |
+|---|------|--------|-------|
+| 1 | `src/components/admin/opportunities/CreateOpportunityForm.tsx` | Add `coverImageUrl` state + optional URL input field + pass to JSON body | ~15 |
+| 2 | `src/components/admin/opportunities/EditOpportunityForm.tsx` | Add `coverImageUrl` state + URL input with current value + image preview + clear button + pass to JSON body | ~30 |
+| 3 | `src/app/api/admin/opportunities/create/route.ts` | Check `body.cover_image_url` before calling `getCoverImage()`. If provided, write directly with `media_source = "custom"` and skip auto-generation | ~8 |
+| 4 | `src/app/api/admin/opportunities/[id]/route.ts` | Add `"cover_image_url"` to `allowedFields` array. When `body.cover_image_url` present, write directly with `media_source = "custom"` and skip auto-regeneration. When empty string sent, revert to auto-generation (`shouldRegenerateCover = true`) | ~15 |
+
+**Key logic for create/route.ts:**
+```typescript
+// After opportunity insert, before getCoverImage() call:
+if (body.cover_image_url) {
+  await (supabase as any)
+    .from("opportunities")
+    .update({ cover_image_url: body.cover_image_url, media_source: "custom", media_type: "image" })
+    .eq("id", data.id);
+  return NextResponse.json({ success: true, id: data.id });
+}
+```
+
+**No SQL migrations needed.** `custom` is already in the CHECK constraint. `cover_image_url` column already exists.
+
+#### Option B — Direct File Upload (~200 lines, 6+ files)
+Full file upload with Supabase Storage. More complex but allows drag-and-drop.
+
+| # | File | Change | Lines |
+|---|------|--------|-------|
+| 1 | New Supabase Storage bucket | `cover-images` bucket with public read policies | SQL setup |
+| 2 | New `src/app/api/admin/opportunities/upload-cover/route.ts` | POST route: accept multipart form, upload to `cover-images` bucket, return public URL | ~40 |
+| 3 | `src/components/admin/opportunities/CreateOpportunityForm.tsx` | Add file input with drag-and-drop, upload on select, store URL in state | ~30 |
+| 4 | `src/components/admin/opportunities/EditOpportunityForm.tsx` | Same file input + current image preview + remove button | ~40 |
+| 5 | `src/app/api/admin/opportunities/create/route.ts` | Same as Option A — check `body.cover_image_url` | ~8 |
+| 6 | `src/app/api/admin/opportunities/[id]/route.ts` | Same as Option A — add to allowedFields | ~15 |
+
+**Recommendation: Build Option A first.** It covers 90% of use cases. Option B can be added as a follow-up if direct file upload is needed.
 
 ## 13. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors

@@ -70,7 +70,15 @@ export default async function OpportunitiesPage() {
     };
   });
 
-  const segmentOpps = allOpportunities.filter((o) => o.segment_slug === segmentSlug);
+  let segmentOpps = allOpportunities.filter((o) => o.segment_slug === segmentSlug);
+
+  if (segmentSlug && segmentOpps.length < 5) {
+    const trending = allOpportunities
+      .filter((o) => o.segment_slug !== segmentSlug)
+      .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
+      .slice(0, 30);
+    segmentOpps = [...segmentOpps, ...trending];
+  }
 
   const scoredSegment = segmentOpps.map((o) => ({
     ...o,

@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     const { data: sourceRecord } = await (serviceSupabase as any)
       .from("opportunity_sources")
-      .select("trust_tier")
+      .select("trust_tier, segment_slug")
       .eq("name", item.source_name)
       .single();
 
@@ -119,12 +119,12 @@ export async function POST(request: NextRequest) {
         const { data: publishedOpp } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
-            segment_slug: enriched.segment_slug || item.source_name,
+            segment_slug: enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker",
             title: enriched.cleaned_title || raw.title,
             organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
             location_country: enriched.location_country || raw.location || "Global",
             location_city: enriched.location_city || null,
-            type: enriched.type || inferTypeFromSegment(enriched.segment_slug || item.source_name),
+            type: enriched.type || inferTypeFromSegment(enriched.segment_slug || sourceRecord?.segment_slug),
             description: enriched.cleaned_description || raw.description || "",
             requirements: enriched.requirements || raw.requirements || null,
             salary_range: enriched.salary_range || raw.salary || null,
@@ -172,7 +172,7 @@ export async function POST(request: NextRequest) {
         const { data: publishedOpp } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
-            segment_slug: enriched.segment_slug,
+            segment_slug: enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker",
             title: enriched.cleaned_title,
             organisation: enriched.cleaned_organisation,
             location_country: enriched.location_country,
