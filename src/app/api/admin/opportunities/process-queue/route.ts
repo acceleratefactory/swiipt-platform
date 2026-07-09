@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { enrich } from "@/lib/ai-service";
-import { getCoverImage } from "@/lib/cover-image";
 
 export async function POST(request: NextRequest) {
   if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
@@ -111,11 +110,6 @@ export async function POST(request: NextRequest) {
       };
 
       if (trustTier === "trusted" && mechanicalScore >= 0.5) {
-        const coverTitle = enriched.cleaned_title || raw.title || "";
-        const coverOrg = enriched.cleaned_organisation || raw.organisation || "Unknown";
-        const coverType = safeType(enriched.type, enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker");
-        const coverCountry = enriched.location_country || raw.location || "Global";
-        const og = raw.url ? await getCoverImage(raw.url, coverTitle, coverOrg, coverType, coverCountry) : { cover_image_url: null };
         const { data: publishedOpp, error: insertErrA } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
@@ -130,7 +124,7 @@ export async function POST(request: NextRequest) {
             salary_range: enriched.salary_range || raw.salary || null,
             deadline: enriched.deadline || raw.deadline || null,
             application_url: raw.url,
-            cover_image_url: og.cover_image_url,
+            cover_image_url: null,
             source_url: item.source_url || null,
             source_name: item.source_name,
             ai_generated: true,
@@ -177,11 +171,6 @@ export async function POST(request: NextRequest) {
           .eq("id", item.id);
         needsReview++;
       } else if (mechanicalScore >= 0.75) {
-        const coverTitle2 = enriched.cleaned_title || "";
-        const coverOrg2 = enriched.cleaned_organisation || "";
-        const coverType2 = safeType(enriched.type, enriched.segment_slug || "job");
-        const coverCountry2 = enriched.location_country || "Global";
-        const og = raw.url ? await getCoverImage(raw.url, coverTitle2, coverOrg2, coverType2, coverCountry2) : { cover_image_url: null };
         const { data: publishedOpp, error: insertErrB } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
@@ -196,7 +185,7 @@ export async function POST(request: NextRequest) {
             salary_range: enriched.salary_range || raw.salary || null,
             deadline: enriched.deadline || raw.deadline || null,
             application_url: raw.url,
-            cover_image_url: og.cover_image_url,
+            cover_image_url: null,
             source_url: item.source_url || null,
             source_name: item.source_name,
             ai_generated: true,
