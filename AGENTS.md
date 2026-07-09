@@ -1479,6 +1479,27 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 | `findings/process-queue-investigation.md` | Full investigation report with SQL queries and fix plan |
 | `findings/check_opportunities_state.sql` | 5 diagnostic SQL queries for Supabase SQL Editor |
 
+### Session 40 — Pipeline Deadlock Diagnosis + Fix 1 (Standard-Tier Publishing)
+
+- **Date:** July 9, 2026
+- **Trigger:** Feed still showed 0 AI opportunities (54 seed only) after Session 39 fixes + SQL migration + evidence reset + re-run.
+- **New root cause (deadlock, not previously found):** `process-queue` could never publish ingested items — trusted OR standard:
+  1. **Bug 1 (standard gate unsatisfiable):** `prompts.ts` uses a "format-only" prompt for `standard` tier ("Do NOT evaluate legitimacy or confidence"), so the AI never returns `confidence_score`/`is_legitimate`/`is_relevant_for_nigerians`. But the standard publish branch required all three → every standard item rejected. The only active no-auth sources (Himalayas, Arbeitnow) are `standard` tier.
+  2. **Bug 2:** RSS `deadline` is set to `item.isoDate` (article publish date, always past) → mechanical `deadlineInFuture` fails → trusted RSS `mechanicalScore` drops to ~0.5, below the 0.75 Path A threshold.
+  3. **Bug 3:** trusted confidence only reaches 0.92 when `mechanicalScore >= 0.75` → combined with Bug 2, trusted items fall through to rejected.
+  - Secondary (deferred): S1 `ai-service.ts` reads `ai_providers` with anon cookie client; S2 OmniRoute localhost URL; S3 only `GEMINI_API_KEY` set, only in `.env.local` (confirm in Vercel).
+- **Investigation report:** `findings/pipeline-deadlock-root-cause.md`
+- **Fix 1 applied (Option B, approved) — Bug 1 only:** In `src/app/api/admin/opportunities/process-queue/route.ts` (single file, 3 surgical edits):
+  1. Standard publish gate `confidence >= 0.85 && is_legitimate && is_relevant_for_nigerians` → `mechanicalScore >= 0.75`
+  2. Path B `ai_relevance_score` → `Math.round((confidence || mechanicalScore) * 100)` (avoids 0 relevance burying items)
+  3. Borderline branch `confidence >= 0.60` → `mechanicalScore >= 0.5` (routes 0.5–0.75 standard items to needsReview instead of reject)
+  - Path A (trusted), review_all, scam-risk reject, both INSERT bodies + error-checking untouched. Trusted items with mechanicalScore < 0.75 now go to needsReview (was rejected) — strict improvement.
+  - **Build:** `npm run build` → ✓ Compiled successfully, zero TS errors.
+  - **Record:** `findings/fix1-standard-tier-publish-applied.md`
+- **Fix 2 applied (approved) — Bug 2:** In `src/lib/evidence-adapters.ts` (`createRSSEvidence`, single file): changed RSS `raw_data.deadline` from `item.isoDate || null` to `null`, and added `published_date: item.isoDate || null` to preserve the publish date. `item.isoDate` is the article publish date (past), which was failing the `deadlineInFuture` mechanical check and dropping trusted RSS scores below 0.75. `api-adapters.ts` (real deadline fields) untouched. Build: ✓ zero TS errors. **Record:** `findings/fix2-rss-deadline-applied.md`
+- **Fix 3 applied (approved) — Bug 3:** In `src/app/api/admin/opportunities/process-queue/route.ts` (2 aligned edits): lowered trusted threshold from `mechanicalScore >= 0.75` to `>= 0.5` on both line 83 (confidence → 0.92) and line 113 (Path A publish gate). `0.5` is the floor (below is rejected at line 44), so trusted publishing is fully decoupled from the strict 0.75 bar. Trust hierarchy preserved: trusted publishes at ≥0.5, standard at ≥0.75 (Fix 1), review_all → review. Standard gate, scam reject, INSERT bodies untouched. Build: ✓ zero TS errors. **Record:** `findings/fix3-trusted-threshold-applied.md`
+- **Bugs 1–3 all fixed.** Still pending: secondaries S1 (ai-service anon client), S2 (OmniRoute localhost), S3 (Vercel env vars). Not yet committed/deployed.
+
 ---
 
 ## 12. PENDING / FUTURE BUILD

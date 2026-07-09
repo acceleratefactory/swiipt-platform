@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
       });
 
       const enriched: any = response.enriched || {};
-      const confidence = trustTier === "trusted" && mechanicalScore >= 0.75 ? 0.92 : (response.confidence || enriched.confidence_score || 0);
+      const confidence = trustTier === "trusted" && mechanicalScore >= 0.5 ? 0.92 : (response.confidence || enriched.confidence_score || 0);
 
       if (enriched.is_scam_risk) {
         await (serviceSupabase as any)
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
         source_trust_tier: trustTier,
       };
 
-      if (trustTier === "trusted" && mechanicalScore >= 0.75) {
+      if (trustTier === "trusted" && mechanicalScore >= 0.5) {
         const coverTitle = enriched.cleaned_title || raw.title || "";
         const coverOrg = enriched.cleaned_organisation || raw.organisation || "Unknown";
         const coverType = safeType(enriched.type, enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker");
@@ -176,7 +176,7 @@ export async function POST(request: NextRequest) {
           })
           .eq("id", item.id);
         needsReview++;
-      } else if (confidence >= 0.85 && enriched.is_legitimate && enriched.is_relevant_for_nigerians) {
+      } else if (mechanicalScore >= 0.75) {
         const coverTitle2 = enriched.cleaned_title || "";
         const coverOrg2 = enriched.cleaned_organisation || "";
         const coverType2 = safeType(enriched.type, enriched.segment_slug || "job");
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
             source_url: item.source_url || null,
             source_name: item.source_name,
             ai_generated: true,
-            ai_relevance_score: Math.round(confidence * 100),
+            ai_relevance_score: Math.round((confidence || mechanicalScore) * 100),
             is_active: true,
             published_at: new Date().toISOString(),
             provenance,
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
           .eq("id", item.id);
 
         published++;
-      } else if (confidence >= 0.60) {
+      } else if (mechanicalScore >= 0.5) {
         await (serviceSupabase as any)
           .from("evidence")
           .update({
