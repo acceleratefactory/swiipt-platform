@@ -113,10 +113,10 @@ export async function POST(request: NextRequest) {
       if (trustTier === "trusted" && mechanicalScore >= 0.75) {
         const coverTitle = enriched.cleaned_title || raw.title || "";
         const coverOrg = enriched.cleaned_organisation || raw.organisation || "Unknown";
-        const coverType = enriched.type || inferTypeFromSegment(enriched.segment_slug || item.source_name);
+        const coverType = safeType(enriched.type, enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker");
         const coverCountry = enriched.location_country || raw.location || "Global";
         const og = raw.url ? await getCoverImage(raw.url, coverTitle, coverOrg, coverType, coverCountry) : { cover_image_url: null };
-        const { data: publishedOpp } = await (serviceSupabase as any)
+        const { data: publishedOpp, error: insertErrA } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
             segment_slug: enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker",
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
             organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
             location_country: enriched.location_country || raw.location || "Global",
             location_city: enriched.location_city || null,
-            type: enriched.type || inferTypeFromSegment(enriched.segment_slug || sourceRecord?.segment_slug),
+            type: safeType(enriched.type, enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker"),
             description: enriched.cleaned_description || raw.description || "",
             requirements: enriched.requirements || raw.requirements || null,
             salary_range: enriched.salary_range || raw.salary || null,
@@ -141,6 +141,19 @@ export async function POST(request: NextRequest) {
           })
           .select("id")
           .single();
+
+        if (insertErrA) {
+          await (serviceSupabase as any)
+            .from("evidence")
+            .update({
+              enrichment_status: "failed",
+              enriched_data: { ...enriched, insert_error: insertErrA.message },
+              ai_confidence: confidence,
+            })
+            .eq("id", item.id);
+          rejected++;
+          continue;
+        }
 
         await (serviceSupabase as any)
           .from("evidence")
@@ -166,22 +179,22 @@ export async function POST(request: NextRequest) {
       } else if (confidence >= 0.85 && enriched.is_legitimate && enriched.is_relevant_for_nigerians) {
         const coverTitle2 = enriched.cleaned_title || "";
         const coverOrg2 = enriched.cleaned_organisation || "";
-        const coverType2 = enriched.type || "job";
+        const coverType2 = safeType(enriched.type, enriched.segment_slug || "job");
         const coverCountry2 = enriched.location_country || "Global";
         const og = raw.url ? await getCoverImage(raw.url, coverTitle2, coverOrg2, coverType2, coverCountry2) : { cover_image_url: null };
-        const { data: publishedOpp } = await (serviceSupabase as any)
+        const { data: publishedOpp, error: insertErrB } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
             segment_slug: enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker",
-            title: enriched.cleaned_title,
-            organisation: enriched.cleaned_organisation,
-            location_country: enriched.location_country,
+            title: enriched.cleaned_title || raw.title || "Untitled",
+            organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
+            location_country: enriched.location_country || raw.location || "Global",
             location_city: enriched.location_city || null,
-            type: enriched.type,
-            description: enriched.cleaned_description,
-            requirements: enriched.requirements || null,
-            salary_range: enriched.salary_range || null,
-            deadline: enriched.deadline || null,
+            type: safeType(enriched.type, enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker"),
+            description: enriched.cleaned_description || raw.description || "",
+            requirements: enriched.requirements || raw.requirements || null,
+            salary_range: enriched.salary_range || raw.salary || null,
+            deadline: enriched.deadline || raw.deadline || null,
             application_url: raw.url,
             cover_image_url: og.cover_image_url,
             source_url: item.source_url || null,
@@ -194,6 +207,19 @@ export async function POST(request: NextRequest) {
           })
           .select("id")
           .single();
+
+        if (insertErrB) {
+          await (serviceSupabase as any)
+            .from("evidence")
+            .update({
+              enrichment_status: "failed",
+              enriched_data: { ...enriched, insert_error: insertErrB.message },
+              ai_confidence: confidence,
+            })
+            .eq("id", item.id);
+          rejected++;
+          continue;
+        }
 
         await (serviceSupabase as any)
           .from("evidence")
@@ -240,6 +266,18 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ processed: evidenceItems.length, published, needsReview, rejected });
+}
+
+const ALLOWED_TYPES = new Set([
+  "job", "scholarship", "fellowship", "visa_programme", "sports_trial",
+  "remote_work", "internship", "training", "grant", "competition",
+  "conference", "exchange", "trade_show", "trial", "healthcare",
+  "residency", "citizenship", "funding", "contest", "accelerator", "award",
+]);
+
+function safeType(raw: string | undefined, segment: string): string {
+  if (raw && ALLOWED_TYPES.has(raw)) return raw;
+  return inferTypeFromSegment(segment);
 }
 
 function inferTypeFromSegment(segment: string): string {
