@@ -5,7 +5,7 @@
 **You are joining after Session 39 (Process-Queue Pipeline Fix).** Do not start from scratch. Read this first.
 
 ### Current State
-- **Session 39 — Process-Queue Pipeline Fix (⚠️ IN PROGRESS)** — Root cause found: `type` column has FK constraint to `opportunity_types(slug)`. AI enrichment returns free-form types not in the 21 seeded types. Every INSERT fails silently. Code never checked errors, counted all as "published". Fix deployed (commit `7f7e23a`): `safeType()` validation + error checking on both INSERT paths. **Feed still shows only 54 seed items — need to verify deploy is live and re-run process-queue.** See `findings/process-queue-investigation.md` for full analysis.
+- **Session 39 — Process-Queue Pipeline Fix (⚠️ IN PROGRESS)** — Root cause found: `type` column has FK constraint to `opportunity_types(slug)`. AI enrichment returns free-form types not in the 21 seeded types. Every INSERT fails silently. Code never checked errors, counted all as "published". Fix deployed (commit `7f7e23a`): `safeType()` validation + error checking on both INSERT paths. **Live verification on July 10 shows ingestion is working but publish still fails: 158 sources exist, 953 total_ingested, 609 source health logs, 1000 evidence rows, `process-queue` returns `{"processed":0}`, and the queue is stale/drained (`pending = 0`, `processing = 0`) with 505 enriched ghosts (`opportunity_id = null`). Reset stale evidence to `pending`, then re-run process-queue.** See `findings/opportunity-feed-pipeline-investigation-2026-07-10.md` for the exact report.
 - **Session 38 — Evidence-First Architecture (✅ Built, ⚠️ Pipeline Not Yet Working)** — Evidence table, API adapters (Himalayas, Arbeitnow, RemoteOK, Adzuna, USAJOBS), cover image system (4-layer: OG → Logo → AI → Branded), watcher system (page change detection), source health monitoring, 12 extended opportunity types, 60+ real opportunities seeded, pg_cron pipeline automation, 20+ SQL migrations, verification scripts. See `reports/opportunity_ingestion_investigation.md` for full spec.
 - **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
 - **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed. 5 new DB tables, PDF generation, Stripe integration.
@@ -41,7 +41,7 @@
 ### Current Pending Items
 | Priority | Item | Status |
 |----------|------|--------|
-| 1 | **CRITICAL: Pipeline — Process-queue INSERT failures** | ⚠️ Fix deployed (`7f7e23a`), need to verify deploy is live, reset evidence to pending, re-run process-queue. Feed shows only 54 seed items. See `findings/process-queue-investigation.md` |
+| 1 | **CRITICAL: Pipeline — Process-queue publish failure** | ⚠️ Ingest is live, but publish still produces 0 AI opportunities. Live DB shows 158 sources, 953 ingested, 1000 evidence rows, 54 seed opportunities only. See `findings/opportunity-feed-pipeline-investigation-2026-07-10.md` |
 | 2 | Sprint 19 — Run 10 SQL migrations in Supabase Editor | ⏳ 10 SQL files ready, execute in order (see §15 of walkthrough) |
 | 3 | Evidence-First — Run 20+ SQL migrations in Supabase Editor | ⏳ Phase2-10, watcher, health, partner subs, seed data (see Session 38) |
 | 4 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
@@ -83,7 +83,7 @@ Nigeria (primary), UAE, Qatar, UK, Canada, Portugal, Georgia, St Kitts, Caribbea
 - **Remote:** `https://github.com/acceleratefactory/swiipt-platform.git`
 - **Branches:** `main` (production, protected) ← `staging` ← `develop` ← feature branches
 - **Current branch:** `main`
-- **Latest commit:** `7f7e23a` — fix: process-queue INSERT now checks errors + validates type against FK constraint
+- **Latest commit:** `d61f5ce` — fix: decouple cover-image generation from process-queue to avoid serverless timeout (Session 41)
 - **Deployment:** Push to `main` auto-deploys to Vercel. No CI/CD scripts — manual git push. No `.github/workflows/`.
 - **Author:** `acceleratefactory` / `tech@acceleratefactory.com`
 
@@ -1499,6 +1499,36 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 - **Fix 2 applied (approved) — Bug 2:** In `src/lib/evidence-adapters.ts` (`createRSSEvidence`, single file): changed RSS `raw_data.deadline` from `item.isoDate || null` to `null`, and added `published_date: item.isoDate || null` to preserve the publish date. `item.isoDate` is the article publish date (past), which was failing the `deadlineInFuture` mechanical check and dropping trusted RSS scores below 0.75. `api-adapters.ts` (real deadline fields) untouched. Build: ✓ zero TS errors. **Record:** `findings/fix2-rss-deadline-applied.md`
 - **Fix 3 applied (approved) — Bug 3:** In `src/app/api/admin/opportunities/process-queue/route.ts` (2 aligned edits): lowered trusted threshold from `mechanicalScore >= 0.75` to `>= 0.5` on both line 83 (confidence → 0.92) and line 113 (Path A publish gate). `0.5` is the floor (below is rejected at line 44), so trusted publishing is fully decoupled from the strict 0.75 bar. Trust hierarchy preserved: trusted publishes at ≥0.5, standard at ≥0.75 (Fix 1), review_all → review. Standard gate, scam reject, INSERT bodies untouched. Build: ✓ zero TS errors. **Record:** `findings/fix3-trusted-threshold-applied.md`
 - **Bugs 1–3 all fixed.** Still pending: secondaries S1 (ai-service anon client), S2 (OmniRoute localhost), S3 (Vercel env vars). Not yet committed/deployed.
+
+### Session 40 (cont.) — Diagnostics: ruled out constraints, confirmed timeout + ghosts
+
+- **Fixes 1–3 committed + pushed** (`8b6efed`), Vercel auto-deployed.
+- **Feed still showed only 54 seed rows.** Ran live diagnostics (`findings/diagnostic-queries.sql`):
+  - Evidence: `enriched 495 / failed 416 / pending 86`.
+  - `insert_error`: **0 rows captured.**
+  - `opportunities.type`: BOTH `fk_opportunities_type` (FK→`opportunity_types`) AND `opportunities_type_check` (CHECK) exist, both allowing all **21** types. `opportunity_types` = 21 rows. `career_segments` = 10 slugs.
+- **Ruled OUT:** type constraint (Finding B) and segment_slug FK — all `safeType()`/`inferTypeFromSegment` outputs are valid.
+- **Revised root cause (`findings/diagnostic-results-session40.md`):**
+  1. The 495 "enriched" are **ghosts** — `opportunity_id IS NULL`, zero insert_error → marked by OLD (pre-error-checking) code. Stale.
+  2. **Finding A confirmed:** `process-queue` called `getCoverImage()` per published item (OG 8s + HEAD 5s + Clearbit 5s + Pollinations 15s ≈ up to 33s/item) over `limit(100)`, with **no `maxDuration`** in `vercel.json` → serverless timeout before commit. Fix 1 made it acute by routing hundreds of standard items onto the slow cover path.
+
+### Session 41 — Step 1: Decouple Cover Images from process-queue (Completed + deployed)
+
+- **User approved Step 1.** Goal: get data into the feed; defer covers.
+- **Change (`src/app/api/admin/opportunities/process-queue/route.ts`, 4 edits):** removed all `getCoverImage()` calls from BOTH insert paths (trusted + standard), set `cover_image_url: null` on both inserts, removed the now-unused `getCoverImage` import. Covers to be filled asynchronously by existing `POST /api/admin/opportunities/backfill-covers`.
+- **Build:** `npm run build` → ✓ zero TS errors. **Commit `d61f5ce`, pushed to `main`.**
+- **Provided `findings/step1-reset-and-rerun.sql`** (reset ghosts+failed→pending; verify queries).
+
+#### Post-deploy runtime findings
+- User ran `SELECT ai_generated, COUNT(*) FROM opportunities` → still `false=54, true=0`; `missing_cover=0`.
+- **Full code-path audit (`findings/deep-dive-feed-still-empty.md`):** code is SOUND — types valid, segment_slug valid, data shape matches (`api-adapters.ts` normalizes to `title/organisation/description/url/deadline/salary/location`), `enrich()` never throws (raw fallbacks work), all inserted columns exist in schema, cover decoupled, insert errors captured. Also discovered **`vercel.json` has NO cron for ingest/process-queue** — pipeline runs only via Supabase pg_cron or manual curl.
+- **User triggered process-queue manually** (`Invoke-RestMethod`, secret `swiipt-group-buy-secret-a1b2c3d4`) → **`processed 100, published 88, needsReview 0, rejected 12`.**
+- **BUT re-querying `opportunities` STILL shows `false=54, true=0`** — the 88 "published" rows are NOT visible in the SQL editor.
+  - Since error-checking would mark a failed insert as `rejected` (not `published`), an insert that returns success (`.select("id").single()` returned an id) yet leaves no visible row strongly implies **the Vercel app writes to a DIFFERENT Supabase project than the SQL editor is querying** (two-database mismatch), OR a trigger removes them. **Leading hypothesis: environment/database mismatch.**
+- **NEXT (investigation, no code):** confirm two-DB hypothesis — after a process-queue run, re-check `evidence` status counts in the SQL editor (if unchanged, the app isn't touching this DB); compare Vercel `NEXT_PUBLIC_SUPABASE_URL` against the SQL editor's project ref; check whether the live app feed now shows the 88.
+
+#### Current commit
+- **Latest commit:** `d61f5ce` — fix: decouple cover-image generation from process-queue to avoid serverless timeout
 
 ---
 

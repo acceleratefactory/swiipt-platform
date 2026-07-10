@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import type { AIEnrichRequest, AIEnrichResponse, AIProviderAdapter } from "./ai/providers/index";
 import { omnirouteProvider } from "./ai/providers/omniroute";
 import { geminiProvider } from "./ai/providers/gemini";
@@ -31,7 +31,7 @@ interface ActiveProvider {
  * Returns providers whose adapter is registered and API key is set.
  */
 async function getActiveProviders(): Promise<ActiveProvider[]> {
-  const supabase = createClient();
+  const supabase = createServiceClient();
   const { data: rows } = await supabase
     .from("ai_providers")
     .select("*")
