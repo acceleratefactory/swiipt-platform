@@ -110,9 +110,11 @@ export async function POST(request: NextRequest) {
       };
 
       if (trustTier === "trusted" && mechanicalScore >= 0.5) {
+        const oppId = crypto.randomUUID();
         const { data: publishedOpp, error: insertErrA } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
+            id: oppId,
             segment_slug: enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker",
             title: enriched.cleaned_title || raw.title,
             organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
@@ -155,7 +157,7 @@ export async function POST(request: NextRequest) {
             enrichment_status: "enriched",
             enriched_data: enriched,
             ai_confidence: confidence,
-            opportunity_id: publishedOpp?.id,
+            opportunity_id: publishedOpp?.id ?? oppId,
           })
           .eq("id", item.id);
 
@@ -171,9 +173,11 @@ export async function POST(request: NextRequest) {
           .eq("id", item.id);
         needsReview++;
       } else if (mechanicalScore >= 0.75) {
+        const oppId = crypto.randomUUID();
         const { data: publishedOpp, error: insertErrB } = await (serviceSupabase as any)
           .from("opportunities")
           .insert({
+            id: oppId,
             segment_slug: enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker",
             title: enriched.cleaned_title || raw.title || "Untitled",
             organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
@@ -216,7 +220,7 @@ export async function POST(request: NextRequest) {
             enrichment_status: "enriched",
             enriched_data: enriched,
             ai_confidence: confidence,
-            opportunity_id: publishedOpp?.id,
+            opportunity_id: publishedOpp?.id ?? oppId,
           })
           .eq("id", item.id);
 
