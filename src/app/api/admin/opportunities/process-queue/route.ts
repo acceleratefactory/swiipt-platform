@@ -118,12 +118,12 @@ export async function POST(request: NextRequest) {
           .from("opportunities")
           .insert({
             id: oppId,
-            segment_slug: enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker",
+            segment_slug: safeSegment(enriched.segment_slug, sourceRecord?.segment_slug),
             title: enriched.cleaned_title || raw.title,
             organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
             location_country: enriched.location_country || raw.location || "Global",
             location_city: enriched.location_city || null,
-            type: safeType(enriched.type, enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker"),
+            type: safeType(enriched.type, safeSegment(enriched.segment_slug, sourceRecord?.segment_slug)),
             description: enriched.cleaned_description || raw.description || "",
             requirements: enriched.requirements || raw.requirements || null,
             salary_range: enriched.salary_range || raw.salary || null,
@@ -193,12 +193,12 @@ export async function POST(request: NextRequest) {
           .from("opportunities")
           .insert({
             id: oppId,
-            segment_slug: enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker",
+            segment_slug: safeSegment(enriched.segment_slug, sourceRecord?.segment_slug),
             title: enriched.cleaned_title || raw.title || "Untitled",
             organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
             location_country: enriched.location_country || raw.location || "Global",
             location_city: enriched.location_city || null,
-            type: safeType(enriched.type, enriched.segment_slug || sourceRecord?.segment_slug || "job_seeker"),
+            type: safeType(enriched.type, safeSegment(enriched.segment_slug, sourceRecord?.segment_slug)),
             description: enriched.cleaned_description || raw.description || "",
             requirements: enriched.requirements || raw.requirements || null,
             salary_range: enriched.salary_range || raw.salary || null,
@@ -298,6 +298,17 @@ const ALLOWED_TYPES = new Set([
 function safeType(raw: string | undefined, segment: string): string {
   if (raw && ALLOWED_TYPES.has(raw)) return raw;
   return inferTypeFromSegment(segment);
+}
+
+const ALLOWED_SEGMENTS = new Set([
+  "job_seeker", "student", "healthcare", "tech_professional", "footballer",
+  "sports_professional", "freelancer", "entrepreneur", "trade_worker", "caregiver",
+]);
+
+function safeSegment(raw: string | undefined, fallback?: string): string {
+  if (raw && ALLOWED_SEGMENTS.has(raw)) return raw;
+  if (fallback && ALLOWED_SEGMENTS.has(fallback)) return fallback;
+  return "job_seeker";
 }
 
 function inferTypeFromSegment(segment: string): string {
