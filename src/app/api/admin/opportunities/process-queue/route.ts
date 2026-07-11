@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
           .from("evidence")
           .update({
             enrichment_status: "enriched",
-            enriched_data: enriched,
+            enriched_data: { ...enriched, debug_oppId: oppId, debug_publishedOpp: publishedOpp },
             ai_confidence: confidence,
             opportunity_id: publishedOpp?.id ?? oppId,
           })
@@ -218,7 +218,7 @@ export async function POST(request: NextRequest) {
           .from("evidence")
           .update({
             enrichment_status: "enriched",
-            enriched_data: enriched,
+            enriched_data: { ...enriched, debug_oppId: oppId, debug_publishedOpp: publishedOpp },
             ai_confidence: confidence,
             opportunity_id: publishedOpp?.id ?? oppId,
           })
