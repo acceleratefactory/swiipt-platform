@@ -142,6 +142,11 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (insertErrA) {
+          console.error("[PROCESS-QUEUE] INSERT ERROR Path A:", {
+            message: insertErrA.message,
+            evidence_id: item.id,
+            oppId: oppId
+          });
           await (serviceSupabase as any)
             .from("evidence")
             .update({
@@ -163,6 +168,13 @@ export async function POST(request: NextRequest) {
             opportunity_id: publishedOpp?.id ?? oppId,
           })
           .eq("id", item.id);
+
+        console.error("[PROCESS-QUEUE] SUCCESS Path A:", {
+          evidence_id: item.id,
+          oppId: oppId,
+          publishedOpp_id: publishedOpp?.id,
+          final_opportunity_id: publishedOpp?.id ?? oppId
+        });
 
         published++;
       } else if (trustTier === "review_all") {
@@ -205,6 +217,11 @@ export async function POST(request: NextRequest) {
           .single();
 
         if (insertErrB) {
+          console.error("[PROCESS-QUEUE] INSERT ERROR Path B:", {
+            message: insertErrB.message,
+            evidence_id: item.id,
+            oppId: oppId
+          });
           await (serviceSupabase as any)
             .from("evidence")
             .update({
@@ -226,6 +243,13 @@ export async function POST(request: NextRequest) {
             opportunity_id: publishedOpp?.id ?? oppId,
           })
           .eq("id", item.id);
+
+        console.error("[PROCESS-QUEUE] SUCCESS Path B:", {
+          evidence_id: item.id,
+          oppId: oppId,
+          publishedOpp_id: publishedOpp?.id,
+          final_opportunity_id: publishedOpp?.id ?? oppId
+        });
 
         published++;
       } else if (mechanicalScore >= 0.5) {

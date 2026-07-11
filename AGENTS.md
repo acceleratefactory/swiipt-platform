@@ -2,10 +2,10 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-**You are joining after Session 39 (Process-Queue Pipeline Fix).** Do not start from scratch. Read this first.
+**You are joining after Session 42 (Vercel Stale Code Investigation).** Do not start from scratch. Read this first.
 
 ### Current State
-- **Session 39 — Process-Queue Pipeline Fix (⚠️ IN PROGRESS)** — Root cause found: `type` column has FK constraint to `opportunity_types(slug)`. AI enrichment returns free-form types not in the 21 seeded types. Every INSERT fails silently. Code never checked errors, counted all as "published". Fix deployed (commit `7f7e23a`): `safeType()` validation + error checking on both INSERT paths. **Live verification on July 10 shows ingestion is working but publish still fails: 158 sources exist, 953 total_ingested, 609 source health logs, 1000 evidence rows, `process-queue` returns `{"processed":0}`, and the queue is stale/drained (`pending = 0`, `processing = 0`) with 505 enriched ghosts (`opportunity_id = null`). Reset stale evidence to `pending`, then re-run process-queue.** See `findings/opportunity-feed-pipeline-investigation-2026-07-10.md` for the exact report.
+- **Session 42 — Vercel Stale Code Investigation (⚠️ IN PROGRESS)** — Root cause confirmed: **Vercel is serving stale serverless function code despite "Ready" deployments.** Multiple code changes (UUID pre-generation, debug logging, version field, maxDuration, runtime declaration) are NOT reflected in the live process-queue response. The `version: 3` field added to the response JSON never appears. The `diagnose-insert` route at a new path also failed (405 from `[id]` catch-all). **All Session 39-41 fixes (safeType, error checking, cover decoupling, debug logging) have NEVER been live.** The process-queue IS running old code that sets `enriched_data: {}` and `opportunity_id: null`. Evidence shows 1675 rows (1275 pending, 253 enriched ghosts, 147 failed) with `linked_evidence = 0`. **Next: trigger manual Vercel redeployment with "Clear build cache" option.**
 - **Session 38 — Evidence-First Architecture (✅ Built, ⚠️ Pipeline Not Yet Working)** — Evidence table, API adapters (Himalayas, Arbeitnow, RemoteOK, Adzuna, USAJOBS), cover image system (4-layer: OG → Logo → AI → Branded), watcher system (page change detection), source health monitoring, 12 extended opportunity types, 60+ real opportunities seeded, pg_cron pipeline automation, 20+ SQL migrations, verification scripts. See `reports/opportunity_ingestion_investigation.md` for full spec.
 - **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
 - **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed. 5 new DB tables, PDF generation, Stripe integration.
@@ -32,16 +32,17 @@
 
 ### Where to Start
 1. Read this entire AGENTS.md (platform overview, architecture, all sprints, all sessions)
-2. Read `reports/sprint_19_complete_walkthrough.md` for the full Sprint 19 walkthrough
-3. **To activate Sprint 19:** Run all 10 SQL migrations in Supabase SQL Editor in order (listed in the walkthrough §15)
-4. Read `reports/sprint_16_trade_show_booking_flow_analysis.md` for the booking phase plan
-5. Read the relevant sprint SQL files in `swiipt/` for schema context
-6. Ask the user: "Has the booking phase been validated with real users yet? Or should I build it?"
+2. **CRITICAL: Vercel stale code — process-queue never served our fixes.** Read Session 42 below first. Fix requires manual Vercel redeployment with "Clear build cache" option. All Session 39-41 fixes (safeType, error checking, cover decoupling, UUID pre-generation) have NEVER been live.
+3. Read `reports/sprint_19_complete_walkthrough.md` for the full Sprint 19 walkthrough
+4. **To activate Sprint 19:** Run all 10 SQL migrations in Supabase SQL Editor in order (listed in the walkthrough §15)
+5. Read `reports/sprint_16_trade_show_booking_flow_analysis.md` for the booking phase plan
+6. Read the relevant sprint SQL files in `swiipt/` for schema context
+7. Ask the user: "Has the booking phase been validated with real users yet? Or should I build it?"
 
 ### Current Pending Items
 | Priority | Item | Status |
 |----------|------|--------|
-| 1 | **CRITICAL: Pipeline — Process-queue publish failure** | ⚠️ Ingest is live, but publish still produces 0 AI opportunities. Live DB shows 158 sources, 953 ingested, 1000 evidence rows, 54 seed opportunities only. See `findings/opportunity-feed-pipeline-investigation-2026-07-10.md` |
+| 1 | **CRITICAL: Vercel stale code — process-queue publish failure** | ⚠️ Vercel serving stale serverless function code. All Session 39-41 fixes (safeType, error checking, cover decoupling, UUID pre-generation) NEVER been live. Need manual redeploy with "Clear build cache". Evidence: 1675 rows, 253 enriched ghosts, `linked_evidence = 0`. |
 | 2 | Sprint 19 — Run 10 SQL migrations in Supabase Editor | ⏳ 10 SQL files ready, execute in order (see §15 of walkthrough) |
 | 3 | Evidence-First — Run 20+ SQL migrations in Supabase Editor | ⏳ Phase2-10, watcher, health, partner subs, seed data (see Session 38) |
 | 4 | Trade Show Group Booking Phase (paused) | ⏳ `reports/sprint_16_trade_show_booking_flow_analysis.md` |
@@ -83,7 +84,7 @@ Nigeria (primary), UAE, Qatar, UK, Canada, Portugal, Georgia, St Kitts, Caribbea
 - **Remote:** `https://github.com/acceleratefactory/swiipt-platform.git`
 - **Branches:** `main` (production, protected) ← `staging` ← `develop` ← feature branches
 - **Current branch:** `main`
-- **Latest commit:** `d61f5ce` — fix: decouple cover-image generation from process-queue to avoid serverless timeout (Session 41)
+- **Latest commit:** `58a8768` — add explicit nodejs runtime + version bump to force fresh Vercel build (Session 42)
 - **Deployment:** Push to `main` auto-deploys to Vercel. No CI/CD scripts — manual git push. No `.github/workflows/`.
 - **Author:** `acceleratefactory` / `tech@acceleratefactory.com`
 
@@ -1432,7 +1433,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 **Build verified:** `npm run build` — zero TS errors across all phases.
 **Deployed:** Pushed to `main` for Vercel deployment.
 
-### Session 39 — Process-Queue Pipeline Fix (IN PROGRESS)
+### Session 39 — Process-Queue Pipeline Fix (Completed)
 
 - **Date:** July 9, 2026
 - **Goal:** Diagnose and fix why the opportunity feed shows only 54 seed items despite process-queue reporting "published" items.
@@ -1530,6 +1531,62 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 #### Current commit
 - **Latest commit:** `d61f5ce` — fix: decouple cover-image generation from process-queue to avoid serverless timeout
 
+### Session 42 — Vercel Stale Code Investigation (IN PROGRESS)
+
+- **Date:** July 11, 2026
+- **Goal:** Debug why process-queue produces 0 AI-generated opportunities despite all Session 39-41 fixes being deployed.
+- **Commits:** `11e203c` (pre-generate UUID), `60be4d3` (debug logging), `c6de43e` (diagnose-insert route), `a215198` (remove diagnose, add version:2), `0893e9b` (vercel.json functions), `53c8977` (maxDuration), `58a8768` (nodejs runtime + version:3)
+
+#### Investigation Steps
+1. **UUID pre-generation fix** (`11e203c`): Added `crypto.randomUUID()` to pre-generate `id`, use `publishedOpp?.id ?? oppId` as fallback. Ran process-queue → `published: 33` but `linked_evidence = 0`.
+2. **Debug logging** (`60be4d3`): Added `debug_oppId` and `debug_publishedOpp` to `enriched_data` in both Path A and B. Ran reset + process-queue → `enriched_data: {}` (debug fields never appeared — old code running).
+3. **Diagnose-insert route** (`c6de43e`): Created standalone diagnostic endpoint to test INSERT+SELECT pattern. Got `405 Method Not Allowed` with `X-Matched-Path: /api/admin/opportunities/[id]` — route not recognized by Vercel build.
+4. **Version verification** (`a215198`): Added `version: 2` to process-queue response. Deployed → response had NO `version` field. **Confirmed: Vercel serving stale code.**
+5. **Force rebuild attempts:**
+   - Added `functions` config to `vercel.json` → build error ("pattern doesn't match any Serverless Functions")
+   - Added `export const maxDuration = 60` to route file → still old code
+   - Added `export const runtime = "nodejs"` + `version: 3` → still old code
+
+#### Key Findings
+- **Vercel is NOT serving latest code changes** despite "Ready" deployments. Multiple attempts with different change types all failed.
+- The process-queue function returns different results each run (reads from DB) but uses **old code logic** (`enriched_data: {}`, no `opportunity_id` set).
+- New route files (diagnose-insert) are also not picked up by Vercel's build.
+- `enriched_data: {}` confirms the evidence update sets `enriched_data: enriched` where `enriched` is an empty AI response object.
+- All Session 39-41 fixes (safeType, error checking, cover decoupling, UUID pre-generation) **have NEVER been live** — they were deployed to GitHub but Vercel never served them.
+
+#### Evidence State (July 11)
+| enrichment_status | count |
+|------------------|-------|
+| pending | 1275 |
+| enriched | 253 |
+| failed | 147 |
+| **Total** | **1675** |
+| `linked_evidence` | **0** |
+
+#### Root Cause (Confirmed)
+The process-queue function that runs on Vercel is a **stale cached version** predating all Session 39-42 code changes. The old code:
+- Has no `safeType()` validation
+- Has no error checking on INSERT
+- Has cover-image generation inline (causing timeouts)
+- Sets `enriched_data: enriched` (empty object)
+- Does NOT set `opportunity_id`
+- Does NOT have UUID pre-generation
+- Has no `maxDuration` or runtime config
+
+#### Next Step
+Trigger manual redeployment from Vercel dashboard with **"Clear build cache"** option checked.
+
+#### Files Modified in Session 42
+| File | Change |
+|------|--------|
+| `src/app/api/admin/opportunities/process-queue/route.ts` | Added UUID pre-generation (`oppId`), debug logging (`debug_oppId`, `debug_publishedOpp`), `version` field, `maxDuration=60`, `runtime="nodejs"` |
+| `vercel.json` | Attempted `functions` config (reverted) |
+
+#### Files Created in Session 42
+| File | Purpose |
+|------|---------|
+| `src/app/api/admin/opportunities/diagnose-insert/route.ts` | Diagnostic INSERT+SELECT test endpoint (deleted — Vercel routing issue) |
+
 ---
 
 ## 12. PENDING / FUTURE BUILD
@@ -1586,10 +1643,10 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 
 ### Evidence-First — Operational Items Remaining
 - **SQL migrations:** Run all 20+ SQL files in Supabase SQL Editor in phase order
-- **CRITICAL: Process-queue pipeline is broken** — See Session 39. The `type` FK constraint causes INSERT failures. Fix deployed but needs verification. After verifying deploy is live, reset evidence to pending and re-run process-queue.
+- **CRITICAL: Vercel stale serverless code** — See Session 42. All Session 39-41 process-queue fixes (safeType, error checking, cover decoupling, UUID pre-generation) have NEVER been live. Vercel is serving a stale cached version of the function. After forcing a clean Vercel redeployment, reset evidence to pending and re-run process-queue.
 - **Provenance integration:** Wire `ProvenanceViewer.tsx` into admin opportunity detail page
 - **Testing:** Test ingest → evidence → process-queue → opportunities pipeline end-to-end
-- **Status:** Code complete (Session 38), pipeline fix deployed (Session 39), needs verification
+- **Status:** Code complete (Session 38), pipeline fix blocked by Vercel stale code (Session 42)
 
 ### MUST BUILD: Admin Custom Cover Image Upload (Priority 10)
 - **Status:** Schema ready, UI/API not built. DO NOT forget this.
