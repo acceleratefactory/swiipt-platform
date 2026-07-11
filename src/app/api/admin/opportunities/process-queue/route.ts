@@ -258,7 +258,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ processed: evidenceItems.length, published, needsReview, rejected });
+  return NextResponse.json({ processed: evidenceItems.length, published, needsReview, rejected, version: 2 });
 }
 
 const ALLOWED_TYPES = new Set([
