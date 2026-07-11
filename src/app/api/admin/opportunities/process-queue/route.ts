@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { enrich } from "@/lib/ai-service";
 
+export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
@@ -260,7 +261,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ processed: evidenceItems.length, published, needsReview, rejected, version: 2 });
+  return NextResponse.json({ processed: evidenceItems.length, published, needsReview, rejected, version: 3 });
 }
 
 const ALLOWED_TYPES = new Set([
