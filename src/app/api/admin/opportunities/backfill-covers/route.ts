@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getCoverImage } from "@/lib/cover-image";
 
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
 export async function POST(request: NextRequest) {
   if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { enrich } from "@/lib/ai-service";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     .select("*")
     .eq("enrichment_status", "pending")
     .order("captured_at", { ascending: true })
-    .limit(100);
+    .limit(30);
 
   if (!evidenceItems || evidenceItems.length === 0) {
     return NextResponse.json({ processed: 0 });
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
           .insert({
             id: oppId,
             segment_slug: safeSegment(enriched.segment_slug, sourceRecord?.segment_slug),
-            title: enriched.cleaned_title || raw.title,
+            title: enriched.cleaned_title || raw.title || "Untitled",
             organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
             location_country: enriched.location_country || raw.location || "Global",
             location_city: enriched.location_city || null,
