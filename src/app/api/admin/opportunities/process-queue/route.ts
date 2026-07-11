@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { enrich } from "@/lib/ai-service";
 
+export const maxDuration = 60;
+
 export async function POST(request: NextRequest) {
   if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -8,10 +8,5 @@
       "path": "/api/cron/expire-visa-redemptions",
       "schedule": "30 6 * * *"
     }
-  ],
-  "functions": {
-    "api/**/*.ts": {
-      "maxDuration": 60
-    }
-  }
+  ]
 }
