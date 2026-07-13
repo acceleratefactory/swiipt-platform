@@ -10,7 +10,19 @@ const typeColors: Record<string, string> = {
   training: "#D97706",
 };
 
-export default function OpportunitiesList({ opportunities: initial, degradedSources }: { opportunities: any[]; degradedSources?: Set<string> }) {
+export default function OpportunitiesList({
+  opportunities: initial,
+  degradedSources,
+  page = 1,
+  totalPages = 1,
+  totalCount = 0,
+}: {
+  opportunities: any[];
+  degradedSources?: Set<string>;
+  page?: number;
+  totalPages?: number;
+  totalCount?: number;
+}) {
   const [opportunities, setOpportunities] = useState(initial);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -95,6 +107,33 @@ export default function OpportunitiesList({ opportunities: initial, degradedSour
             ))}
           </tbody>
         </table>
+      )}
+      {totalPages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem', fontSize: '0.8125rem' }}>
+          <span style={{ color: 'var(--text-muted)' }}>
+            Page {page} of {totalPages} &middot; {totalCount} total
+          </span>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            {page > 1 ? (
+              <a href={`/admin/opportunities?page=${page - 1}`} style={{ padding: '0.5rem 1rem', background: 'var(--midnight)', color: 'white', fontWeight: 600, fontSize: '0.8125rem', borderRadius: 'var(--radius-md)', textDecoration: 'none' }}>
+                &larr; Previous
+              </a>
+            ) : (
+              <span style={{ padding: '0.5rem 1rem', background: 'var(--off-white)', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.8125rem', borderRadius: 'var(--radius-md)' }}>
+                &larr; Previous
+              </span>
+            )}
+            {page < totalPages ? (
+              <a href={`/admin/opportunities?page=${page + 1}`} style={{ padding: '0.5rem 1rem', background: 'var(--midnight)', color: 'white', fontWeight: 600, fontSize: '0.8125rem', borderRadius: 'var(--radius-md)', textDecoration: 'none' }}>
+                Next &rarr;
+              </a>
+            ) : (
+              <span style={{ padding: '0.5rem 1rem', background: 'var(--off-white)', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.8125rem', borderRadius: 'var(--radius-md)' }}>
+                Next &rarr;
+              </span>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
