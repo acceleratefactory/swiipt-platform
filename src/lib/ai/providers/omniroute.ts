@@ -9,6 +9,7 @@ function buildRequestBody(request: AIEnrichRequest): any {
   return {
     model: MODEL,
     max_tokens: 2000,
+    stream: false,
     messages: [{ role: "user", content: prompt }],
   };
 }
