@@ -32,6 +32,38 @@ const DUMMY: any = {
   },
 };
 
+async function directCheck(slug: string, apiKey: string): Promise<any> {
+  try {
+    if (slug === "gemini") {
+      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: "Reply with: pong" }] }] }),
+        signal: AbortSignal.timeout(30000),
+      });
+      const text = await res.text();
+      return { status: res.status, body: text.slice(0, 200) };
+    }
+    const cfg: Record<string, { base: string; model: string; env: string }> = {
+      omniroute: { base: process.env.OMNIROUTE_URL || "http://localhost:20128/v1", model: "auto/best-fast", env: "OMNIROUTE_URL" },
+      opencode: { base: process.env.OPENCODE_URL || "https://opencode.ai/zen/v1", model: "deepseek-v4-flash-free", env: "OPENCODE_URL" },
+      openrouter: { base: process.env.OPENROUTER_URL || "https://openrouter.ai/api/v1", model: "openai/gpt-4o-mini", env: "OPENROUTER_URL" },
+    };
+    const c = cfg[slug];
+    const res = await fetch(`${c.base}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({ model: c.model, max_tokens: 20, messages: [{ role: "user", content: "Reply with: pong" }] }),
+      signal: AbortSignal.timeout(30000),
+    });
+    const text = await res.text();
+    return { status: res.status, resolvedBase: c.base, body: text.slice(0, 200) };
+  } catch (e: any) {
+    return { status: "ERR", error: e?.message || "unknown" };
+  }
+}
+
 export async function POST(req: NextRequest) {
   if (req.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -46,22 +78,23 @@ export async function POST(req: NextRequest) {
       continue;
     }
     const start = Date.now();
+    let adapterResult: any = null;
     try {
-      const r: any = await Promise.race([
+      adapterResult = await Promise.race([
         adapter.enrich(DUMMY, apiKey),
         new Promise((_, rej) => setTimeout(() => rej(new Error("timeout (>35s)")), 35000)),
       ]);
-      results.push({
-        slug,
-        ok: !!r.success,
-        model: r.model,
-        provider: r.provider,
-        ms: Date.now() - start,
-        replySnippet: JSON.stringify(r.enriched).slice(0, 100),
-      });
     } catch (e: any) {
-      results.push({ slug, ok: false, error: e?.message || "unknown", ms: Date.now() - start });
+      adapterResult = { success: false, model: "?", error: e?.message };
     }
+    const diag = await directCheck(slug, apiKey);
+    results.push({
+      slug,
+      adapterOk: !!adapterResult?.success,
+      model: adapterResult?.model,
+      ms: Date.now() - start,
+      diag,
+    });
   }
   return NextResponse.json({ results });
 }
