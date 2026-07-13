@@ -1,8 +1,8 @@
 import type { AIProviderAdapter, AIEnrichRequest, AIEnrichResponse } from "./index";
 import { buildDefaultPrompt } from "../prompts";
 
-const BASE_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent";
-const MODEL = "gemini-1.5-flash";
+const BASE_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
+const MODEL = "gemini-2.0-flash";
 
 function buildRequestBody(request: AIEnrichRequest): { contents: { parts: { text: string }[] }[] } {
   const prompt = buildDefaultPrompt(request);
