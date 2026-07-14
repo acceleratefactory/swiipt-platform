@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       const logo = await fetchOrgLogo(org);
 
       const update: any = {
-        org_logo_url: logo.cover_image_url || null,
+        org_logo_url: logo.cover_image_url || "",
       };
       if (nameChanged) update.organisation = org;
 
