@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const { data: opportunities, error: fetchError } = await serviceSupabase
     .from("opportunities")
     .select("id, title, organisation, type, location_country, application_url, cover_image_url")
-    .or("cover_image_url.is.null,org_logo_url.is.null,org_logo_url.eq.")
+    .or("cover_image_url.is.null,org_logo_url.is.null")
     .eq("is_active", true)
     .limit(50);
 
