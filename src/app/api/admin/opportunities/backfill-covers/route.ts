@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
   const { data: opportunities, error: fetchError } = await serviceSupabase
     .from("opportunities")
     .select("id, title, organisation, type, location_country, application_url, cover_image_url")
-    .or("cover_image_url.is.null,org_logo_url.is.null")
+    .or("cover_image_url.is.null,org_logo_url.is.null,org_logo_url.eq.")
     .eq("is_active", true)
     .limit(50);
 
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const logo = await fetchOrgLogo(org);
+      const logo = await fetchOrgLogo(org, opp.application_url);
 
       const update: any = {
         org_logo_url: logo.cover_image_url || "",

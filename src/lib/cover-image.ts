@@ -48,13 +48,27 @@ function deriveDomain(organisation: string): string | null {
   return null;
 }
 
+function domainFromUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    const parts = host.split(".");
+    if (parts.length >= 2) return parts.slice(-2).join(".");
+    if (parts.length === 1 && parts[0].length > 2) return parts[0];
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchOrgLogo(
-  organisation: string
+  organisation: string,
+  applicationUrl?: string | null
 ): Promise<CoverResult> {
-  const domain = deriveDomain(organisation);
+  const domain = domainFromUrl(applicationUrl) || deriveDomain(organisation);
   if (!domain) return { cover_image_url: null, cover_source: "none" };
 
-  const logoUrl = `https://logo.clearbit.com/${domain}`;
+  const logoUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
   try {
     const res = await fetch(logoUrl, {
       method: "HEAD",
@@ -228,8 +242,8 @@ export async function getCoverImage(
     if (og.cover_image_url) return og;
   }
 
-  // Layer 2: Clearbit logo
-  const logo = await fetchOrgLogo(organisation);
+  // Layer 2: DuckDuckGo favicon (derived from the real posting URL)
+  const logo = await fetchOrgLogo(organisation, url);
   if (logo.cover_image_url) return logo;
 
   // Layer 3: AI generated
