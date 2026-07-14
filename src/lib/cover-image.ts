@@ -65,10 +65,13 @@ export async function fetchOrgLogo(
   organisation: string,
   applicationUrl?: string | null
 ): Promise<CoverResult> {
+  const key = process.env.LOGO_DEV_API_KEY;
+  if (!key) return { cover_image_url: null, cover_source: "none" };
+
   const domain = domainFromUrl(applicationUrl) || deriveDomain(organisation);
   if (!domain) return { cover_image_url: null, cover_source: "none" };
 
-  const logoUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
+  const logoUrl = `https://img.logo.dev/${domain}?token=${key}&size=200&format=png`;
   try {
     const res = await fetch(logoUrl, {
       method: "HEAD",
