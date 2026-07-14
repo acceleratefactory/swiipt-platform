@@ -48,7 +48,7 @@ function deriveDomain(organisation: string): string | null {
   return null;
 }
 
-async function fetchOrgLogo(
+export async function fetchOrgLogo(
   organisation: string
 ): Promise<CoverResult> {
   const domain = deriveDomain(organisation);

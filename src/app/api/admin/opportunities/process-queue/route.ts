@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
             id: oppId,
             segment_slug: safeSegment(enriched.segment_slug, sourceRecord?.segment_slug),
             title: enriched.cleaned_title || raw.title || "Untitled",
-            organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
+            organisation: resolveOrganisation(enriched, raw),
             location_country: enriched.location_country || raw.location || "Global",
             location_city: enriched.location_city || null,
             type: safeType(enriched.type, safeSegment(enriched.segment_slug, sourceRecord?.segment_slug)),
@@ -195,7 +195,7 @@ export async function POST(request: NextRequest) {
             id: oppId,
             segment_slug: safeSegment(enriched.segment_slug, sourceRecord?.segment_slug),
             title: enriched.cleaned_title || raw.title || "Untitled",
-            organisation: enriched.cleaned_organisation || raw.organisation || "Unknown",
+            organisation: resolveOrganisation(enriched, raw),
             location_country: enriched.location_country || raw.location || "Global",
             location_city: enriched.location_city || null,
             type: safeType(enriched.type, safeSegment(enriched.segment_slug, sourceRecord?.segment_slug)),
@@ -325,4 +325,32 @@ function inferTypeFromSegment(segment: string): string {
     caregiver: "job",
   };
   return segmentTypeMap[segment] || "job";
+}
+
+function deriveFromUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    const labels = host.split(".").filter((p) => !["www", "jobs", "careers", "apply", "app", "web"].includes(p));
+    const sld = labels.length >= 2 ? labels[labels.length - 2] : labels[labels.length - 1];
+    if (!sld || sld.length < 3) return null;
+    return sld.charAt(0).toUpperCase() + sld.slice(1);
+  } catch {
+    return null;
+  }
+}
+
+function resolveOrganisation(enriched: any, raw: any): string {
+  const candidates = [
+    enriched?.cleaned_organisation,
+    enriched?.organisation,
+    raw?.organisation,
+    deriveFromUrl(raw?.url),
+  ];
+  for (const c of candidates) {
+    if (typeof c === "string" && c.trim().length > 1 && c.trim().toLowerCase() !== "unknown") {
+      return c.trim();
+    }
+  }
+  return "Unknown";
 }

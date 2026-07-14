@@ -20,7 +20,7 @@ export function buildDefaultPrompt(request: AIEnrichRequest): string {
 export function buildProcessQueuePrompt(data: Record<string, any>, tier?: string): string {
   const isFormatOnly = tier === "trusted" || tier === "standard";
   const instructions = isFormatOnly
-    ? `Clean and format the following opportunity data. Fix typos, format the description (100-150 words), extract a clean title, and assign the best-matching type and segment. Do NOT evaluate legitimacy or confidence — that is not your job.`
+    ? `Clean and format the following opportunity data. Fix typos, format the description (100-150 words), extract a clean title, a clean organisation name, and assign the best-matching type and segment. Do NOT evaluate legitimacy or confidence — that is not your job.`
     : `Analyze this opportunity for Swiipt, a Nigerian global mobility platform. Return valid JSON only.
 
 Evaluate: confidence_score (0.0-1.0), is_legitimate, is_relevant_for_nigerians, is_scam_risk.
