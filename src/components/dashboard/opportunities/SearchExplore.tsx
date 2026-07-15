@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import OpportunityCard from "./OpportunityCard";
 import type { OpportunityType } from "@/lib/opportunity-types";
+import { trackSignal } from "@/lib/feed-signals";
 
 interface Oppty {
   id: string;
@@ -60,7 +61,16 @@ export default function SearchExplore({ opportunityTypes, countries }: Props) {
       });
       if (!res.ok) throw new Error("Search failed");
       const data = await res.json();
-      setResults(data.feed || []);
+      const feed = data.feed || [];
+      setResults(feed);
+
+      // Fix 1 item 5: capture search/filter usage as intent. Log a `search`
+      // signal for the top results so the interest model learns what the user
+      // is looking for (their types/countries match the query/filter). Uses
+      // trackSignal so search also counts toward per-session recompute.
+      for (const opp of feed.slice(0, 8)) {
+        trackSignal(opp.id, "search");
+      }
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {

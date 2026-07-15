@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import FallbackTile from "./FallbackTile";
 import ServiceCTA from "./ServiceCTA";
 import { HeartIcon, CommentIcon, ReshareIcon, SaveIcon, ApplyIcon } from "./Icons";
+import { trackSignal } from "@/lib/feed-signals";
 
 interface Oppty {
   id: string;
@@ -80,11 +81,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         timer = setTimeout(() => {
-          fetch("/api/opportunities/signal", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ opportunityId: opp.id, signalType: "view" }),
-          }).catch(() => {});
+          trackSignal(opp.id, "view");
         }, 2000);
       } else {
         clearTimeout(timer);
@@ -120,11 +117,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
         dwellStartedAt.current = null;
         const signalType = elapsed >= 30 ? "dwell_long" : elapsed < 5 ? "dwell_short" : null;
         if (signalType) {
-          fetch("/api/opportunities/signal", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ opportunityId: opp.id, signalType }),
-          }).catch(() => {});
+          trackSignal(opp.id, signalType);
         }
       }
       return;
@@ -177,11 +170,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
     setApplied(true);
     onApply(opp.id);
     window.open(`/api/opportunities/apply?id=${opp.id}`, "_blank");
-    fetch("/api/opportunities/signal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ opportunityId: opp.id, signalType: "apply" }),
-    }).catch(() => {});
+    trackSignal(opp.id, "apply");
     setTimeout(() => setShowSharePrompt(true), 2000);
   }, [opp.id, applied, onApply]);
 
@@ -189,11 +178,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
     const next = !saved;
     setSaved(next);
     onSave(opp.id, next);
-    fetch("/api/opportunities/signal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ opportunityId: opp.id, signalType: "save" }),
-    }).catch(() => {});
+    trackSignal(opp.id, "save");
     try {
       await fetch("/api/opportunities/save", {
         method: "POST",
@@ -230,11 +215,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
 
   const handleShare = useCallback(async () => {
     const text = `${opp.title} at ${opp.organisation} — ${opp.location_country}\n\n${opp.description.slice(0, 200)}...\n\nView on Swiipt: ${window.location.origin}/dashboard/opportunities/${opp.id}`;
-    fetch("/api/opportunities/signal", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ opportunityId: opp.id, signalType: "share" }),
-    }).catch(() => {});
+    trackSignal(opp.id, "share");
     if (navigator.share) {
       try { await navigator.share({ title: opp.title, text }); } catch {}
     } else {
@@ -365,7 +346,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
         </span>
         {!descExpanded && opp.description.length > 120 && (
           <span
-            onClick={(e) => { e.stopPropagation(); setDescExpanded(true); fetch("/api/opportunities/signal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ opportunityId: opp.id, signalType: "expand" }) }).catch(() => {}); }}
+            onClick={(e) => { e.stopPropagation(); setDescExpanded(true); trackSignal(opp.id, "expand"); }}
             style={{ color: "#8e8e8e", cursor: "pointer", marginLeft: "0.25rem", fontSize: "0.8125rem" }}
           >
             more

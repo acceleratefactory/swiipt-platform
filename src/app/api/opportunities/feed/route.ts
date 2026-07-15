@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { scoreOpportunities } from "@/lib/opportunity-feed-score";
 
 const ADMIN_SUPABASE = createAdminClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -67,43 +68,14 @@ export async function POST(request: NextRequest) {
 
     const segmentSlug = profile?.segment_slug || null;
 
+    // Fix 1: rank the FULL active pool (no segment filter). Football exclusion
+    // and cross-domain ranking happen inside the shared scorer.
     let { data: opportunities } = await supabase
       .from("opportunities")
       .select("*")
-      .eq("is_active", true)
-      .eq("segment_slug", segmentSlug || "__none__");
+      .eq("is_active", true);
 
     if (!opportunities) opportunities = [];
-
-    if (segmentSlug && opportunities.length < 5) {
-      const { data: trending } = await supabase
-        .from("opportunities")
-        .select("*")
-        .eq("is_active", true)
-        .neq("segment_slug", segmentSlug)
-        .order("apply_click_count", { ascending: false })
-        .order("published_at", { ascending: false })
-        .limit(30);
-
-      if (trending) {
-        const existingIds = new Set(opportunities.map((o: any) => o.id));
-        for (const t of trending) {
-          if (!existingIds.has(t.id)) opportunities.push(t);
-        }
-      }
-    }
-
-    if (!segmentSlug && opportunities.length === 0) {
-      const { data: trending } = await supabase
-        .from("opportunities")
-        .select("*")
-        .eq("is_active", true)
-        .order("is_featured", { ascending: false })
-        .order("apply_click_count", { ascending: false })
-        .limit(30);
-
-      if (trending) opportunities = trending;
-    }
 
     if (opportunities.length === 0) {
       return NextResponse.json({
@@ -132,92 +104,13 @@ export async function POST(request: NextRequest) {
       (seenFeedRes.data || []).filter((f: any) => f.is_applied).map((f: any) => f.opportunity_id)
     );
 
-    const eligible = opportunities.filter((opp: any) => !dismissedIds.has(opp.id));
-
-    const scored = eligible.map((opp: any) => {
-      let score = 50;
-
-      if (segmentSlug && opp.segment_slug === segmentSlug) score += 15;
-
-      if (interestModel?.segment_scores) {
-        const segAff = interestModel.segment_scores[opp.segment_slug] || 0;
-        score += Math.round(segAff * 0.2);
-      }
-
-      if (
-        profile?.desired_countries &&
-        profile.desired_countries.some(
-          (c: string) => c.toLowerCase() === (opp.location_country || "").toLowerCase()
-        )
-      ) {
-        score += 15;
-      }
-
-      if (interestModel?.country_scores) {
-        const cntAff = interestModel.country_scores[opp.location_country] || 0;
-        score += Math.round(cntAff * 0.15);
-      }
-
-      if (
-        opp.type === "scholarship" &&
-        profile?.desired_roles?.includes("scholarship")
-      ) {
-        score += 15;
-      }
-
-      if (
-        opp.type === "job" &&
-        profile?.desired_roles?.length &&
-        profile.desired_roles.some(
-          (r: string) =>
-            opp.title.toLowerCase().includes(r.toLowerCase()) ||
-            opp.description.toLowerCase().includes(r.toLowerCase())
-        )
-      ) {
-        score += 10;
-      }
-
-      if (interestModel?.type_scores) {
-        const typAff = interestModel.type_scores[opp.type] || 0;
-        score += Math.round(typAff * 0.1);
-      }
-
-      if (interestModel?.suppressed_countries?.includes(opp.location_country)) score -= 30;
-      if (interestModel?.suppressed_types?.includes(opp.type)) score -= 20;
-
-      const ageHours = (Date.now() - new Date(opp.created_at).getTime()) / (1000 * 60 * 60);
-      if (ageHours < 24) score += 15;
-      else if (ageHours < 72) score += 8;
-
-      if (opp.is_featured) score += 10;
-
-      if (appliedIds.has(opp.id)) score -= 40;
-
-      if (!interestModel) {
-        score += Math.min(15, Math.round((opp.apply_click_count || 0) * 0.5));
-        score += Math.min(10, Math.round((opp.view_count || 0) * 0.1));
-      }
-
-      return { ...opp, relevanceScore: Math.max(0, Math.min(100, score)) };
+    // Exclude dismissed, then rank with the shared interest/intent scorer.
+    const feedOpps = opportunities.filter((opp: any) => !dismissedIds.has(opp.id));
+    const scored = scoreOpportunities(feedOpps, {
+      profile,
+      interestModel,
+      appliedIds,
     });
-
-    scored.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
-
-    const sourceCounts: Record<string, number> = {};
-    for (const opp of scored) {
-      const src = opp.source_name || "unknown";
-      sourceCounts[src] = (sourceCounts[src] || 0) + 1;
-    }
-    const totalTop50 = scored.slice(0, 50).length;
-    const diversityCutoff = Math.ceil(totalTop50 * 0.4);
-    for (const opp of scored) {
-      const src = opp.source_name || "unknown";
-      if (sourceCounts[src] > diversityCutoff && opp.relevanceScore > 5) {
-        opp.relevanceScore = Math.max(5, opp.relevanceScore - 15);
-      }
-    }
-
-    scored.sort((a: any, b: any) => b.relevanceScore - a.relevanceScore);
 
     const { data: activeAds } = await (supabase as any)
       .from("feed_ads")

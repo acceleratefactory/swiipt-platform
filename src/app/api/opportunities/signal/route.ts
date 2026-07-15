@@ -12,6 +12,7 @@ const SIGNAL_WEIGHTS: Record<string, number> = {
   service_click: 3.0,
   dwell_long: 2.5,
   dwell_short: -0.5,
+  search: 3.0,
 };
 
 const VALID_SIGNALS = new Set(Object.keys(SIGNAL_WEIGHTS));

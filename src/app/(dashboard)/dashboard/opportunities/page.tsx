@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import OpportunityFeed from "@/components/dashboard/opportunities/OpportunityFeed";
+import { scoreOpportunities } from "@/lib/opportunity-feed-score";
 
 interface Oppty {
   id: string;
@@ -39,11 +40,13 @@ export default async function OpportunitiesPage() {
     userRes,
     oppRes,
     feedRes,
+    interestModelRes,
   ] = await Promise.all([
-    supabase.from("career_profiles").select("segment_slug").eq("user_id", user.id).single(),
+    supabase.from("career_profiles").select("segment_slug, desired_countries, desired_roles").eq("user_id", user.id).single(),
     supabase.from("users").select("user_tier, referral_code").eq("id", user.id).single(),
     supabase.from("opportunities").select("*").eq("is_active", true).order("created_at", { ascending: false }),
     supabase.from("user_opportunity_feed").select("opportunity_id, relevance_score, is_saved, is_applied").eq("user_id", user.id),
+    supabase.from("user_interest_model").select("*").eq("user_id", user.id).single(),
   ]);
 
   if (!profileRes.data) redirect("/dashboard/opportunities/onboarding");
@@ -60,38 +63,35 @@ export default async function OpportunitiesPage() {
     savedMap.set(f.opportunity_id, f);
   }
 
-  const allOpportunities: Oppty[] = (oppRes.data || []).map((opp) => {
-    const feed = savedMap.get(opp.id);
-    return {
-      ...opp,
-      relevanceScore: feed?.relevance_score || opp.ai_relevance_score || undefined,
-      is_saved: feed?.is_saved || false,
-      is_applied: feed?.is_applied || false,
-    };
+  // Fix 1: rank the FULL active pool with the shared interest/intent scorer.
+  // Football is excluded inside the scorer; there is NO segment filter, so a
+  // job_seeker sees scholarships/fellowships/etc. and the learned model re-ranks
+  // over time. Interest matches sort first, everything else after.
+  const scored = scoreOpportunities(oppRes.data || [], {
+    profile: {
+      segment_slug: segmentSlug,
+      desired_countries: profileRes.data.desired_countries,
+      desired_roles: profileRes.data.desired_roles,
+    },
+    interestModel: interestModelRes.data,
+    appliedIds: new Set(
+      (feedRes.data || [])
+        .filter((f: any) => f.is_applied)
+        .map((f: any) => f.opportunity_id)
+    ),
   });
 
-  let segmentOpps = allOpportunities.filter((o) => o.segment_slug === segmentSlug);
-
-  if (segmentSlug && segmentOpps.length < 5) {
-    const trending = allOpportunities
-      .filter((o) => o.segment_slug !== segmentSlug)
-      .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0))
-      .slice(0, 30);
-    segmentOpps = [...segmentOpps, ...trending];
-  }
-
-  const scoredSegment = segmentOpps.map((o) => ({
-    ...o,
-    relevanceScore: o.relevanceScore || 50,
+  const allOpportunities: Oppty[] = scored.map((opp) => ({
+    ...opp,
+    is_saved: savedMap.get(opp.id)?.is_saved || false,
+    is_applied: savedMap.get(opp.id)?.is_applied || false,
   }));
-
-  scoredSegment.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 
   return (
     <div style={{ marginLeft: "-1.5rem", marginRight: "-1.5rem", marginTop: "-1.5rem", width: "calc(100% + 3rem)" }}>
       <div style={{ maxWidth: 470, margin: "0 auto" }}>
         <OpportunityFeed
-          allOpportunities={scoredSegment}
+          allOpportunities={allOpportunities}
           userTier={userTier}
           referralLink={referralLink}
         />

@@ -31,11 +31,30 @@ export async function POST(request: NextRequest) {
   const typeScores: Record<string, number> = {};
   const orgAffinity: Record<string, number> = {};
 
+  // Reweight so TIME SPENT is the dominant interest signal (user rule):
+  // dwell_long (lingering on a card) and passive view reading count more than
+  // one-off binary actions like apply/share. Applied on top of the stored
+  // signal_weight from the capture route.
+  const INTEREST_TYPE_WEIGHTS: Record<string, number> = {
+    dwell_long: 3.0,
+    view: 1.5,
+    expand: 1.5,
+    save: 1.5,
+    like: 1.5,
+    search: 1.0,
+    share: 1.0,
+    service_click: 1.0,
+    apply: 1.0,
+    dismiss: 1.0,
+    dwell_short: 1.0,
+  };
+
   for (const signal of signals) {
     const ageMs = now - new Date(signal.created_at).getTime();
     const ageDays = ageMs / (1000 * 60 * 60 * 24);
     const recencyMultiplier = Math.max(0.4, 1 - (ageDays / 90) * 0.6);
-    const effectiveWeight = signal.signal_weight * recencyMultiplier;
+    const typeMultiplier = INTEREST_TYPE_WEIGHTS[signal.signal_type] ?? 1;
+    const effectiveWeight = signal.signal_weight * recencyMultiplier * typeMultiplier;
 
     if (signal.opportunity_segment) {
       segmentScores[signal.opportunity_segment] =

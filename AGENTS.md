@@ -2,10 +2,11 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-**You are joining after Session 42 (Vercel Stale Code Investigation).** Do not start from scratch. Read this first.
+**You are joining after Session 43 (Feed Cover Image Rework + Deferred Browser-Render Bug).** Do not start from scratch. Read this first.
 
 ### Current State
 - **Session 42 — Vercel Stale Code Investigation (✅ RESOLVED 2026-07-11)** — Root cause was a **Vercel serving issue**: a PRE-`a215198` build was live despite all commits being pushed to `origin/main` (proven via `git log origin/main..HEAD` empty + live response with no `version` field). Fix = **Promote the `ac9aee0` deployment to Production** in Vercel dashboard (plain "Redeploy" had failed because a rollback/alias pinned production to an old commit). After promotion, live response shows `"version":3` and **`ai_generated=true` reached 258** opportunities. Added `safeSegment()` FK validation (`a611aae`) to prevent AI returning invalid `segment_slug` (e.g. "tech" vs "tech_professional") which would silently fail the INSERT. Pipeline is now publishing correctly.
+- **Session 43 — Feed Cover Image Rework (✅ Rework done, ⚠️ browser render of real covers deferred)** — Replaced uniform gradient+emoji tiles. New system: real OG/page-hero photos where available (proxied first-party via `/api/opportunities/cover`, SSRF-guarded + streaming), clean **logo-on-colour or typographic** `FallbackTile` where none (NO emoji/globe). Commits `c15f947` + `633b427`. Live distribution ≈ **58.8% real / 41.2% clean fallback / 0 SVG** across 2881 active rows. **Deferred bug:** real covers don't paint in the browser though the proxy returns HTTP 200 + valid PNG — leading cause suspected to be an ad-blocker matching the `url=` param (or card CSS); user paused to work on other tasks. Full detail in Session 43 below. (Replaces Session 38's 4-layer OG→Logo→AI→Branded cover system — the AI and Branded-SVG layers were removed.)
 - **Session 38 — Evidence-First Architecture (✅ Built, ⚠️ Pipeline Not Yet Working)** — Evidence table, API adapters (Himalayas, Arbeitnow, RemoteOK, Adzuna, USAJOBS), cover image system (4-layer: OG → Logo → AI → Branded), watcher system (page change detection), source health monitoring, 12 extended opportunity types, 60+ real opportunities seeded, pg_cron pipeline automation, 20+ SQL migrations, verification scripts. See `reports/opportunity_ingestion_investigation.md` for full spec.
 - **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
 - **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed. 5 new DB tables, PDF generation, Stripe integration.
@@ -32,7 +33,7 @@
 
 ### Where to Start
 1. Read this entire AGENTS.md (platform overview, architecture, all sprints, all sessions)
-2. **CRITICAL: Vercel stale code — process-queue never served our fixes.** Read Session 42 below first. Fix requires manual Vercel redeployment with "Clear build cache" option. All Session 39-41 fixes (safeType, error checking, cover decoupling, UUID pre-generation) have NEVER been live.
+2. **CRITICAL: Vercel stale code — process-queue never served our fixes.** Read Session 42 + 43 below. Fix requires manual Vercel redeployment with **"Clear build cache"** checked. This bit us AGAIN in Session 43 (feed-cover proxy) — a plain redeploy served a pre-`c15f947` build until we cleared cache; the live client bundle proved it.
 3. Read `reports/sprint_19_complete_walkthrough.md` for the full Sprint 19 walkthrough
 4. **To activate Sprint 19:** Run all 10 SQL migrations in Supabase SQL Editor in order (listed in the walkthrough §15)
 5. Read `reports/sprint_16_trade_show_booking_flow_analysis.md` for the booking phase plan
@@ -53,6 +54,7 @@
 | 9 | Expand Career Segments — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more segments when 3+ sources exist per segment |
 | 10 | Expand Opportunity Types — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more types when 3+ sources exist per type |
 | 11 | **MUST BUILD: Admin Custom Cover Image Upload** | ⏳ Schema ready (`custom` in CHECK), UI not built. See §12 below for full spec. |
+| 12 | **Feed real covers not rendering in browser (deferred)** | ⚠️ OPEN — proxy returns 200 + valid PNG, but cards show `FallbackTile` instead of the `<img>`. Suspected: ad-blocker matching `url=` param or card CSS. User paused to work elsewhere; diagnostic + fix in Session 43. |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -84,7 +86,7 @@ Nigeria (primary), UAE, Qatar, UK, Canada, Portugal, Georgia, St Kitts, Caribbea
 - **Remote:** `https://github.com/acceleratefactory/swiipt-platform.git`
 - **Branches:** `main` (production, protected) ← `staging` ← `develop` ← feature branches
 - **Current branch:** `main`
-- **Latest commit:** `a611aae` — fix: validate segment_slug against FK set in process-queue INSERT paths (Session 42)
+- **Latest commit:** `633b427` — fix(backfill): process each opportunity once via media_source=null cursor (Session 43)
 - **Deployment:** Push to `main` auto-deploys to Vercel. No CI/CD scripts — manual git push. No `.github/workflows/`.
 - **Author:** `acceleratefactory` / `tech@acceleratefactory.com`
 
@@ -1531,7 +1533,7 @@ The **goal deposit flow** (`GoalDepositFlow.tsx`) has a proven payment recovery 
 #### Current commit
 - **Latest commit:** `d61f5ce` — fix: decouple cover-image generation from process-queue to avoid serverless timeout
 
-### Session 42 — Vercel Stale Code Investigation (IN PROGRESS)
+### Session 42 — Vercel Stale Code Investigation (✅ RESOLVED 2026-07-11)
 
 - **Date:** July 11, 2026
 - **Goal:** Debug why process-queue produces 0 AI-generated opportunities despite all Session 39-41 fixes being deployed.
@@ -1589,6 +1591,83 @@ Trigger manual redeployment from Vercel dashboard with **"Clear build cache"** o
 
 ---
 
+### Session 43 — Feed Cover Image Rework: Real Photos + Clean Fallback (✅ Rework done, ⚠️ browser render deferred)
+
+- **Dates:** July 11–15, 2026
+- **Goal:** Kill the uniform gradient+emoji tiles in the opportunity feed. Show real photos (OG / page hero) where available; clean professional fallback (logo-on-colour or typographic) where not — never a guessed/AI-generated SVG.
+- **Commits:** `465d3e9` (2c employer logo via logo.dev name endpoint), `5052f58` (OG-first, branded fallback; drop logo-as-cover + Pollinations), `ba12dab` (proxy external covers via first-party SSRF-guarded route), `c15f947` (stream proxy + redesign FallbackTile + page-hero scraping + drop guessed SVG), `633b427` (backfill paging fix).
+- **(Replaces Session 38's 4-layer OG → Logo → AI → Branded cover system — the AI and Branded-SVG layers were removed.)**
+
+#### New cover system
+- **`src/lib/og-fetch.ts`** — Enhanced to extract a real **page hero** (not just `og:image`): tries JSON-LD/schema.org `image`, then Twitter large card `twitter:image`, then the first sizeable `<img>` on the page. `ICON_HINTS` filter rejects favicons/icons; `validateImage` rejects images smaller than ~4KB; `absolutize` resolves relative URLs.
+- **`src/lib/cover-image.ts`** — `getCoverImage()` now returns the real OG/page-hero URL or `null` with `cover_source:"none"`. **Removed** the guesswork: no `TYPE_COLORS`, no `TYPE_ICONS`, no generated branded SVG (`generateBrandedSVG`/`generateBrandedCover` deleted), no AI (Pollinations) layer.
+- **`src/app/api/opportunities/cover/route.ts`** — New first-party cover proxy. `GET ?url=...` SSRF-guards the URL (http/https only; blocks private/loopback/link-local via `dns.lookup`), fetches it, verifies `content-type` is an image, **streams** the upstream body back (fixes the old 4.5MB buffer / function-timeout collapse that silently killed larger OG images), `maxDuration=60`, returns `Cache-Control: public, max-age=86400, immutable` + `Access-Control-Allow-Origin: *`. No response-size cap.
+- **`src/components/dashboard/opportunities/FallbackTile.tsx`** — Redesigned. When `logoUrl` present: white chip + logo + title caption on a type-colour background (logo-on-colour). Otherwise: typographic colour card (type gradient + title + org + type/country chip + monogram first letter). **No emoji, no globe icon.**
+- **`src/components/dashboard/opportunities/OpportunityCard.tsx`** — `coverSrc` = `/api/opportunities/cover?url=<encoded>` for any http(s) `cover_image_url`. `<img onError>` → single retry (`coverRetry`, appends `&r=`), then renders `FallbackTile` with `title` + `org_logo_url`. (`OpportunityDetailModal.tsx` does not exist; `FallbackTile` is only used in the card.)
+- **`src/app/api/admin/opportunities/backfill-covers/route.ts`** — For no-image rows now sets `media_source="fallback"`, `media_type="none"`, `cover_image_url=null` (was leaving them to a guessed SVG). Cursor changed to `.is("media_source", null).order("id").limit(50)` (see bug fix below).
+
+#### Backfill & DB
+- Reset all active rows: `UPDATE opportunities SET cover_image_url=NULL, media_source=NULL WHERE status='active'`.
+- **Backfill bug** (`c15f947` → `633b427`): the route selected `.is("cover_image_url", null).is("org_logo_url", null)` which kept re-selecting the same null rows forever (count inflated past 2881 with only ~59 getting images). Fixed by filtering on `.is("media_source", null)` so each row is processed once. After the fix, a clean run processed **2881** active rows once and self-terminated with "No opportunities need cover images".
+- **Live distribution (sampled 1000 of 2881 active):** **588 real ("fetched") / 412 fallback (null cover) / 0 leftover SVG ≈ 58.8% real, 41.2% clean fallback.** The only upstream source that reliably fails (blocks/timeouts) is `scholarsportal.com` — 2/24 in proxy sampling.
+
+#### Verification performed
+- Live proxy (curl) returns valid `image/png` (valid PNG signature, ~235KB) for real covers; 22/24 OK.
+- Feed route uses `select("*")` and spreads rows, so `cover_image_url` is in the payload.
+- Production client bundle (live chunk `5069-…`) references `proxyRef` + `coverUrlRef`, confirming the proxy code is live.
+- Build passed; committed + pushed both `c15f947` and `633b427`; redeployed with **Clear build cache** (Vercel stale-code pattern bit us again — see below).
+
+#### Deferred bug — feed real images not rendering in browser (⚠️ OPEN, paused by user)
+- **Symptom:** User confirms gradients/emoji are gone (FallbackTile redesign worked). But NO real images show in the live feed. DevTools → Network shows the `cover?url=` requests return **HTTP 200** (proxy healthy). Desktop shows the typographic monogram tile (green bg); mobile shows the logo-on-colour tile. i.e. the cards render `FallbackTile`, not the `<img>` — for fetched rows the image branch isn't taken / the photo isn't painted.
+- **Confirmed NOT the cause:** proxy validity (200 + real PNG), feed payload shape (`select("*")`), production bundle (proxy code live).
+- **Leading hypotheses (not yet isolated):** (a) browser ad-blocker/extension matching the `url=` param or upstream domain (`og-images.arbeitnow.com`, etc.); (b) `<img>` layout/CSS (zero height / hidden) so the photo never paints even when requested; (c) `coverFailed` firing in-browser despite a 200 (decode/Content-Length mismatch).
+- **User decision:** pause feed work and move to other tasks; revisit later. **Recommended fix when we return:** store images at backfill time and serve an opaque `/media/<id>.jpg` (no upstream URL exposed to the browser → defeats ad-blockers), OR debug the `OpportunityCard` render path / `hasCover` condition.
+- **Diagnostic still needed from user:** hard-refresh, DevTools → Network, report status of `cover?url=` requests (200 / blocked / absent); also test incognito with extensions off.
+
+#### Recurring lesson (Vercel stale code — again)
+- Every code deploy still requires a **manual Vercel Redeploy with "Clear build cache"**. A plain redeploy served a pre-`c15f947` build (verified via the live client bundle). Logged here so the next session doesn't re-chase it.
+
+#### Files Modified in Session 43
+| File | Change |
+|------|--------|
+| `src/lib/og-fetch.ts` | page-hero extraction (JSON-LD/Twitter/first img), `ICON_HINTS`, `validateImage`, `absolutize` |
+| `src/lib/cover-image.ts` | OG→null only; removed `TYPE_COLORS`/`TYPE_ICONS`/generated SVG/AI layers |
+| `src/app/api/opportunities/cover/route.ts` | streaming first-party SSRF-guarded cover proxy, `maxDuration=60` |
+| `src/components/dashboard/opportunities/FallbackTile.tsx` | logo-on-colour + typographic tiles, no emoji |
+| `src/components/dashboard/opportunities/OpportunityCard.tsx` | proxy `coverSrc` + `coverRetry` single retry + `FallbackTile` props (`title`, `logoUrl`) |
+| `src/app/api/admin/opportunities/backfill-covers/route.ts` | no-image → fallback/null; `media_source=null` cursor |
+
+---
+
+### Session 44 — Feed Personalization (Fix 1 built, uncommitted)
+
+- **Date:** July 15, 2026
+- **Goal:** Implement Fix 1 of the approved feed personalization plan (`reports/findings/feed-personalization-and-ux-plan.md` + addendum). Interest/intent-driven feed across ALL segments (football excluded), learned from dwell/time + search behaviour, re-ranked per-session. Fixes 2 (unending loop), 3 (distinct top match), 4 (hidden scrollbar) are planned but NOT built yet.
+- **Approved on defaults:** (a) small segment-self boost ON; (b) recompute both per-session + 6h cron.
+- **Global hard exclusion:** `footballer` segment + `sports_trial` type (via `isExcluded()` in the shared scorer). `sports_professional` is NOT excluded.
+- **No segment filter** — everyone sees all active opps except football; soft segment-self boost only (+15).
+
+#### Files created / modified
+| File | Change |
+|------|--------|
+| `src/lib/opportunity-feed-score.ts` | NEW shared scorer `scoreOpportunities(opps, ctx)` — football exclusion, soft segment-self boost (+15), ported segment/country/type scores, desired_roles scholarship/job match, suppression, freshness, featured, applied-suppression, source-diversity penalty; returns scored+sorted array |
+| `src/app/(dashboard)/dashboard/opportunities/page.tsx` | Rewritten — drops `segment_slug` filter, fetches full active pool, calls `scoreOpportunities` with profile + interestModel + appliedIds, passes ranked `allOpportunities` to `OpportunityFeed` |
+| `src/app/api/opportunities/feed/route.ts` | Refactored to use `scoreOpportunities` (removed duplicated scoring); football exclusion in feed mode; keeps search mode; ad injection every 7th |
+| `src/app/api/opportunities/compute-interest/route.ts` | Added `INTEREST_TYPE_WEIGHTS` making `dwell_long` (3.0) + `view` (1.5) dominate `apply`/`share` (1.0) — time spent is the dominant signal |
+| `src/app/api/opportunities/signal/route.ts` | Added `search: 3.0` to `SIGNAL_WEIGHTS` |
+| `src/lib/feed-signals.ts` | NEW client tracker `trackSignal(oppId, type)` — fires signal + triggers per-session recompute after 5 signals |
+| `src/app/api/opportunities/recompute-interest/route.ts` | NEW authenticated wrapper — verifies session, calls `compute-interest` (internal secret) server-to-server |
+| `src/components/dashboard/opportunities/OpportunityCard.tsx` | All 6 signal calls (view/dwell/apply/save/share/expand) now route through `trackSignal` |
+| `src/components/dashboard/opportunities/SearchExplore.tsx` | Search/filter now logs `search` signal via `trackSignal` (so search counts toward per-session recompute) |
+
+#### Notes
+- `npm run build` passes (exit 0). Lint-clean (the new route's unused `request` arg renamed to `_request`).
+- **Not committed / not deployed.** When deploying, Vercel still requires **Redeploy + Clear build cache** (stale-code pattern recurs — see Session 42/43).
+- `compute-interest` produces `user_interest_model`; the feed page re-ranks on `router.refresh()` (triggered on tab refocus in page.tsx) — so per-session recompute shifts the feed when the user returns to the tab.
+- Deferred cover-image browser-render bug (Session 43 item 12) still OPEN and unresolved.
+
+---
+
 ## 12. PENDING / FUTURE BUILD
 
 ### Sprint 19 SQL Migrations (10 files — run in order)
@@ -1643,7 +1722,7 @@ Trigger manual redeployment from Vercel dashboard with **"Clear build cache"** o
 
 ### Evidence-First — Operational Items Remaining
 - **SQL migrations:** Run all 20+ SQL files in Supabase SQL Editor in phase order
-- **CRITICAL: Vercel stale serverless code** — See Session 42. All Session 39-41 process-queue fixes (safeType, error checking, cover decoupling, UUID pre-generation) have NEVER been live. Vercel is serving a stale cached version of the function. After forcing a clean Vercel redeployment, reset evidence to pending and re-run process-queue.
+- **Vercel stale serverless code (RESOLVED in Session 42, RECURS in Session 43)** — Session 42 was fixed by promoting `ac9aee0` to Production; the process-queue fixes are now live (`ai_generated=true` reached 258). The same stale-build pattern recurred in Session 43 — a plain redeploy served a pre-`c15f947` build until we used **Redeploy + Clear build cache**. Rule of thumb: after ANY code change, force a clean Vercel redeploy or the old build stays live.
 - **Provenance integration:** Wire `ProvenanceViewer.tsx` into admin opportunity detail page
 - **Testing:** Test ingest → evidence → process-queue → opportunities pipeline end-to-end
 - **Status:** Code complete (Session 38), pipeline fix blocked by Vercel stale code (Session 42)
