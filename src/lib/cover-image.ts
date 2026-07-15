@@ -71,10 +71,10 @@ export async function fetchOrgLogo(
   const domain = domainFromUrl(applicationUrl) || deriveDomain(organisation);
   if (!domain) return { cover_image_url: null, cover_source: "none" };
 
-  const logoUrl = `https://img.logo.dev/${domain}?token=${key}&size=200&format=png`;
+  const logoUrl = `https://img.logo.dev/${domain}?token=${key}&size=200&format=png&fallback=404`;
   try {
     const res = await fetch(logoUrl, {
-      method: "HEAD",
+      method: "GET",
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
