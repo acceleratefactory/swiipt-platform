@@ -76,6 +76,12 @@ export async function POST(request: NextRequest) {
           update.cover_image_url = cover.cover_image_url;
           update.media_source = mediaSource;
           update.media_type = "image";
+        } else {
+          // No real image available — let the card render the on-brand
+          // fallback (logo-on-colour or typographic tile). Keep the URL null.
+          update.cover_image_url = null;
+          update.media_source = "fallback";
+          update.media_type = "none";
         }
       }
 

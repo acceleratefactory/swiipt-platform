@@ -1,28 +1,5 @@
 "use client";
-
-const TYPE_ICONS: Record<string, string> = {
-  scholarship: "\uD83C\uDF93",
-  visa_programme: "\uD83C\uDF0D",
-  remote_work: "\uD83D\uDCBB",
-  job: "\uD83D\uDCBC",
-  fellowship: "\uD83C\uDF1F",
-  grant: "\uD83D\uDCB0",
-  internship: "\uD83D\uDC69\u200D\uD83C\uDF93",
-  training: "\uD83D\uDCDA",
-  competition: "\uD83C\uDFC6",
-  conference: "\uD83C\uDF0D",
-  exchange: "\u2708\uFE0F",
-  trade_show: "\uD83C\uDFAA",
-  trial: "\u26BD",
-  sports_trial: "\u26BD",
-  healthcare: "\u2695\uFE0F",
-  residency: "\uD83C\uDFE0",
-  citizenship: "\uD83D\uDCDC",
-  funding: "\uD83D\uDCB0",
-  contest: "\uD83C\uDF1F",
-  accelerator: "\uD83D\uDE80",
-  award: "\uD83C\uDFC6",
-};
+import { useState } from "react";
 
 const TYPE_GRADIENTS: Record<string, [string, string]> = {
   scholarship: ["#0f766e", "#0d9488"],
@@ -45,86 +22,196 @@ const TYPE_GRADIENTS: Record<string, [string, string]> = {
 };
 
 const DEFAULT_GRADIENT: [string, string] = ["#374151", "#6b7280"];
-
-function getTypeIcon(type: string): string {
-  return TYPE_ICONS[type] || "\uD83C\uDF0D";
-}
+const FONT = "Cabinet Grotesk, Plus Jakarta Sans, sans-serif";
 
 function getGradient(type: string): [string, string] {
   return TYPE_GRADIENTS[type] || DEFAULT_GRADIENT;
 }
 
-const COUNTRY_FLAGS: Record<string, string> = {
-  usa: "\uD83C\uDDFA\uD83C\uDDF8",
-  "united states": "\uD83C\uDDFA\uD83C\uDDF8",
-  "uk": "\uD83C\uDDEC\uD83C\uDDE7",
-  "united kingdom": "\uD83C\uDDEC\uD83C\uDDE7",
-  canada: "\uD83C\uDDE8\uD83C\uDDE6",
-  germany: "\uD83C\uDDE9\uD83C\uDDEA",
-  sweden: "\uD83C\uDDF8\uD83C\uDDEA",
-  denmark: "\uD83C\uDDE9\uD83C\uDDF0",
-  china: "\uD83C\uDDE8\uD83C\uDDF3",
-  uae: "\uD83C\uDDE6\uD83C\uDDEA",
-  global: "\uD83C\uDF0D",
-  multiple: "\uD83C\uDF0D",
-};
-
-function getFlag(country: string): string {
-  const c = country?.toLowerCase().trim();
-  return COUNTRY_FLAGS[c] || "\uD83C\uDF0D";
+function humanize(type: string): string {
+  return (type || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 interface Props {
   type: string;
   organisation: string;
   location_country: string;
+  title?: string | null;
+  logoUrl?: string | null;
 }
 
-export default function FallbackTile({ type, organisation, location_country }: Props) {
+export default function FallbackTile({
+  type,
+  organisation,
+  location_country,
+  title,
+  logoUrl,
+}: Props) {
   const [from, to] = getGradient(type);
-  const icon = getTypeIcon(type);
-  const flag = getFlag(location_country);
+  const [logoFailed, setLogoFailed] = useState(false);
+  const bg = `linear-gradient(135deg, ${from}, ${to})`;
+  const monogram = (organisation || "?").trim().charAt(0).toUpperCase();
+  const showLogo = !!logoUrl && !logoFailed;
+  const logoSrc = showLogo
+    ? `/api/opportunities/cover?url=${encodeURIComponent(logoUrl as string)}`
+    : null;
+  const meta = `${humanize(type)}${location_country ? " · " + location_country : ""}`;
 
+  // Logo-on-colour card (LinkedIn-style): brand background, logo centred in a
+  // white chip, title/organisation captioned at the foot.
+  if (showLogo && logoSrc) {
+    return (
+      <div
+        style={{
+          width: "100%",
+          height: "100%",
+          position: "relative",
+          overflow: "hidden",
+          background: bg,
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "14%",
+          }}
+        >
+          <div
+            style={{
+              background: "#fff",
+              borderRadius: 18,
+              padding: "12%",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.20)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              maxWidth: "72%",
+              maxHeight: "72%",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={logoSrc}
+              alt=""
+              onError={() => setLogoFailed(true)}
+              style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+            />
+          </div>
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: "1.5rem 1rem 0.85rem",
+            background: "linear-gradient(to top, rgba(0,0,0,0.5), rgba(0,0,0,0))",
+          }}
+        >
+          <div
+            style={{
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: "0.9rem",
+              fontFamily: FONT,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+          >
+            {title || organisation}
+          </div>
+          <div style={{ color: "rgba(255,255,255,0.82)", fontSize: "0.72rem", marginTop: 2 }}>
+            {meta}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Typographic colour card (Instagram-Story style): brand background, strong
+  // title type, organisation, and a type/country chip. No illustration.
   return (
     <div
       style={{
         width: "100%",
         height: "100%",
         position: "relative",
-        borderRadius: 0,
         overflow: "hidden",
+        background: bg,
+        padding: "1.25rem",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
       }}
     >
       <div
         style={{
           position: "absolute",
-          inset: 0,
-          background: `linear-gradient(135deg, ${from}, ${to})`,
+          top: "1rem",
+          right: "1.25rem",
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
+          background: "rgba(255,255,255,0.16)",
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          gap: "0.5rem",
+          color: "#fff",
+          fontWeight: 700,
+          fontSize: "1.1rem",
+          fontFamily: FONT,
         }}
       >
-        <span style={{ fontSize: "2.5rem", lineHeight: 1 }}>{flag}</span>
-        <span style={{ fontSize: "3rem", lineHeight: 1 }}>{icon}</span>
-        <span
+        {monogram}
+      </div>
+      <div
+        style={{
+          color: "#fff",
+          fontWeight: 700,
+          fontSize: "clamp(1rem, 2.4vw, 1.35rem)",
+          lineHeight: 1.25,
+          fontFamily: FONT,
+          display: "-webkit-box",
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: "vertical",
+          overflow: "hidden",
+        }}
+      >
+        {title || organisation}
+      </div>
+      {title ? (
+        <div
           style={{
-            fontSize: "0.75rem",
-            color: "rgba(255,255,255,0.9)",
-            fontWeight: 600,
-            textAlign: "center",
-            padding: "0 1rem",
-            maxWidth: "100%",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif",
+            color: "rgba(255,255,255,0.85)",
+            fontSize: "0.82rem",
+            marginTop: "0.4rem",
+            fontFamily: FONT,
           }}
         >
           {organisation}
-        </span>
+        </div>
+      ) : null}
+      <div
+        style={{
+          marginTop: "0.85rem",
+          alignSelf: "flex-start",
+          background: "rgba(255,255,255,0.18)",
+          color: "#fff",
+          fontSize: "0.7rem",
+          fontWeight: 600,
+          padding: "0.28rem 0.65rem",
+          borderRadius: 999,
+          fontFamily: FONT,
+        }}
+      >
+        {meta}
       </div>
     </div>
   );

@@ -156,6 +156,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
   const daysLeft = getDaysLeft(opp.deadline);
   const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
   const [coverFailed, setCoverFailed] = useState(false);
+  const [coverRetry, setCoverRetry] = useState(0);
 
   // Serve external cover images via our own origin so ad-blockers / hotlink
   // protection / mixed-content rules in the browser don't suppress them.
@@ -163,6 +164,13 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
     opp.cover_image_url && opp.cover_image_url.startsWith("http")
       ? `/api/opportunities/cover?url=${encodeURIComponent(opp.cover_image_url)}`
       : opp.cover_image_url ?? undefined;
+
+  // Single retry through the proxy (helps on cold-start / transient failures)
+  // before falling back to the branded tile.
+  const proxiedSrc =
+    coverRetry > 0 && coverSrc?.startsWith("/api/opportunities/cover")
+      ? `${coverSrc}&r=${coverRetry}`
+      : coverSrc;
 
   const handleApply = useCallback(() => {
     if (applied) return;
@@ -265,11 +273,14 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
             </div>
           ) : hasCover && opp.cover_image_url && !coverFailed ? (
             <img
-              src={coverSrc}
+              src={proxiedSrc}
               alt=""
               loading="lazy"
               style={{ width: "100%", display: "block" }}
-              onError={() => setCoverFailed(true)}
+              onError={() => {
+                if (coverRetry < 1) setCoverRetry((n) => n + 1);
+                else setCoverFailed(true);
+              }}
             />
           ) : (
             <div style={{ width: "100%", aspectRatio: "16 / 9", position: "relative" }}>
@@ -277,6 +288,8 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
                 type={opp.type}
                 organisation={opp.organisation}
                 location_country={opp.location_country}
+                title={opp.title}
+                logoUrl={opp.org_logo_url}
               />
             </div>
           )}

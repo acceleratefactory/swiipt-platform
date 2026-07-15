@@ -194,103 +194,21 @@ export async function fetchOrgLogo(
   return { cover_image_url: null, cover_source: "none" };
 }
 
-// ─── Layer 4: Branded Template (SVG-based fallback) ───────────
-const TYPE_COLORS: Record<string, [string, string]> = {
-  scholarship: ["#0f766e", "#0d9488"],
-  visa_programme: ["#1e40af", "#3b82f6"],
-  remote_work: ["#6b21a8", "#8b5cf6"],
-  job: ["#166534", "#22c55e"],
-  fellowship: ["#92400e", "#d97706"],
-  grant: ["#831843", "#ec4899"],
-  internship: ["#1e3a5f", "#3b82f6"],
-  training: ["#374151", "#6b7280"],
-  healthcare: ["#0c4a6e", "#0284c7"],
-  sports_trial: ["#14532d", "#22c55e"],
-  competition: ["#7c2d12", "#f97316"],
-  conference: ["#0f172a", "#334155"],
-  exchange: ["#0e7490", "#06b6d4"],
-  trade_show: ["#4c1d95", "#7c3aed"],
-  residency: ["#0f766e", "#14b8a6"],
-  citizenship: ["#1e40af", "#6366f1"],
-  funding: ["#831843", "#ec4899"],
-  contest: ["#7c2d12", "#f97316"],
-  accelerator: ["#6b21a8", "#8b5cf6"],
-  award: ["#92400e", "#d97706"],
-};
-
-const TYPE_ICONS: Record<string, string> = {
-  scholarship: "🎓",
-  visa_programme: "🌍",
-  remote_work: "💻",
-  job: "💼",
-  fellowship: "⭐",
-  grant: "💰",
-  internship: "👩‍🎓",
-  training: "📚",
-  healthcare: "⚕️",
-  sports_trial: "⚽",
-  competition: "🏆",
-  conference: "🌐",
-  exchange: "✈️",
-  trade_show: "🎪",
-  residency: "🏠",
-  citizenship: "📜",
-  funding: "💰",
-  contest: "⭐",
-  accelerator: "🚀",
-  award: "🏆",
-};
-
-function generateBrandedSVG(
-  title: string,
-  organisation: string,
-  type: string,
-  country: string
-): string {
-  const [from, to] = TYPE_COLORS[type] || ["#374151", "#6b7280"];
-  const icon = TYPE_ICONS[type] || "🌍";
-  const truncatedOrg =
-    organisation.length > 30 ? organisation.slice(0, 27) + "…" : organisation;
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:${from}"/>
-      <stop offset="100%" style="stop-color:${to}"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="630" fill="url(#bg)"/>
-  <text x="600" y="260" text-anchor="middle" font-size="80" fill="white">${icon}</text>
-  <text x="600" y="340" text-anchor="middle" font-size="28" font-family="system-ui, sans-serif" font-weight="600" fill="rgba(255,255,255,0.95)">${truncatedOrg}</text>
-  <text x="600" y="380" text-anchor="middle" font-size="16" font-family="system-ui, sans-serif" fill="rgba(255,255,255,0.6)">${country}</text>
-  <text x="600" y="580" text-anchor="middle" font-size="14" font-family="system-ui, sans-serif" fill="rgba(255,255,255,0.4)">Swiipt</text>
-</svg>`;
-}
-
-async function generateBrandedCover(
-  title: string,
-  organisation: string,
-  type: string,
-  country: string
-): Promise<CoverResult> {
-  const svg = generateBrandedSVG(title, organisation, type, country);
-  const encoded = encodeURIComponent(svg);
-  const url = `data:image/svg+xml,${encoded}`;
-  return { cover_image_url: url, cover_source: "branded" };
-}
-
-// ─── Orchestrator: real opportunity image first, else generate our own ──
+// ─── Orchestrator: real opportunity image first, else no cover ──
+// When no real image exists we return null and let the card render an
+// intentional, on-brand fallback (logo-on-colour or typographic tile) —
+// we never generate a fake/guessed image.
 export async function getCoverImage(
   url: string | null,
-  title: string,
-  organisation: string,
-  type: string,
-  country: string,
+  _title: string,
+  _organisation: string,
+  _type: string,
+  _country: string,
   sourceUrl?: string | null
 ): Promise<CoverResult> {
-  // Layer 1: the original opportunity image (OG). Prefer the posting URL;
-  // if it has no OG image (job-board apply/tracking links often don't),
-  // fall back to the source listing URL, which usually carries the real image.
+  // Layer 1: the original opportunity image (OG / page hero). Prefer the
+  // posting URL; if it has no image (job-board apply/tracking links often
+  // don't), fall back to the source listing URL, which usually carries it.
   if (url) {
     const og = await fetchOGCover(url);
     if (og.cover_image_url) return og;
@@ -300,7 +218,5 @@ export async function getCoverImage(
     if (og.cover_image_url) return og;
   }
 
-  // Generated fallback: a clean, professional, type-coloured branded tile.
-  // (Logo stays as the small avatar only; no stretched logo, no generic AI photo.)
-  return generateBrandedCover(title, organisation, type, country);
+  return { cover_image_url: null, cover_source: "none" };
 }

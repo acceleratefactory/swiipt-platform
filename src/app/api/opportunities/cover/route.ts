@@ -21,7 +21,7 @@ function isPrivateIp(ip: string): boolean {
 }
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get("url");
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const upstream = await fetch(parsed.toString(), {
       method: "GET",
       redirect: "follow",
-      signal: AbortSignal.timeout(20000),
+      signal: AbortSignal.timeout(45000),
       headers: { "User-Agent": "Swiipt/1.0 (cover proxy)" },
     });
     if (!upstream.ok) return new NextResponse("Upstream error", { status: 502 });
@@ -59,17 +59,17 @@ export async function GET(request: NextRequest) {
     const ct = upstream.headers.get("content-type") || "";
     if (!ct.startsWith("image/")) return new NextResponse("Not an image", { status: 415 });
 
-    const buf = Buffer.from(await upstream.arrayBuffer());
-    if (buf.length > 10 * 1024 * 1024) return new NextResponse("Too large", { status: 413 });
+    // Stream the upstream body straight through. Buffering the whole image
+    // (the old approach) hit Vercel's response-size limit on large photos and
+    // collapsed them to the fallback tile; streaming avoids that ceiling.
+    const headers = new Headers();
+    headers.set("Content-Type", ct);
+    headers.set("Cache-Control", "public, max-age=86400, immutable");
+    headers.set("Access-Control-Allow-Origin", "*");
+    const length = upstream.headers.get("content-length");
+    if (length) headers.set("Content-Length", length);
 
-    return new NextResponse(buf, {
-      status: 200,
-      headers: {
-        "Content-Type": ct,
-        "Cache-Control": "public, max-age=86400, immutable",
-        "Access-Control-Allow-Origin": "*",
-      },
-    });
+    return new NextResponse(upstream.body, { status: 200, headers });
   } catch {
     return new NextResponse("Fetch failed", { status: 502 });
   }
