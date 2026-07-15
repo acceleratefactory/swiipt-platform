@@ -157,6 +157,13 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
   const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
   const [coverFailed, setCoverFailed] = useState(false);
 
+  // Serve external cover images via our own origin so ad-blockers / hotlink
+  // protection / mixed-content rules in the browser don't suppress them.
+  const coverSrc =
+    opp.cover_image_url && opp.cover_image_url.startsWith("http")
+      ? `/api/opportunities/cover?url=${encodeURIComponent(opp.cover_image_url)}`
+      : opp.cover_image_url ?? undefined;
+
   const handleApply = useCallback(() => {
     if (applied) return;
     setApplied(true);
@@ -258,7 +265,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
             </div>
           ) : hasCover && opp.cover_image_url && !coverFailed ? (
             <img
-              src={opp.cover_image_url}
+              src={coverSrc}
               alt=""
               loading="lazy"
               style={{ width: "100%", display: "block" }}
