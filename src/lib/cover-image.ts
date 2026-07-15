@@ -194,65 +194,6 @@ export async function fetchOrgLogo(
   return { cover_image_url: null, cover_source: "none" };
 }
 
-// ─── Layer 3: Pollinations.ai Generated Cover ─────────────────
-function buildAIPrompt(
-  title: string,
-  organisation: string,
-  type: string,
-  country: string
-): string {
-  const typeKeywords: Record<string, string> = {
-    scholarship: "graduation cap, university campus, academic excellence",
-    visa_programme: "passport, airplane, international travel, global city",
-    remote_work: "laptop, digital nomad, modern workspace, coffee shop",
-    job: "professional office, business meeting, career growth",
-    fellowship: "research lab, academic collaboration, prestige",
-    grant: "innovation, startup funding, business growth",
-    internship: "young professional, learning, mentorship",
-    training: "classroom, professional development, skill building",
-    healthcare: "hospital, medical professionals, healthcare technology",
-    sports_trial: "stadium, athletic field, sports training",
-    competition: "trophy, winners podium, achievement",
-    conference: "conference hall, networking, professional event",
-    exchange: "world map, cultural exchange, international campus",
-    trade_show: "exhibition hall, business networking, trade fair",
-    residency: "home, community, new beginning",
-    citizenship: "national flag, civic pride, belonging",
-    funding: "financial growth, investment, opportunity",
-    contest: "creative challenge, innovation, discovery",
-    accelerator: "startup accelerator, technology, growth",
-    award: "award ceremony, recognition, excellence",
-  };
-
-  const keywords = typeKeywords[type] || "professional opportunity, global career";
-  return `Professional ${type.replace(/_/g, " ")} opportunity cover image, ${organisation}, ${country}, ${keywords}, modern clean design, high quality, no text, no watermark, cinematic lighting, 4k`;
-}
-
-async function generateAICover(
-  title: string,
-  organisation: string,
-  type: string,
-  country: string
-): Promise<CoverResult> {
-  const prompt = buildAIPrompt(title, organisation, type, country);
-  const encodedPrompt = encodeURIComponent(prompt);
-  const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1200&height=630&seed=42&nologo=true`;
-
-  try {
-    const res = await fetch(url, {
-      method: "HEAD",
-      signal: AbortSignal.timeout(15000),
-    });
-    if (res.ok) {
-      const ct = res.headers.get("content-type") || "";
-      if (ct.startsWith("image/")) {
-        return { cover_image_url: url, cover_source: "ai" };
-      }
-    }
-  } catch {}
-  return { cover_image_url: null, cover_source: "none" };
-}
-
 // ─── Layer 4: Branded Template (SVG-based fallback) ───────────
 const TYPE_COLORS: Record<string, [string, string]> = {
   scholarship: ["#0f766e", "#0d9488"],
@@ -338,29 +279,28 @@ async function generateBrandedCover(
   return { cover_image_url: url, cover_source: "branded" };
 }
 
-// ─── Orchestrator: Try all 4 layers in priority order ─────────
+// ─── Orchestrator: real opportunity image first, else generate our own ──
 export async function getCoverImage(
   url: string | null,
   title: string,
   organisation: string,
   type: string,
-  country: string
+  country: string,
+  sourceUrl?: string | null
 ): Promise<CoverResult> {
-  // Layer 1: OG image
+  // Layer 1: the original opportunity image (OG). Prefer the posting URL;
+  // if it has no OG image (job-board apply/tracking links often don't),
+  // fall back to the source listing URL, which usually carries the real image.
   if (url) {
     const og = await fetchOGCover(url);
     if (og.cover_image_url) return og;
   }
+  if (sourceUrl) {
+    const og = await fetchOGCover(sourceUrl);
+    if (og.cover_image_url) return og;
+  }
 
-  // Layer 2: logo.dev (resolves the real employer name, not the job-board domain)
-  const logo = await fetchOrgLogo(organisation, url, title);
-  if (logo.cover_image_url) return logo;
-
-  // Layer 3: AI generated
-  const ai = await generateAICover(title, organisation, type, country);
-  if (ai.cover_image_url) return ai;
-
-  // Layer 4: Branded template
-  const branded = await generateBrandedCover(title, organisation, type, country);
-  return branded;
+  // Generated fallback: a clean, professional, type-coloured branded tile.
+  // (Logo stays as the small avatar only; no stretched logo, no generic AI photo.)
+  return generateBrandedCover(title, organisation, type, country);
 }

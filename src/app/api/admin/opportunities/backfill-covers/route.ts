@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   const { data: opportunities, error: fetchError } = await serviceSupabase
     .from("opportunities")
-    .select("id, title, organisation, type, location_country, application_url, cover_image_url, description")
+    .select("id, title, organisation, type, location_country, application_url, source_url, cover_image_url, description")
     .or("cover_image_url.is.null,org_logo_url.is.null")
     .eq("is_active", true)
     .limit(50);
@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
           opp.title,
           org,
           opp.type,
-          opp.location_country || "Global"
+          opp.location_country || "Global",
+          opp.source_url
         );
         if (cover.cover_image_url) {
           const mediaSource = cover.cover_source === "branded" || cover.cover_source === "none" ? "fallback" : "fetched";

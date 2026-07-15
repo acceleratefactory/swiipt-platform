@@ -155,6 +155,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
 
   const daysLeft = getDaysLeft(opp.deadline);
   const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
+  const [coverFailed, setCoverFailed] = useState(false);
 
   const handleApply = useCallback(() => {
     if (applied) return;
@@ -255,13 +256,13 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
                 style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", cursor: "pointer" }}
               />
             </div>
-          ) : hasCover && opp.cover_image_url ? (
+          ) : hasCover && opp.cover_image_url && !coverFailed ? (
             <img
               src={opp.cover_image_url}
               alt=""
               loading="lazy"
               style={{ width: "100%", display: "block" }}
-              onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              onError={() => setCoverFailed(true)}
             />
           ) : (
             <div style={{ width: "100%", aspectRatio: "16 / 9", position: "relative" }}>

@@ -30,7 +30,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 
   const { data: existingOpp } = await (supabase as any)
     .from("opportunities")
-    .select("provenance, title, organisation, type, location_country, application_url")
+    .select("provenance, title, organisation, type, location_country, application_url, source_url")
     .eq("id", params.id)
     .single();
 
@@ -58,7 +58,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const finalCountry = body.location_country || existingOpp?.location_country;
     const finalUrl = body.application_url || existingOpp?.application_url;
 
-    const cover = await getCoverImage(finalUrl, finalTitle, finalOrg, finalType, finalCountry);
+    const cover = await getCoverImage(finalUrl, finalTitle, finalOrg, finalType, finalCountry, body.source_url || existingOpp?.source_url);
 
     if (cover.cover_image_url) {
       const mediaSource = cover.cover_source === "branded" || cover.cover_source === "none" ? "fallback" : "fetched";

@@ -48,7 +48,8 @@ export async function POST(request: NextRequest) {
     body.title,
     body.organisation,
     body.type || "job",
-    body.location_country || "Global"
+    body.location_country || "Global",
+    body.source_url
   );
 
   if (cover.cover_image_url) {
