@@ -28,8 +28,12 @@ export async function POST(request: NextRequest) {
   const { data: opportunities, error: fetchError } = await serviceSupabase
     .from("opportunities")
     .select("id, title, organisation, type, location_country, application_url, source_url, cover_image_url, description")
-    .or("cover_image_url.is.null,org_logo_url.is.null")
     .eq("is_active", true)
+    // Only rows not yet processed. After a reset every row has media_source =
+    // null; processed rows get "fetched" or "fallback", so the cursor advances
+    // instead of re-selecting the same null-cover rows forever.
+    .is("media_source", null)
+    .order("id")
     .limit(50);
 
   if (fetchError) {
