@@ -15,7 +15,24 @@ async function fetchOGCover(url: string): Promise<CoverResult> {
   return { cover_image_url: null, cover_source: "none" };
 }
 
-// ─── Layer 2: Clearbit Logo Lookup ────────────────────────────
+// ─── Layer 2: Logo.dev Lookup (resolves the ACTUAL employer) ──
+const LEGAL_SUFFIXES = new Set([
+  "gmbh", "ltd", "limited", "inc", "llc", "plc", "corp", "co", "ag", "bv",
+  "pty", "group", "holding", "holdings", "international", "intl", "global",
+  "uk", "usa", "sa", "oy", "kg", "ug",
+]);
+
+const JOB_BOARD_NAMES = [
+  "arbeitnow", "lever", "greenhouse", "linkedin", "indeed", "remoteok",
+  "weworkremotely", "wellfound", "ycombinator", "remote ok", "workable",
+  "smartrecruiters", "ashby", "broadbean",
+];
+
+function isJobBoardName(org: string): boolean {
+  const o = org.toLowerCase().trim();
+  return JOB_BOARD_NAMES.some((b) => o === b || o.includes(b));
+}
+
 function deriveDomain(organisation: string): string | null {
   const name = organisation.toLowerCase().trim();
   const knownDomains: Record<string, string> = {
@@ -43,7 +60,11 @@ function deriveDomain(organisation: string): string | null {
 
   if (knownDomains[name]) return knownDomains[name];
 
-  const cleaned = name.replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, "");
+  const cleaned = name
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => !LEGAL_SUFFIXES.has(w))
+    .join("");
   if (cleaned.length > 2) return `${cleaned}.com`;
   return null;
 }
@@ -61,29 +82,115 @@ function domainFromUrl(url: string | null | undefined): string | null {
   }
 }
 
-export async function fetchOrgLogo(
-  organisation: string,
-  applicationUrl?: string | null
-): Promise<CoverResult> {
+// Heuristic: pull an employer name out of the posting title/description.
+function extractEmployerFromText(
+  title?: string | null,
+  description?: string | null
+): string | null {
+  const text = `${title || ""}. ${description || ""}`;
+  if (!text.trim()) return null;
+
+  const patterns = [
+    /\bat\s+([A-Z][\w&.\-]+(?:\s[A-Z][\w&.\-]+){0,3})/,
+    /\bwith\s+([A-Z][\w&.\-]+(?:\s[A-Z][\w&.\-]+){0,3})/,
+    /\bfor\s+([A-Z][\w&.\-]+(?:\s[A-Z][\w&.\-]+){0,3})/,
+    /([A-Z][\w&.\-]+(?:\s[A-Z][\w&.\-]+){0,3})\s*(?:is hiring|are hiring|hiring)/,
+    /join\s+([A-Z][\w&.\-]+(?:\s[A-Z][\w&.\-]+){0,3})/,
+    /([A-Z][\w&.\-]+(?:\s[A-Z][\w&.\-]+){0,3})\s*[–—-]\s*(?:remote|full[\s-]?time|part[\s-]?time|intern)/i,
+  ];
+
+  for (const re of patterns) {
+    const m = text.match(re);
+    if (m && m[1]) {
+      const cand = m[1].trim().replace(/[.,)\]]+$/, "");
+      if (cand.length >= 2 && cand.length <= 60) return cand;
+    }
+  }
+  return null;
+}
+
+async function tryLogoDevName(name: string): Promise<string | null> {
   const key = process.env.LOGO_DEV_API_KEY;
-  if (!key) return { cover_image_url: null, cover_source: "none" };
-
-  const domain = domainFromUrl(applicationUrl) || deriveDomain(organisation);
-  if (!domain) return { cover_image_url: null, cover_source: "none" };
-
-  const logoUrl = `https://img.logo.dev/${domain}?token=${key}&size=200&format=png&fallback=404`;
+  if (!key) return null;
+  const url = `https://img.logo.dev/name/${encodeURIComponent(name)}?token=${key}&size=200&format=png&fallback=404`;
   try {
-    const res = await fetch(logoUrl, {
+    const res = await fetch(url, {
       method: "GET",
       signal: AbortSignal.timeout(5000),
     });
     if (res.ok) {
       const ct = res.headers.get("content-type") || "";
-      if (ct.startsWith("image/")) {
-        return { cover_image_url: logoUrl, cover_source: "logo" };
-      }
+      if (ct.startsWith("image/")) return url;
     }
   } catch {}
+  return null;
+}
+
+async function tryLogoDevDomain(domain: string): Promise<string | null> {
+  const key = process.env.LOGO_DEV_API_KEY;
+  if (!key) return null;
+  const url = `https://img.logo.dev/${domain}?token=${key}&size=200&format=png&fallback=404`;
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      signal: AbortSignal.timeout(5000),
+    });
+    if (res.ok) {
+      const ct = res.headers.get("content-type") || "";
+      if (ct.startsWith("image/")) return url;
+    }
+  } catch {}
+  return null;
+}
+
+const GENERIC_ORGS = new Set(["unknown", "untitled", "n/a", "na", "tbd", ""]);
+
+// Resolves the real employer logo, NOT the job-board domain.
+export async function fetchOrgLogo(
+  organisation: string,
+  applicationUrl?: string | null,
+  title?: string | null,
+  description?: string | null
+): Promise<CoverResult> {
+  const key = process.env.LOGO_DEV_API_KEY;
+  if (!key) return { cover_image_url: null, cover_source: "none" };
+
+  const org = (organisation || "").trim();
+  const isGeneric = !org || GENERIC_ORGS.has(org.toLowerCase());
+
+  // 1. Employer NAME → logo.dev name endpoint (preferred; gives the real logo)
+  if (!isGeneric && !isJobBoardName(org)) {
+    const cleaned = org
+      .replace(/\b(gmbh|ltd|limited|inc|llc|plc|corp|co|ag|b\.v\.|pty|group|holdings?|international|global)\b\.?/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (cleaned.length > 1) {
+      const logo = await tryLogoDevName(cleaned);
+      if (logo) return { cover_image_url: logo, cover_source: "logo" };
+    }
+  }
+
+  // 2. Employer extracted from the posting text
+  const extracted = extractEmployerFromText(title, description);
+  if (extracted && !isJobBoardName(extracted)) {
+    const logo = await tryLogoDevName(extracted);
+    if (logo) return { cover_image_url: logo, cover_source: "logo" };
+  }
+
+  // 3. Domain derived from the org name
+  const derived = deriveDomain(org);
+  if (derived) {
+    const logo = await tryLogoDevDomain(derived);
+    if (logo) return { cover_image_url: logo, cover_source: "logo" };
+  }
+
+  // 4. Job-board / application URL domain (last resort — kept to preserve coverage)
+  const urlDomain = domainFromUrl(applicationUrl);
+  if (urlDomain) {
+    const logo = await tryLogoDevDomain(urlDomain);
+    if (logo) return { cover_image_url: logo, cover_source: "logo" };
+  }
+
   return { cover_image_url: null, cover_source: "none" };
 }
 
@@ -245,8 +352,8 @@ export async function getCoverImage(
     if (og.cover_image_url) return og;
   }
 
-  // Layer 2: DuckDuckGo favicon (derived from the real posting URL)
-  const logo = await fetchOrgLogo(organisation, url);
+  // Layer 2: logo.dev (resolves the real employer name, not the job-board domain)
+  const logo = await fetchOrgLogo(organisation, url, title);
   if (logo.cover_image_url) return logo;
 
   // Layer 3: AI generated
