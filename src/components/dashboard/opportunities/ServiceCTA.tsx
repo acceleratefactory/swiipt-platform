@@ -41,15 +41,15 @@ function getServiceUrl(type: string, country: string, oppId: string, serviceUrl?
   const visaType = VISA_TYPES[type];
 
   if (visaType && countrySlug) {
-    return `/services/${countrySlug}-${visaType}-visa`;
+    return "/dashboard/services";
   }
 
   if (type === "scholarship" || type === "fellowship" || type === "grant") {
-    return `/goals/new?opportunity=${oppId}`;
+    return `/dashboard/goals/new?opportunity=${oppId}`;
   }
 
   if (type === "trade_show") {
-    return "/trade-shows";
+    return "/dashboard/trade-shows";
   }
 
   return null;
