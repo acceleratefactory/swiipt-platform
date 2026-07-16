@@ -2,25 +2,6 @@
 
 import { useCallback } from "react";
 
-const COUNTRY_SLUGS: Record<string, string> = {
-  "uk": "uk",
-  "united kingdom": "uk",
-  "usa": "usa",
-  "united states": "usa",
-  canada: "canada",
-  germany: "germany",
-  sweden: "sweden",
-  denmark: "denmark",
-  uae: "uae",
-  qatar: "qatar",
-  australia: "australia",
-  china: "china",
-  netherlands: "netherlands",
-  france: "france",
-  portugal: "portugal",
-  georgia: "georgia",
-};
-
 const VISA_TYPES: Record<string, string> = {
   scholarship: "study",
   study: "study",
@@ -34,15 +15,8 @@ const VISA_TYPES: Record<string, string> = {
   exchange: "study",
 };
 
-function getServiceUrl(type: string, country: string, oppId: string, serviceUrl?: string | null): string | null {
+function getServiceUrl(type: string, oppId: string, serviceUrl?: string | null): string | null {
   if (serviceUrl) return serviceUrl;
-
-  const countrySlug = COUNTRY_SLUGS[country.toLowerCase().trim()];
-  const visaType = VISA_TYPES[type];
-
-  if (visaType && countrySlug) {
-    return "/dashboard/services";
-  }
 
   if (type === "scholarship" || type === "fellowship" || type === "grant") {
     return `/dashboard/goals/new?opportunity=${oppId}`;
@@ -52,13 +26,24 @@ function getServiceUrl(type: string, country: string, oppId: string, serviceUrl?
     return "/dashboard/trade-shows";
   }
 
+  if (VISA_TYPES[type]) {
+    return "/dashboard/services";
+  }
+
   return null;
 }
 
 function getCTALabel(type: string, country: string): string {
   const base = country.split(",")[0].trim();
-  const visaType = VISA_TYPES[type];
 
+  if (type === "scholarship" || type === "fellowship" || type === "grant") {
+    return "Create a savings goal for this opportunity";
+  }
+  if (type === "trade_show") {
+    return "Join a trade show group and save together";
+  }
+
+  const visaType = VISA_TYPES[type];
   if (visaType && visaType !== "residency" && visaType !== "citizenship") {
     return `Need a ${base} ${visaType} visa? We can help`;
   }
@@ -67,12 +52,6 @@ function getCTALabel(type: string, country: string): string {
   }
   if (visaType === "citizenship") {
     return `${base} citizenship? Start here`;
-  }
-  if (type === "scholarship" || type === "fellowship" || type === "grant") {
-    return "Create a savings goal for this opportunity";
-  }
-  if (type === "trade_show") {
-    return "Join a trade show group and save together";
   }
   return `Explore services for ${base}`;
 }
@@ -85,7 +64,7 @@ interface Props {
 }
 
 export default function ServiceCTA({ type, location_country, opportunityId, service_url }: Props) {
-  const url = getServiceUrl(type, location_country, opportunityId, service_url);
+  const url = getServiceUrl(type, opportunityId, service_url);
 
   const handleClick = useCallback(() => {
     fetch("/api/opportunities/track", {
