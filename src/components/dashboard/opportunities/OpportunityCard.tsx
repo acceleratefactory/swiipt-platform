@@ -241,7 +241,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
       {opp.media_type !== "none" ? (
         <div style={{ width: "100%", position: "relative" }}>
           {opp.video_url ? (
-            <div style={{ width: "100%", aspectRatio: "16 / 9", position: "relative" }}>
+            <div style={{ width: "100%", aspectRatio: "4 / 5", position: "relative" }}>
               <video
                 ref={videoRef}
                 src={opp.video_url}
@@ -259,14 +259,14 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
               src={proxiedSrc}
               alt=""
               loading="lazy"
-              style={{ width: "100%", display: "block" }}
+              style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }}
               onError={() => {
                 if (coverRetry < 1) setCoverRetry((n) => n + 1);
                 else setCoverFailed(true);
               }}
             />
           ) : (
-            <div style={{ width: "100%", aspectRatio: "16 / 9", position: "relative" }}>
+            <div style={{ width: "100%", aspectRatio: "4 / 5", position: "relative" }}>
               <FallbackTile
                 type={opp.type}
                 organisation={opp.organisation}
