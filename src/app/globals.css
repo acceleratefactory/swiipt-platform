@@ -110,6 +110,11 @@ h1, h2, h3, h4, h5, h6 {
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+/* Instagram-style hidden scrollbar (feed). Scoped to the opportunities route
+   via HideScrollbar; scrolling stays fully functional. */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* Card hover effects */
 .product-card {
   transition: transform 0.2s ease, box-shadow 0.2s ease;

@@ -1668,6 +1668,19 @@ Trigger manual redeployment from Vercel dashboard with **"Clear build cache"** o
 
 ---
 
+### Session 45 — Feed UX: Fix 2 (looping feed) + Fix 3 (distinct top matches) + Fix 4 (hidden scrollbar)
+
+- **Date:** July 15, 2026
+- **Goal:** Complete Fixes 2-4 of the approved feed personalization plan (`reports/findings/feed-personalization-and-ux-plan.md`). Fix 1 shipped in Session 44 (`8d68bc3`).
+- **Fix 2 — Unending/looping feed** (`OpportunityFeed.tsx`): replaced the finite `visible.slice()` + `isDone` hard-stop with a `buildDisplayed(count)` builder that cycles through the ranked pool. `DisplayItem` carries `loopIndex`/`posInLoop`; composite React keys `` `${opp.id}-${loopIndex}` `` avoid collisions; a soft "You're all caught up — more for you" divider renders at the start of each new cycle (`loopIndex > 0 && posInLoop === 0`); sentinel always renders (true infinite loop, safe via unique keys + existing IntersectionObserver recycling).
+- **Fix 3 — Distinct top matches** (`OpportunityFeed.tsx`): replaced the single repeated `topMatch` ref with a `useMemo` `topMatches` list (filter `relevanceScore >= 70` `TOP_MATCH_THRESHOLD`, sort desc, dedupe by id, cap `TOP_MATCH_COUNT=8`). Each 5th slot features the next distinct match via `featuredSlotIndex = (index+1)/5 - 1`; stops once all shown once (no repeats). Kept the on-screen collision guard. Labels: "⭐ Top match for your profile" (first) / "✨ Also for you" (subsequent). Single-match case shows once, never repeats.
+- **Fix 4 — Instagram-style hidden scrollbar:** dashboard scrolls on the **window** (outer div `minHeight:100vh`, no bounded height, `<main overflowY:auto>` grows to content). Added `.no-scrollbar` utility to `globals.css`; new route-scoped `HideScrollbar.tsx` toggles the class on `document.documentElement` + `<main>` on mount and removes on unmount (rendered from the feed page), so only the opportunities route hides its scrollbar — other dashboard/admin pages keep normal scrollbars. Scrolling stays fully functional.
+- **Files:** `src/components/dashboard/opportunities/OpportunityFeed.tsx`, `src/app/globals.css`, `src/components/dashboard/opportunities/HideScrollbar.tsx` (new), `src/app/(dashboard)/dashboard/opportunities/page.tsx`.
+- **Build:** `npm run build` → exit 0 (only pre-existing router-dep + affiliate dynamic-server notices). **Not deployed yet at time of writing** — when deploying, Vercel needs **Redeploy + Clear build cache** (stale-code pattern).
+- **All 4 feed fixes now complete.** Deferred cover-image browser-render bug (Session 43 item 12) still OPEN.
+
+---
+
 ## 12. PENDING / FUTURE BUILD
 
 ### Sprint 19 SQL Migrations (10 files — run in order)

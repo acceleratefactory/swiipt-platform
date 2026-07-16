@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import OpportunityFeed from "@/components/dashboard/opportunities/OpportunityFeed";
+import HideScrollbar from "@/components/dashboard/opportunities/HideScrollbar";
 import { scoreOpportunities } from "@/lib/opportunity-feed-score";
 
 interface Oppty {
@@ -89,6 +90,7 @@ export default async function OpportunitiesPage() {
 
   return (
     <div style={{ marginLeft: "-1.5rem", marginRight: "-1.5rem", marginTop: "-1.5rem", width: "calc(100% + 3rem)" }}>
+      <HideScrollbar />
       <div style={{ maxWidth: 470, margin: "0 auto" }}>
         <OpportunityFeed
           allOpportunities={allOpportunities}
