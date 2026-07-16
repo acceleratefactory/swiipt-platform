@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { enrich } from "@/lib/ai-service";
+import { detectOpportunityLanguage } from "@/lib/language";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -130,6 +131,10 @@ export async function POST(request: NextRequest) {
             deadline: enriched.deadline || raw.deadline || null,
             application_url: raw.url,
             cover_image_url: null,
+            language: detectOpportunityLanguage(
+              enriched.cleaned_title || raw.title,
+              enriched.cleaned_description || raw.description
+            ),
             source_url: item.source_url || null,
             source_name: item.source_name,
             ai_generated: true,
@@ -205,6 +210,10 @@ export async function POST(request: NextRequest) {
             deadline: enriched.deadline || raw.deadline || null,
             application_url: raw.url,
             cover_image_url: null,
+            language: detectOpportunityLanguage(
+              enriched.cleaned_title || raw.title,
+              enriched.cleaned_description || raw.description
+            ),
             source_url: item.source_url || null,
             source_name: item.source_name,
             ai_generated: true,

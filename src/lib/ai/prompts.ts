@@ -12,10 +12,15 @@ export function buildDefaultPrompt(request: AIEnrichRequest): string {
       return buildPasteUrlPrompt(data);
     case "public-submission":
       return buildPublicSubmissionPrompt(data);
+    case "translate":
+      return buildTranslatePrompt(data);
     default:
       return JSON.stringify(data);
   }
 }
+
+// Shared English-output rule injected into enrichment prompts (Session 46 Step 2).
+const ENGLISH_RULE = `IMPORTANT: The audience is English-speaking. If any input field is not in English, TRANSLATE it into natural, fluent English. Every field you return MUST be in English — never return German, French, or any other language.`;
 
 export function buildProcessQueuePrompt(data: Record<string, any>, tier?: string): string {
   const isFormatOnly = tier === "trusted" || tier === "standard";
@@ -29,6 +34,8 @@ Then provide: cleaned_title, cleaned_description (100-200 words), cleaned_organi
   return `You are an opportunity processing assistant for Swiipt.
 ${instructions}
 
+${ENGLISH_RULE}
+
 RAW DATA:
 Title: ${data.raw_title || ""}
 Organisation: ${data.raw_organisation || ""}
@@ -38,6 +45,33 @@ Salary/Funding: ${data.raw_salary || ""}
 Deadline: ${data.raw_deadline || ""}
 URL: ${data.raw_url || ""}
 Requirements: ${data.raw_requirements || ""}
+
+Return valid JSON only, no markdown.`;
+}
+
+// Translate an existing opportunity's text fields to English (Session 46 Step 2).
+// Only translates — does not re-evaluate, re-categorise, or invent fields.
+export function buildTranslatePrompt(data: Record<string, any>): string {
+  return `You are a professional translator for Swiipt. Translate the following opportunity fields into natural, fluent English.
+
+Rules:
+- Preserve the original meaning, tone, and all factual details (names, dates, amounts, URLs).
+- Do NOT summarise, shorten, embellish, or add information.
+- Keep proper nouns (organisation names, cities) as-is unless they have a common English form.
+- If a field is already in English, return it unchanged.
+- Return valid JSON only, no markdown, with exactly these keys:
+{
+  "title": "English title",
+  "description": "English description",
+  "organisation": "English organisation name",
+  "requirements": "English requirements or null"
+}
+
+FIELDS TO TRANSLATE:
+Title: ${data.title || ""}
+Organisation: ${data.organisation || ""}
+Requirements: ${data.requirements || ""}
+Description: ${data.description || ""}
 
 Return valid JSON only, no markdown.`;
 }

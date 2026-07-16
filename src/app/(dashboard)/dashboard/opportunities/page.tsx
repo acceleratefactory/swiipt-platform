@@ -25,6 +25,7 @@ interface Oppty {
   source_name: string | null;
   ai_generated: boolean;
   ai_relevance_score: number | null;
+  language?: string | null;
   relevanceScore?: number;
   is_saved?: boolean;
   is_applied?: boolean;
@@ -45,7 +46,7 @@ export default async function OpportunitiesPage() {
   ] = await Promise.all([
     supabase.from("career_profiles").select("segment_slug, desired_countries, desired_roles").eq("user_id", user.id).single(),
     supabase.from("users").select("user_tier, referral_code").eq("id", user.id).single(),
-    supabase.from("opportunities").select("*").eq("is_active", true).order("created_at", { ascending: false }),
+    supabase.from("opportunities").select("*").eq("is_active", true).or("language.is.null,language.in.(eng,sco,und)").order("created_at", { ascending: false }),
     supabase.from("user_opportunity_feed").select("opportunity_id, relevance_score, is_saved, is_applied").eq("user_id", user.id),
     supabase.from("user_interest_model").select("*").eq("user_id", user.id).single(),
   ]);

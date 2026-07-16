@@ -33,10 +33,21 @@ export interface ScoreContext {
 const EXCLUDED_SEGMENTS = new Set(["footballer"]);
 const EXCLUDED_TYPES = new Set(["sports_trial"]);
 
+// Non-English filter (Session 46). Keep NULL (not yet detected), "eng", "sco"
+// (franc's English confusion) and "und" (undetermined/too short). Hide any other
+// confidently-detected language (deu/fra/spa/...). This is a lightweight
+// dependency-free check; detection itself happens at ingest/backfill.
+const ENGLISH_OK = new Set(["eng", "sco", "und"]);
+
 export function isExcluded(opp: any): boolean {
-  return !!(
-    (opp?.segment_slug && EXCLUDED_SEGMENTS.has(opp.segment_slug)) ||
-    (opp?.type && EXCLUDED_TYPES.has(opp.type))
+  const lang = opp?.language;
+  const nonEnglish = !!(lang && !ENGLISH_OK.has(lang));
+  return (
+    nonEnglish ||
+    !!(
+      (opp?.segment_slug && EXCLUDED_SEGMENTS.has(opp.segment_slug)) ||
+      (opp?.type && EXCLUDED_TYPES.has(opp.type))
+    )
   );
 }
 

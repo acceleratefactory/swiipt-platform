@@ -1681,6 +1681,36 @@ Trigger manual redeployment from Vercel dashboard with **"Clear build cache"** o
 
 ---
 
+### Session 46 — Non-English opportunity filtering (Step 1 of 2: "filter now")
+
+- **Date:** July 16, 2026
+- **Problem:** Users saw opportunities in German and other languages. Root cause: foreign-language ingest sources (notably **Arbeitnow**, a Germany-focused API in `src/lib/api-adapters.ts`, plus EU RSS feeds) and the AI enrich prompt never enforced/translated to English. No `language` column existed anywhere.
+- **User decision:** approved **"Filter now + translate later"** (two-step) and approved adding the **`franc`** library. This session did **Step 1 (filter)** only. **Step 2 (AI translation of the enrich prompt + backfill-translate) is NOT done yet.**
+- **Dependency:** installed **`franc@5`** (v6 is ESM-only and awkward in Next 14 route handlers; v5 is CommonJS). No bundled types → added ambient `src/types/franc.d.ts`. Calibration: on description-length text franc is accurate (en→eng, de→deu, fr→fra, nl→nld); only very short strings misfire (English→`sco`/`und`). So we treat **`eng`, `sco`, `und` (and NULL) as English/keep**, hide any other confidently-detected language.
+- **Files created:**
+  - `swiipt/add_opportunity_language.sql` — `ALTER TABLE opportunities ADD COLUMN IF NOT EXISTS language TEXT;` + index. **Must be run in Supabase SQL editor.**
+  - `src/types/franc.d.ts` — ambient module declaration for franc v5.
+  - `src/lib/language.ts` — `detectLanguage()`, `detectOpportunityLanguage(title, desc)` (ISO 639-3 or `und`), `isEnglishCode()`. `MIN_LENGTH=25`; `ENGLISH_CODES={eng,sco,und}`.
+  - `src/app/api/admin/opportunities/backfill-language/route.ts` — x-internal-secret + service client; tags rows where `language IS NULL` in batches of 500 (local detection, no network); returns per-language counts. **Run repeatedly until "No opportunities need language detection".**
+- **Files modified:**
+  - `src/app/api/admin/opportunities/process-queue/route.ts` — both insert paths now write `language: detectOpportunityLanguage(title, description)` so new pipeline items are tagged.
+  - `src/lib/opportunity-feed-score.ts` — `isExcluded()` now also drops non-English (`language` set and not in `{eng,sco,und}`) — dependency-free string check, covers page + feed route since both use the shared scorer.
+  - `src/app/api/opportunities/feed/route.ts` — added `.or("language.is.null,language.in.(eng,sco,und)")` to BOTH the search query (search bypasses the scorer, so this is essential) and the feed query (payload trim).
+  - `src/app/(dashboard)/dashboard/opportunities/page.tsx` — same `.or(...)` filter on the pool query; added `language?` to local `Oppty` interface.
+- **Incremental-safe:** filter keeps `language IS NULL`, so nothing disappears until the backfill tags rows; German rows drop out as they're tagged `deu` etc.
+- **Build:** `npm run build` → exit 0, franc imports cleanly, backfill route compiled. Not committed/deployed yet.
+- **Deploy checklist for this fix:** (1) run `swiipt/add_opportunity_language.sql` in Supabase; (2) deploy with **Redeploy + Clear build cache** (stale-code pattern); (3) POST `/api/admin/opportunities/backfill-language` with `x-internal-secret` header repeatedly until done.
+### Session 46 — Step 2 (translate-and-keep) built
+
+- **Goal:** keep good foreign-language opportunities by translating them to English rather than only hiding them.
+- **Enrich prompt (new items):** `src/lib/ai/prompts.ts` — added a shared `ENGLISH_RULE` ("translate any non-English field to natural English; every returned field MUST be English") injected into BOTH tiers of `buildProcessQueuePrompt`. So the process-queue pipeline now produces English opportunities going forward; `detectOpportunityLanguage` then tags them `eng`.
+- **New `translate` task:** added `"translate"` to the `AIEnrichRequest.task` union (`src/lib/ai/providers/index.ts`) and `buildTranslatePrompt(data)` in prompts.ts — a translate-only prompt (preserve meaning/facts, no summarising) returning JSON `{title, description, organisation, requirements}`. All providers use `buildDefaultPrompt` + JSON parse, so no provider changes were needed.
+- **Backfill route:** `src/app/api/admin/opportunities/backfill-translate/route.ts` — x-internal-secret + service client; selects rows where `language` is set and NOT in `(eng,sco,und)` (batch 15, since each row hits the AI); calls `enrich({task:"translate"})`; writes translated title/description/organisation/requirements; **re-detects** the translated text with franc and sets `language='eng'` only if it now reads as English (else keeps the detected code so it's retried next run and stays hidden until it's genuinely English). Guards against empty AI output (counts as failed, row unchanged). Run repeatedly until "No non-English opportunities to translate". **Depends on an active AI provider being configured** (historically flaky pipeline).
+- **Build:** `npm run build` → exit 0, `translate` task + backfill-translate route compiled. Not committed/deployed yet.
+- **Deploy note:** after the Step 1 filter is live and rows are tagged, run backfill-translate to convert existing `deu`/`fra`/... rows to English (they then reappear in the feed). New pipeline items are English automatically via the enrich prompt.
+
+---
+
 ## 12. PENDING / FUTURE BUILD
 
 ### Sprint 19 SQL Migrations (10 files — run in order)

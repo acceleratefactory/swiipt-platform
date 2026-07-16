@@ -34,7 +34,9 @@ export async function POST(request: NextRequest) {
       let searchQuery = supabase
         .from("opportunities")
         .select("*")
-        .eq("is_active", true);
+        .eq("is_active", true)
+        // Non-English filter (Session 46): keep English + untagged, hide the rest.
+        .or("language.is.null,language.in.(eng,sco,und)");
 
       if (query) {
         searchQuery = searchQuery.or(
@@ -73,7 +75,10 @@ export async function POST(request: NextRequest) {
     let { data: opportunities } = await supabase
       .from("opportunities")
       .select("*")
-      .eq("is_active", true);
+      .eq("is_active", true)
+      // Non-English filter (Session 46): keep English + untagged, hide the rest.
+      // The scorer also drops non-English; this trims the payload after backfill.
+      .or("language.is.null,language.in.(eng,sco,und)");
 
     if (!opportunities) opportunities = [];
 

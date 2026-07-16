@@ -1,5 +1,5 @@
 export interface AIEnrichRequest {
-  task: "process-queue" | "ingest-parse" | "paste-url" | "public-submission";
+  task: "process-queue" | "ingest-parse" | "paste-url" | "public-submission" | "translate";
   data: Record<string, any>;
   tier?: "trusted" | "standard" | "review_all";
 }
