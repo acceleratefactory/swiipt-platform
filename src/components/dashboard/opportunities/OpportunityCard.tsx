@@ -152,6 +152,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
   const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
   const [coverFailed, setCoverFailed] = useState(false);
   const [coverRetry, setCoverRetry] = useState(0);
+  const [coverIsPortrait, setCoverIsPortrait] = useState(false);
 
   // Serve external cover images via our own origin so ad-blockers / hotlink
   // protection / mixed-content rules in the browser don't suppress them.
@@ -259,7 +260,15 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
               src={proxiedSrc}
               alt=""
               loading="lazy"
-              style={{ width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }}
+              style={
+                coverIsPortrait
+                  ? { width: "100%", aspectRatio: "4 / 5", objectFit: "cover", display: "block" }
+                  : { width: "100%", height: "auto", display: "block" }
+              }
+              onLoad={(e) => {
+                const img = e.currentTarget;
+                if (img.naturalHeight > img.naturalWidth) setCoverIsPortrait(true);
+              }}
               onError={() => {
                 if (coverRetry < 1) setCoverRetry((n) => n + 1);
                 else setCoverFailed(true);
