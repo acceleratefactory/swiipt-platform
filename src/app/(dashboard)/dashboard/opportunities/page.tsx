@@ -29,6 +29,8 @@ interface Oppty {
   relevanceScore?: number;
   is_saved?: boolean;
   is_applied?: boolean;
+  is_liked?: boolean;
+  like_count?: number;
   created_at: string;
 }
 
@@ -43,12 +45,14 @@ export default async function OpportunitiesPage() {
     oppRes,
     feedRes,
     interestModelRes,
+    likeRes,
   ] = await Promise.all([
     supabase.from("career_profiles").select("segment_slug, desired_countries, desired_roles").eq("user_id", user.id).single(),
     supabase.from("users").select("user_tier, referral_code").eq("id", user.id).single(),
     supabase.from("opportunities").select("*").eq("is_active", true).or("language.is.null,language.in.(eng,sco,und)").order("created_at", { ascending: false }),
     supabase.from("user_opportunity_feed").select("opportunity_id, relevance_score, is_saved, is_applied").eq("user_id", user.id),
     supabase.from("user_interest_model").select("*").eq("user_id", user.id).single(),
+    supabase.from("opportunity_signals").select("opportunity_id").eq("user_id", user.id).eq("signal_type", "like"),
   ]);
 
   if (!profileRes.data) redirect("/dashboard/opportunities/onboarding");
@@ -64,6 +68,14 @@ export default async function OpportunitiesPage() {
   for (const f of feedRes.data || []) {
     savedMap.set(f.opportunity_id, f);
   }
+
+  // Fix 1: hydrate the current user's likes from opportunity_signals so the
+  // heart survives a refresh. RLS restricts this table to the owner, so
+  // like_count reflects the user's own like state (0/1), matching the toggle
+  // count the like route returns. Global counts are deferred.
+  const likedIds = new Set<string>(
+    (likeRes.data || []).map((s: any) => s.opportunity_id)
+  );
 
   // Fix 1: rank the FULL active pool with the shared interest/intent scorer.
   // Football is excluded inside the scorer; there is NO segment filter, so a
@@ -87,6 +99,8 @@ export default async function OpportunitiesPage() {
     ...opp,
     is_saved: savedMap.get(opp.id)?.is_saved || false,
     is_applied: savedMap.get(opp.id)?.is_applied || false,
+    is_liked: likedIds.has(opp.id),
+    like_count: likedIds.has(opp.id) ? 1 : 0,
   }));
 
   return (

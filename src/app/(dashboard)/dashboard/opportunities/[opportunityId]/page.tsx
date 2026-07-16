@@ -105,14 +105,22 @@ export default async function OpportunityDetailPage({ params }: Props) {
           )}
         </div>
 
-        {opp.source_name && (
-          <div style={{ marginTop: "1.5rem", padding: "1rem", background: "#f8fafc", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", color: "#64748b" }}>
-            Source:{" "}
-            <a href={opp.source_url || "#"} target="_blank" rel="noopener noreferrer" style={{ color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
-              {opp.source_name}
-            </a>
-          </div>
-        )}
+        {opp.source_name && (() => {
+          const sourceUrl = opp.application_url || opp.source_url || "";
+          const validSourceUrl = /^https?:\/\//i.test(sourceUrl);
+          return (
+            <div style={{ marginTop: "1.5rem", padding: "1rem", background: "#f8fafc", borderRadius: "var(--radius-sm)", fontSize: "0.8125rem", color: "#64748b" }}>
+              Source:{" "}
+              {validSourceUrl ? (
+                <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
+                  {opp.source_name}
+                </a>
+              ) : (
+                <span style={{ color: "var(--midnight)", fontWeight: 600 }}>{opp.source_name}</span>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

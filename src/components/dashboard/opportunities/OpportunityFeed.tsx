@@ -28,6 +28,8 @@ interface Oppty {
   relevanceScore?: number;
   is_saved?: boolean;
   is_applied?: boolean;
+  is_liked?: boolean;
+  like_count?: number;
 }
 
 interface Props {

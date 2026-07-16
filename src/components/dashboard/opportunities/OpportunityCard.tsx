@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import FallbackTile from "./FallbackTile";
 import ServiceCTA from "./ServiceCTA";
 import { HeartIcon, CommentIcon, ReshareIcon, SaveIcon, ApplyIcon } from "./Icons";
@@ -64,6 +65,7 @@ function formatDeadline(deadline: string): string {
 }
 
 export default function OpportunityCard({ opportunity: opp, onApply, onSave }: Props) {
+  const router = useRouter();
   const [saved, setSaved] = useState(opp.is_saved || false);
   const [liked, setLiked] = useState(opp.is_liked || false);
   const [likeCount, setLikeCount] = useState(opp.like_count || 0);
@@ -183,7 +185,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
       await fetch("/api/opportunities/save", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ opportunityId: opp.id }),
+        body: JSON.stringify({ opportunityId: opp.id, saved: next }),
       });
     } catch {}
   }, [opp.id, saved, onSave]);
@@ -308,7 +310,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
             <HeartIcon filled={liked} />
             <span style={{ fontSize: "0.8125rem", color: "#000000", fontWeight: 400 }}>{likeCount}</span>
           </button>
-          <button onClick={(e) => { e.stopPropagation(); }} title="Comment" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: "0.25rem", height: 40 }}>
+          <button onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/opportunities/${opp.id}`); }} title="Comment" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, display: "flex", alignItems: "center", gap: "0.25rem", height: 40 }}>
             <CommentIcon count={opp.comment_count} />
           </button>
           <button onClick={(e) => { e.stopPropagation(); handleShare(); }} title="Share" style={{ background: "none", border: "none", cursor: "pointer", padding: 0, height: 40 }}>
@@ -367,11 +369,19 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
             opportunityId={opp.id}
             service_url={opp.service_url}
           />
-          {opp.source_name && (
-            <a href={opp.source_url || "#"} target="_blank" rel="noopener noreferrer" style={{ color: "#000000", textDecoration: "none", display: "inline-block", marginTop: "0.25rem" }}>
-              \uD83D\uDCD6 Read the full guide on {opp.source_name} \u2192
-            </a>
-          )}
+          {opp.source_name && (() => {
+            const guideUrl = opp.application_url || opp.source_url || "";
+            const validGuideUrl = /^https?:\/\//i.test(guideUrl);
+            return validGuideUrl ? (
+              <a href={guideUrl} target="_blank" rel="noopener noreferrer" style={{ color: "#000000", textDecoration: "none", display: "inline-block", marginTop: "0.25rem" }}>
+                {"\uD83D\uDCD6"} Read the full guide on {opp.source_name} {"\u2192"}
+              </a>
+            ) : (
+              <p style={{ margin: "0.25rem 0", color: "#8e8e8e" }}>
+                Source: {opp.source_name}
+              </p>
+            );
+          })()}
           {opp.deadline && (
             <p style={{ margin: "0.25rem 0", color: "#8e8e8e" }}>
               Apply by: {formatDeadline(opp.deadline)}

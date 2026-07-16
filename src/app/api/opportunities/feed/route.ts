@@ -30,6 +30,24 @@ export async function POST(request: NextRequest) {
 
     const userTier = userData?.user_tier || "free";
 
+    // Fix 1: hydrate the current user's likes so the heart persists across
+    // client re-fetch / infinite scroll (parity with the feed page). RLS limits
+    // opportunity_signals to the owner, so like_count is the user's own state.
+    const { data: likeRows } = await supabase
+      .from("opportunity_signals")
+      .select("opportunity_id")
+      .eq("user_id", user.id)
+      .eq("signal_type", "like");
+    const likedIds = new Set<string>(
+      (likeRows || []).map((s: any) => s.opportunity_id)
+    );
+    const hydrateLikes = (items: any[]) =>
+      items.map((o: any) =>
+        o?.is_ad
+          ? o
+          : { ...o, is_liked: likedIds.has(o.id), like_count: likedIds.has(o.id) ? 1 : 0 }
+      );
+
     if (isSearch) {
       let searchQuery = supabase
         .from("opportunities")
@@ -55,7 +73,7 @@ export async function POST(request: NextRequest) {
         .limit(50);
 
       return NextResponse.json({
-        feed: results || [],
+        feed: hydrateLikes(results || []),
         userReferrals: 0,
         userTier,
         segmentSlug: null,
@@ -168,7 +186,7 @@ export async function POST(request: NextRequest) {
       .eq("commission_status", "completed");
 
     return NextResponse.json({
-      feed: injected,
+      feed: hydrateLikes(injected),
       userReferrals: referralCount ?? 0,
       userTier,
       segmentSlug,
