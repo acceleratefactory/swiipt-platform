@@ -145,7 +145,6 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-    router.refresh();
   }, []);
 
   useEffect(() => {
@@ -215,7 +214,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
                   </AnimatedCard>
                   {showFeatured && featuredMatch && (
                     <div>
-                      <div style={{ borderRadius: "var(--radius-md)", padding: "0.5rem" }}>
+                      <div style={{ borderRadius: "var(--radius-md)", paddingTop: "0.5rem" }}>
                         <p style={{ fontSize: "0.625rem", color: "#8e8e8e", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", padding: "0 0.5rem", marginBottom: "0.25rem" }}>
                           {featuredSlotIndex === 0
                             ? "\u2B50 Top match for your profile"
