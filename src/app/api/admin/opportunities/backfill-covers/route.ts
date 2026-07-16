@@ -83,9 +83,11 @@ export async function POST(request: NextRequest) {
         } else {
           // No real image available — let the card render the on-brand
           // fallback (logo-on-colour or typographic tile). Keep the URL null.
+          // media_type stays "image" so the card still shows the FallbackTile;
+          // media_source="fallback" is what tells the card to use it.
           update.cover_image_url = null;
           update.media_source = "fallback";
-          update.media_type = "none";
+          update.media_type = "image";
         }
       }
 

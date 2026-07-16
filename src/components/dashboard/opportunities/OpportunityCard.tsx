@@ -239,7 +239,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
       ref={cardRef}
       style={{ display: "flex", flexDirection: "column", width: "100%", position: "relative", marginBottom: "0.75rem" }}
     >
-      {opp.media_type !== "none" ? (
+      {(
         <div style={{ width: "100%", position: "relative" }}>
           {opp.video_url ? (
             <div style={{ width: "100%", aspectRatio: "4 / 5", position: "relative" }}>
@@ -299,17 +299,6 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
               <span style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.7)" }}>· Sponsored</span>
             )}
           </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "4px 0.75rem" }}>
-          {opp.org_logo_url ? (
-            <img src={opp.org_logo_url} alt="" style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} />
-          ) : (
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: "#000000", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: "0.75rem", flexShrink: 0 }}>
-              {opp.organisation.charAt(0).toUpperCase()}
-            </div>
-          )}
-          <span style={{ fontWeight: 600, fontSize: "0.8125rem", color: "#000000" }}>{opp.organisation}</span>
         </div>
       )}
 
