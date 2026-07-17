@@ -29,10 +29,11 @@ export async function POST(request: NextRequest) {
     .from("opportunities")
     .select("id, title, organisation, type, location_country, application_url, source_url, cover_image_url, media_source, description")
     .eq("is_active", true)
-    // Only rows not yet processed. After a reset every row has media_source =
-    // null; processed rows get "fetched" or "fallback", so the cursor advances
-    // instead of re-selecting the same null-cover rows forever.
-    .is("media_source", null)
+    // Pick up both unprocessed rows (media_source IS NULL) and already-fetched
+    // rows that still point at an EXTERNAL url (not yet migrated into Storage).
+    // Already-stored rows (cover_image_url containing our bucket path) are
+    // skipped inside the loop, so re-runs are idempotent and cheap.
+    .or("media_source.is.null,media_source.eq.fetched")
     .order("id")
     .limit(50);
 
@@ -65,6 +66,15 @@ export async function POST(request: NextRequest) {
         org_logo_url: logo.cover_image_url || "",
       };
       if (nameChanged) update.organisation = org;
+
+      // Already migrated into Storage — skip so re-runs don't re-download.
+      const alreadyStored =
+        !!opp.cover_image_url && opp.cover_image_url.includes("/opportunity-covers/");
+      if (alreadyStored) {
+        await serviceSupabase.from("opportunities").update(update).eq("id", opp.id);
+        updated++;
+        continue;
+      }
 
       if (!opp.cover_image_url) {
         const cover = await getCoverImage(
