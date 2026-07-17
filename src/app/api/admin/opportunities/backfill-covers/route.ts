@@ -29,11 +29,11 @@ export async function POST(request: NextRequest) {
     .from("opportunities")
     .select("id, title, organisation, type, location_country, application_url, source_url, cover_image_url, media_source, description")
     .eq("is_active", true)
-    // Pick up both unprocessed rows (media_source IS NULL) and already-fetched
-    // rows that still point at an EXTERNAL url (not yet migrated into Storage).
-    // Already-stored rows (cover_image_url containing our bucket path) are
-    // skipped inside the loop, so re-runs are idempotent and cheap.
-    .or("media_source.is.null,media_source.eq.fetched")
+    // Cursor on cover_stored_at IS NULL so every attempted row is marked and
+    // the loop advances. Without this, a fixed .order("id").limit(50) would
+    // re-select the same first 50 failing rows forever and never reach the
+    // rest. Rows already in Storage are skipped inside the loop.
+    .is("cover_stored_at", null)
     .order("id")
     .limit(50);
 
@@ -64,17 +64,11 @@ export async function POST(request: NextRequest) {
 
       const update: any = {
         org_logo_url: logo.cover_image_url || "",
+        // Mark this row attempted so the cursor advances past it. Set on
+        // every branch (success, fallback, or failure) to guarantee progress.
+        cover_stored_at: new Date().toISOString(),
       };
       if (nameChanged) update.organisation = org;
-
-      // Already migrated into Storage — skip so re-runs don't re-download.
-      const alreadyStored =
-        !!opp.cover_image_url && opp.cover_image_url.includes("/opportunity-covers/");
-      if (alreadyStored) {
-        await serviceSupabase.from("opportunities").update(update).eq("id", opp.id);
-        updated++;
-        continue;
-      }
 
       if (!opp.cover_image_url) {
         const cover = await getCoverImage(
@@ -121,13 +115,15 @@ export async function POST(request: NextRequest) {
         }
       } else if (opp.media_source === "fetched" && opp.cover_image_url.startsWith("http")) {
         // Already has an external fetched URL — migrate it into Storage so the
-        // feed serves a first-party image. Idempotent per row.
+        // feed serves a first-party image.
         const stored = await storeCoverLocally(serviceSupabase, opp.id, opp.cover_image_url);
         if (stored) {
           update.cover_image_url = stored;
           update.media_source = "fetched";
           update.media_type = "image";
         }
+        // If stored is null, cover_image_url stays external and the card will
+        // proxy it (see OpportunityCard). cover_stored_at is still set.
       }
 
       await serviceSupabase

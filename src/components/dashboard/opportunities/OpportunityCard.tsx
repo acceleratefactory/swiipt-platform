@@ -154,10 +154,16 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
   const [coverRetry, setCoverRetry] = useState(0);
   const [coverIsPortrait, setCoverIsPortrait] = useState(false);
 
-  // P0#7: cover_image_url is now stored first-party (Supabase Storage public
-  // URL), so serve it directly — no proxy needed and no upstream domain is
-  // exposed to the browser (which ad-blockers used to suppress).
-  const coverSrc = opp.cover_image_url ?? undefined;
+  // P0#7: covers stored in our own Storage bucket are served directly (first-
+  // party, opaque — ad-blockers can't suppress them). External URLs that
+  // couldn't be stored are proxied through our origin so the upstream domain
+  // stays hidden from the browser.
+  const isStoredCover =
+    !!opp.cover_image_url && opp.cover_image_url.includes("/opportunity-covers/");
+  const coverSrc =
+    isStoredCover || !opp.cover_image_url?.startsWith("http")
+      ? opp.cover_image_url ?? undefined
+      : `/api/opportunities/cover?url=${encodeURIComponent(opp.cover_image_url)}`;
 
   // Single retry on transient load failure before falling back to the tile.
   const proxiedSrc = coverSrc;
