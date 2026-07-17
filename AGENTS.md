@@ -1884,6 +1884,19 @@ Full file upload with Supabase Storage. More complex but allows drag-and-drop.
 
 **Recommendation: Build Option A first.** It covers 90% of use cases. Option B can be added as a follow-up if direct file upload is needed.
 
+### DEFERRED REMINDER: AI Provider Key Needed for Translation (do not forget)
+- **Date flagged:** 2026-07-17 (P0 pipeline verification, Session 48 follow-up).
+- **Status:** DEFERRED by user — leave as-is for now; pipeline + feed are working without it.
+- **Symptom observed:** `backfill-translate` returns `translated=0 failed=15` on every call; `ai_generated` + English feed rows are fine, but **2752 non-English opportunities (2743 `deu`, plus spa/por/fra/etc.) stay hidden** from the feed via the `is_non_english` filter (P0#5).
+- **Root cause:** ALL 6 rows in `ai_providers` are `is_active=true` but `key_status=no_key` — no API key is set, so `enrich()` has no provider to call. `process-queue` still publishes because it uses mechanical fallbacks (no AI needed); `translate` REQUIRES an AI call and fails 100%.
+- **To re-enable later (recovers ~2752 feed rows):** add ONE provider key to Vercel env + activate it, then re-run `run_backfill_translate.ps1`:
+  1. Get a free key: https://aistudio.google.com/apikey (Gemini).
+  2. Vercel dashboard → Settings → Environment Variables → add `GEMINI_API_KEY=...`.
+  3. Redeploy (any commit) with **Clear build cache** (env baked at build time).
+  4. `cd C:\Users\User\Desktop\Swiipt\Swiipt\swiipt; .\run_backfill_translate.ps1`
+- **Verify after:** `SELECT is_non_english, count(*) FROM opportunities GROUP BY is_non_english;` — `true` count should drop sharply as rows become `eng`.
+- **Note:** This is the ONLY blocker to showing non-English-sourced opportunities. Nothing else is broken.
+
 ## 13. VERIFICATION SCRIPTS
 - **Build:** `npm run build` — pass with zero TS errors
 - **Lint:** `npm run lint`
