@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
   const { data: opportunities, error: fetchError } = await serviceSupabase
     .from("opportunities")
-    .select("id, title, organisation, type, location_country, application_url, source_url, cover_image_url, description")
+    .select("id, title, organisation, type, location_country, application_url, source_url, cover_image_url, media_source, description")
     .eq("is_active", true)
     // Only rows not yet processed. After a reset every row has media_source =
     // null; processed rows get "fetched" or "fallback", so the cursor advances
@@ -77,9 +77,29 @@ export async function POST(request: NextRequest) {
         );
         if (cover.cover_image_url) {
           const mediaSource = cover.cover_source === "branded" || cover.cover_source === "none" ? "fallback" : "fetched";
-          update.cover_image_url = cover.cover_image_url;
-          update.media_source = mediaSource;
-          update.media_type = "image";
+          if (mediaSource === "fetched") {
+            // P0#7: store the real cover in our own Storage bucket and rewrite
+            // cover_image_url to the opaque, first-party public URL. This keeps
+            // the upstream source domain out of the browser (ad-blockers /
+            // hotlink protection otherwise suppress the image).
+            const stored = await storeCoverLocally(serviceSupabase, opp.id, cover.cover_image_url);
+            if (stored) {
+              update.cover_image_url = stored;
+              update.media_source = "fetched";
+              update.media_type = "image";
+            } else {
+              // Upload failed — keep the external URL as a fallback so the
+              // card can still proxy it (old behaviour) rather than dropping
+              // the cover entirely.
+              update.cover_image_url = cover.cover_image_url;
+              update.media_source = "fetched";
+              update.media_type = "image";
+            }
+          } else {
+            update.cover_image_url = null;
+            update.media_source = "fallback";
+            update.media_type = "image";
+          }
         } else {
           // No real image available — let the card render the on-brand
           // fallback (logo-on-colour or typographic tile). Keep the URL null.
@@ -87,6 +107,15 @@ export async function POST(request: NextRequest) {
           // media_source="fallback" is what tells the card to use it.
           update.cover_image_url = null;
           update.media_source = "fallback";
+          update.media_type = "image";
+        }
+      } else if (opp.media_source === "fetched" && opp.cover_image_url.startsWith("http")) {
+        // Already has an external fetched URL — migrate it into Storage so the
+        // feed serves a first-party image. Idempotent per row.
+        const stored = await storeCoverLocally(serviceSupabase, opp.id, opp.cover_image_url);
+        if (stored) {
+          update.cover_image_url = stored;
+          update.media_source = "fetched";
           update.media_type = "image";
         }
       }
@@ -106,4 +135,41 @@ export async function POST(request: NextRequest) {
     failed,
     remaining: "Run again to process more",
   });
+}
+
+// P0#7: download an external cover image and store it in our own Storage
+// bucket, returning the opaque first-party public URL. Returns null on any
+// failure so the caller can fall back to the external URL.
+async function storeCoverLocally(
+  supabase: any,
+  opportunityId: string,
+  externalUrl: string
+): Promise<string | null> {
+  try {
+    const upstream = await fetch(externalUrl, {
+      method: "GET",
+      redirect: "follow",
+      signal: AbortSignal.timeout(20000),
+      headers: { "User-Agent": "Swiipt/1.0 (cover backfill)" },
+    });
+    if (!upstream.ok) return null;
+    const ct = upstream.headers.get("content-type") || "";
+    if (!ct.startsWith("image/")) return null;
+
+    const buf = Buffer.from(await upstream.arrayBuffer());
+    if (buf.length < 1024) return null; // reject tiny/icon files
+
+    const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : ct.includes("gif") ? "gif" : "jpg";
+    const path = `${opportunityId}.${ext}`;
+
+    const { error } = await supabase.storage
+      .from("opportunity-covers")
+      .upload(path, buf, { contentType: ct, upsert: true });
+    if (error) return null;
+
+    const { data } = supabase.storage.from("opportunity-covers").getPublicUrl(path);
+    return data?.publicUrl || null;
+  } catch {
+    return null;
+  }
 }
