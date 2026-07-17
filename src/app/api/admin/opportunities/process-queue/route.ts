@@ -98,7 +98,6 @@ export async function POST(request: NextRequest) {
       const qc = await evaluateQuality({
         trustTier,
         mechanicalScore,
-        confidence,
         enriched,
         raw,
         sourceName: item.source_name,
@@ -349,7 +348,6 @@ function isSpam(title: string, description: string, organisation: string): strin
 interface QualityInput {
   trustTier: "trusted" | "standard" | "review_all";
   mechanicalScore: number;
-  confidence: number;
   enriched: any;
   raw: any;
   sourceName?: string | null;
@@ -365,7 +363,7 @@ interface QualityResult {
 // gets a boost; AI legitimacy/scam signal (if the model returned one) drives
 // the score down hard. When AI is unavailable we fall back to mechanical only.
 async function evaluateQuality(input: QualityInput): Promise<QualityResult> {
-  const { trustTier, mechanicalScore, confidence, enriched, raw } = input;
+  const { trustTier, mechanicalScore, enriched, raw } = input;
 
   let score = mechanicalScore; // 0..1 base from mechanical checks (now /5)
   if (trustTier === "trusted") score = Math.min(1, score + 0.15);
