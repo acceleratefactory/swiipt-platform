@@ -1083,6 +1083,7 @@ export interface Database {
           funding_amount: string | null
           deadline: string | null
           application_url: string
+          normalized_url: string | null
           is_featured: boolean
           related_service_slug: string | null
           related_goal_template_id: string | null
@@ -1090,6 +1091,9 @@ export interface Database {
           source_name: string | null
           ai_generated: boolean
           ai_relevance_score: number | null
+          ai_quality_score: number | null
+          is_scam_risk: boolean | null
+          quality_reason: string | null
           is_active: boolean
           view_count: number
           apply_click_count: number
@@ -1106,6 +1110,8 @@ export interface Database {
           provenance: Json
           needs_review: boolean | null
           review_reason: string | null
+          language: string | null
+          is_non_english: boolean | null
           created_at: string
           updated_at: string
         }
@@ -1415,6 +1421,9 @@ export interface Database {
           enriched_data: Json
           ai_model: string | null
           ai_confidence: number | null
+          normalized_url: string | null
+          quality_score: number | null
+          is_scam_risk: boolean | null
           created_at: string
           updated_at: string
         }
@@ -1459,6 +1468,7 @@ export interface Database {
           source_url: string
           segment_slug: string | null
           is_active: boolean
+          source_status: string
           is_degraded: boolean
           pull_frequency_hours: number
           last_pulled_at: string | null

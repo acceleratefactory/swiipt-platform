@@ -2,7 +2,7 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-**You are joining after Session 43 (Feed Cover Image Rework + Deferred Browser-Render Bug).** Do not start from scratch. Read this first.
+**You are joining after Session 47 (Feed interaction fixes, ServiceCTA routing, Instagram-style covers, always-render cover tile).** Do not start from scratch. Read this first. See Session 47 (§11) for the most recent work; Sessions 44-46 cover feed personalization, UX, and non-English filtering/translation.
 
 ### Current State
 - **Session 42 — Vercel Stale Code Investigation (✅ RESOLVED 2026-07-11)** — Root cause was a **Vercel serving issue**: a PRE-`a215198` build was live despite all commits being pushed to `origin/main` (proven via `git log origin/main..HEAD` empty + live response with no `version` field). Fix = **Promote the `ac9aee0` deployment to Production** in Vercel dashboard (plain "Redeploy" had failed because a rollback/alias pinned production to an old commit). After promotion, live response shows `"version":3` and **`ai_generated=true` reached 258** opportunities. Added `safeSegment()` FK validation (`a611aae`) to prevent AI returning invalid `segment_slug` (e.g. "tech" vs "tech_professional") which would silently fail the INSERT. Pipeline is now publishing correctly.
@@ -86,7 +86,7 @@ Nigeria (primary), UAE, Qatar, UK, Canada, Portugal, Georgia, St Kitts, Caribbea
 - **Remote:** `https://github.com/acceleratefactory/swiipt-platform.git`
 - **Branches:** `main` (production, protected) ← `staging` ← `develop` ← feature branches
 - **Current branch:** `main`
-- **Latest commit:** `633b427` — fix(backfill): process each opportunity once via media_source=null cursor (Session 43)
+- **Latest commit:** `a0c2a39` — Feed: always render cover tile (FallbackTile for no-image rows) + backfill correction (Session 47)
 - **Deployment:** Push to `main` auto-deploys to Vercel. No CI/CD scripts — manual git push. No `.github/workflows/`.
 - **Author:** `acceleratefactory` / `tech@acceleratefactory.com`
 
@@ -1711,6 +1711,53 @@ Trigger manual redeployment from Vercel dashboard with **"Clear build cache"** o
 
 ---
 
+### Session 47 — Feed interaction fixes, ServiceCTA routing, Instagram-style covers, UX polish, cover-tile fix
+
+- **Date:** July 16, 2026
+- **Goal:** Fix broken/mismatched feed-card interactions, kill ServiceCTA 404s, make cards Instagram-style, and stop hundreds of cards rendering with no cover. Findings source of truth: `findings/feed-interactions-investigation.md`.
+- **Deploy pattern (unchanged):** every code change requires a manual Vercel **Redeploy + Clear build cache** (stale-code pattern; Vercel CLI not authenticated locally, so the user deploys).
+
+#### Feed interaction fixes (commits `fa2e76d`, `fa23662`, `b391fd6`)
+- **Fix 1 — Like hydration:** `page.tsx` queries `opportunity_signals` (signal_type='like') → `likedIds`; maps `is_liked` + `like_count`. `OpportunityFeed.tsx` Oppty interface + `feed/route.ts` `hydrateLikes()` on search results. **Decision:** `is_liked` only; `like_count` reflects the user's own state (0/1) because `opportunity_signals` RLS is owner-only (`sprint_19_engagement_sql.sql:73`) — global counts deferred.
+- **Fix 3 — Save toggle:** `OpportunityCard.tsx handleSave` sends `saved: next`; `save/route.ts` reads `body.saved` and upserts `is_saved:<bool>` + `saved_at: timestamp|null` (was previously insert-only, couldn't un-save).
+- **Fix 4 — Source / Read-full-guide link:** `OpportunityCard.tsx` + `[opportunityId]/page.tsx` link to `application_url` (fallback `source_url`) behind an `^https?://` guard; invalid → plain "Source: {name}" text.
+- **Fix 2 — Comment button:** opens the detail page (`router.push('/dashboard/opportunities/{id}')`) — **Option A**. Full comment thread deferred (`opportunity_comments` table exists, RLS enabled but no policies yet).
+- **Fix 5 — ServiceCTA 404s:** visa → `/dashboard/services`; scholarship/fellowship/grant → `/dashboard/goals/new?opportunity={id}`; trade_show → `/dashboard/trade-shows`.
+- **Option 3 — ServiceCTA label/dest alignment:** scholarship/fellowship/grant checked first (savings-goal label + goals URL); any `VISA_TYPES` match → `/dashboard/services` regardless of country; **removed** the `COUNTRY_SLUGS` map that caused Global fall-through → 404 / disappearing CTA.
+
+#### Instagram-style covers (commits `2e12bad`, `497d6fc`)
+- **4:5 media frame:** image / video / `FallbackTile` wrappers set to `aspectRatio: 4/5`.
+- **No hard-crop for landscape:** `OpportunityCard.tsx` image branch uses `coverIsPortrait` state + `onLoad` natural-dimension check — portrait images → `4/5` + `object-fit: cover`; landscape/square → natural ratio, `height:auto` (uncropped). Video + `FallbackTile` stay 4:5.
+
+#### UX polish (commit `4c1fb04`)
+- **Full-width featured cards:** the "⭐ Top match for your profile" / "✨ Also for you" wrapper had `padding: 0.5rem` on all sides, insetting the featured card ~16px narrower than regular cards. Changed to `paddingTop: 0.5rem` only → featured cards now go edge-to-edge like the rest. (`OpportunityFeed.tsx`)
+- **Double auto-refresh fixed:** there were two `router.refresh()` triggers — a mount effect (redundant, page is already SSR-fresh) and the focus effect. Removed the `router.refresh()` from the mount effect (kept `scrollTo(top)`); kept the focus-based auto-refresh only. So returning to the tab refreshes once, not twice. (`OpportunityFeed.tsx`)
+
+#### Cover-tile fix — hundreds of cards showed no cover (commit `a0c2a39`)
+- **Root cause:** `OpportunityCard.tsx` gated the entire media zone (video → image → `FallbackTile`) behind `opp.media_type !== "none"`. The Session 43 backfill tagged every no-real-image row `media_type="none"` (+ `media_source="fallback"`, `cover_image_url=null`), so those ~41% of rows (hundreds) skipped the media zone entirely — including the branded `FallbackTile` that was *meant* to render for them — and showed only a tiny org-name header.
+- **Frontend fix:** removed the `media_type==="none"` gate so the media zone always renders. `hasCover = cover_image_url && media_source !== "fallback"` still routes no-image rows to `FallbackTile`. Fixes all existing rows instantly, no DB migration. Deleted the now-dead compact-header branch.
+- **Backfill correction:** `backfill-covers/route.ts` now tags no-image rows `media_type="image"` (not `"none"`) so future rows are consistent; `media_source="fallback"` remains the flag that selects the FallbackTile.
+- **Optional DB cleanup (not required for the fix):** `UPDATE opportunities SET media_type='image' WHERE media_source='fallback' AND media_type='none';`
+
+#### Session 47 commit log (on `main`)
+| Commit | What |
+|--------|------|
+| `cbc1248` | Session 46 language filter + translate-hidden (Step 1/2) |
+| `fa2e76d` | Fix 1 (like hydration) + Fix 3 (save toggle) + Fix 4 (source link) + Fix 2 (comment → detail) |
+| `fa23662` | Fix 5 — ServiceCTA 404 routing |
+| `b391fd6` | Option 3 — ServiceCTA label/dest alignment, removed COUNTRY_SLUGS |
+| `2e12bad` | Feed cards → 4:5 media frame |
+| `497d6fc` | Landscape covers uncropped (portrait 4:5 cover, landscape natural ratio) |
+| `4c1fb04` | Full-width featured cards + fix double auto-refresh |
+| `a0c2a39` | Always render cover tile (FallbackTile for no-image rows) + backfill correction |
+
+#### Still OPEN after Session 47
+- **Deferred cover browser-render bug (Session 43 item 12):** real fetched OG images still may not paint in-browser (proxy returns 200); this session's cover-tile fix guarantees a FallbackTile at minimum, but the real-photo render path is still to be verified/fixed (recommended: store images at backfill and serve opaque `/media/<id>.jpg`).
+- **Comment thread (Fix 2 Option A only):** `opportunity_comments` UI + RLS policies not built.
+- **Global like counts:** deferred pending non-owner-readable count source for `opportunity_signals`.
+
+---
+
 ## 12. PENDING / FUTURE BUILD
 
 ### Sprint 19 SQL Migrations (10 files — run in order)
@@ -1769,6 +1816,30 @@ Trigger manual redeployment from Vercel dashboard with **"Clear build cache"** o
 - **Provenance integration:** Wire `ProvenanceViewer.tsx` into admin opportunity detail page
 - **Testing:** Test ingest → evidence → process-queue → opportunities pipeline end-to-end
 - **Status:** Code complete (Session 38), pipeline fix blocked by Vercel stale code (Session 42)
+
+### P0 Pipeline Quality Hardening (Sessions 48 — 2026-07-17) ✅ BUILT, PENDING DEPLOY + SQL RUN
+- **Goal:** Fix the ingestion pipeline quality/relevance gaps from `findings/ingestion-pipeline-quality-and-feed-engagement-audit.md` §1.1–§1.8 (NOT the feed-engagement or user-submission items — those deferred).
+- **Approach approved by user:** Source-registry fix = **(B) quick-fix now + (A) build real scrapers as follow-up**. We do NOT disable the 14 valuable sources forever — they are flagged `source_status='pending_scraper'` (rows preserved) and scheduled for real scrapers.
+- **What was built (code + SQL migrations in `swiipt/`):**
+  1. **P0#1 Source registry integrity** — `swiipt/p0_1_source_registry_integrity.sql` flags the 14 adapter-less sources `pending_scraper`; `swiipt/p0_1_followup_scrapers.sql` lists them as a follow-up build (flip back to `active` per-source as each scraper lands). Ingest route now skips non-`active` sources.
+  2. **P0#2 Expiry & freshness** — `swiipt/p0_2_expiry_freshness.sql` adds `expire_stale_opportunities()` (deadline+7d grace, or 120d TTL for no-deadline) + daily pg_cron. Feed already filters `is_active=true`, so expired rows auto-drop.
+  3. **P0#3 Quality gate** — `swiipt/p0_3_quality_gate_columns.sql` adds `ai_quality_score`/`is_scam_risk`/`quality_reason`. `process-queue/route.ts` now runs `evaluateQuality()` on EVERY item (spam-pattern rejection, strengthened mechanical gate: title>15, desc>80, valid http(s) URL, org required for trusted), rejects <0.4, queues 0.4–0.6 to **real review** (`needs_review`, not "failed"), publishes ≥0.6. `review_all` tier now also routes to real review queue (was misrouted to "failed").
+  4. **P0#4 Cross-source dedupe** — `swiipt/p0_4_cross_source_dedupe.sql` adds `normalized_url` (strips trackers, lowercases host, http→https) on `evidence`+`opportunities` + `normalize_url()` SQL fn + backfill. New `src/lib/url-normalize.ts` mirrors it; ingest + process-queue dedupe on `normalized_url` (catches same job across Himalayas/RemoteOK/etc.).
+  5. **P0#5 Language integrity** — `swiipt/p0_5_language_integrity.sql` ensures `language` column + adds generated `is_non_english` flag + index. `src/lib/language.ts` adds a non-English **stopword backstop** so short German/French titles franc returns as `und` are still caught. Feeds filter on `is_non_english`.
+  6. **P0#6 Two-DB integrity verify** — Diagnostic only (`findings/p0_6_two_db_integrity_verification.md`). User must confirm Vercel `NEXT_PUBLIC_SUPABASE_URL` == SQL-editor project ref (`frmvjjgblbapdjgszvdi`). No code.
+- **Deferred to P1:** P0#7 Cover browser-render (opaque `/media/<id>` storage) — tracked, NOT forgotten.
+- **Deploy checklist (user deploys — Vercel CLI not authed locally):**
+  1. Run SQL in order: `p0_1_source_registry_integrity.sql`, `p0_2_expiry_freshness.sql`, `p0_3_quality_gate_columns.sql`, `p0_4_cross_source_dedupe.sql`, `p0_5_language_integrity.sql` (all idempotent, Supabase SQL Editor).
+  2. **Redeploy + Clear build cache** (stale-code pattern — see §11 note).
+  3. Run `SELECT expire_stale_opportunities();` once to clean existing stale rows.
+  4. Run `findings/p0_6_two_db_integrity_verification.md` checks.
+  5. Re-run ingest + process-queue; verify `ai_generated` count + `enrichment_status` distribution.
+
+### FUTURE BUILD: User-Submitted Opportunities (NOT built — do not forget)
+- **Decision (2026-07-17):** Deferred. Only a B2B **partner** submission exists today (`partner_submissions` table + `POST /api/opportunities/submit`, API-key auth). There is **NO logged-in-user submission** feature.
+- **What is missing:** (a) `opportunity_submissions` (user) table (mirror `partner_submissions` + `user_id` + `ai_quality_score` + `rejection_reason`); (b) session-auth submit API `POST /api/opportunities/user-submit` (validate title/description/url, rate-limit per user, dup-URL + banned-domain checks); (c) QC via the existing `buildPublicSubmissionPrompt` (prompts.ts:119) → auto-publish if score high, else `needs_review`; (d) dashboard UI "＋ Share an opportunity" modal; (e) admin review in existing `admin/opportunities/queue`; (f) "Shared by {name}" attribution on cards (fuels social feed).
+- **Note:** Nothing currently promotes ANY submission (partner or user) into `opportunities` — that promotion flow is also missing and must be built with this.
+- **Source of truth:** `findings/ingestion-pipeline-quality-and-feed-engagement-audit.md` §3.
 
 ### MUST BUILD: Admin Custom Cover Image Upload (Priority 10)
 - **Status:** Schema ready, UI/API not built. DO NOT forget this.

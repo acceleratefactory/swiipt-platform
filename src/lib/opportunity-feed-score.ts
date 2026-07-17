@@ -40,6 +40,9 @@ const EXCLUDED_TYPES = new Set(["sports_trial"]);
 const ENGLISH_OK = new Set(["eng", "sco", "und"]);
 
 export function isExcluded(opp: any): boolean {
+  // P0#5: prefer the precomputed is_non_english flag when present, else fall
+  // back to the language-code check.
+  if (opp?.is_non_english === true) return true;
   const lang = opp?.language;
   const nonEnglish = !!(lang && !ENGLISH_OK.has(lang));
   return (

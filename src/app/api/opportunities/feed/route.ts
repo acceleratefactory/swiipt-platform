@@ -53,8 +53,10 @@ export async function POST(request: NextRequest) {
         .from("opportunities")
         .select("*")
         .eq("is_active", true)
-        // Non-English filter (Session 46): keep English + untagged, hide the rest.
-        .or("language.is.null,language.in.(eng,sco,und)");
+        // Non-English filter (Session 46 + P0#5): keep English + untagged,
+        // hide the rest. is_non_english is a generated flag for fast filtering.
+        .or("language.is.null,language.in.(eng,sco,und)")
+        .neq("is_non_english", true);
 
       if (query) {
         searchQuery = searchQuery.or(
@@ -94,9 +96,9 @@ export async function POST(request: NextRequest) {
       .from("opportunities")
       .select("*")
       .eq("is_active", true)
-      // Non-English filter (Session 46): keep English + untagged, hide the rest.
-      // The scorer also drops non-English; this trims the payload after backfill.
-      .or("language.is.null,language.in.(eng,sco,und)");
+      // Non-English filter (Session 46 + P0#5).
+      .or("language.is.null,language.in.(eng,sco,und)")
+      .neq("is_non_english", true);
 
     if (!opportunities) opportunities = [];
 

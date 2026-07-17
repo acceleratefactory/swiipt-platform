@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createRSSEvidence } from "@/lib/evidence-adapters";
 import { fetchFromAPI } from "@/lib/api-adapters";
+import { normalizeUrl } from "@/lib/url-normalize";
 
 const DEGRADE_THRESHOLD = 5;
 const CIRCUIT_BREAKER_THRESHOLD = 3;
@@ -90,6 +91,20 @@ async function processSource(
     let sourceIngested = 0;
 
     for (const ev of evidenceRecords) {
+      const normUrl = normalizeUrl(ev.raw_data.url || ev.raw_data.link || "");
+
+      // P0#4: dedupe on normalized_url FIRST (catches cross-source + tracker-noise
+      // duplicates), then fall back to content_hash for identical raw items.
+      if (normUrl) {
+        const { data: existingByUrl } = await serviceSupabase
+          .from("evidence")
+          .select("id")
+          .eq("normalized_url", normUrl)
+          .limit(1)
+          .maybeSingle();
+        if (existingByUrl) continue;
+      }
+
       const { data: existing } = await serviceSupabase
         .from("evidence")
         .select("id")
@@ -102,7 +117,7 @@ async function processSource(
       const { data: existingOpp } = await serviceSupabase
         .from("opportunities")
         .select("id")
-        .eq("application_url", ev.raw_data.url || ev.raw_data.link || "")
+        .eq("normalized_url", normUrl)
         .limit(1)
         .maybeSingle();
 
@@ -114,6 +129,7 @@ async function processSource(
         source_url: ev.source_url,
         source_name: ev.source_name,
         content_hash: ev.content_hash,
+        normalized_url: normUrl,
         enrichment_status: "pending",
       });
 
@@ -177,10 +193,14 @@ export async function POST(request: NextRequest) {
 
   const serviceSupabase = createServiceClient();
 
+  // P0#1: only pull sources that are both active AND have a working adapter.
+  // 'pending_scraper' / 'disabled' sources (valuable but no adapter yet) are
+  // skipped so they no longer inflate the live source count or silently fail.
   const { data: sources } = await serviceSupabase
     .from("opportunity_sources")
     .select("*")
     .eq("is_active", true)
+    .eq("source_status", "active")
     .in("source_type", ["rss", "api"]);
 
   if (!sources || sources.length === 0) {

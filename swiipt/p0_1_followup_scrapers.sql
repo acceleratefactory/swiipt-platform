@@ -1,0 +1,42 @@
+-- ============================================================
+-- P0#1 FOLLOW-UP (A) — Build real scrapers for pending_scraper sources
+-- Status: NOT built in P0. Tracked here so the 14 valuable sources
+-- are fixed, not abandoned. Each item: build adapter → verify it
+-- ingests → flip source_status back to 'active'.
+--
+-- Sources currently flagged 'pending_scraper' (see p0_1_source_registry_integrity.sql):
+--   High value (build first — scholarship / visa / healthcare, mostly static HTML):
+--     1. DAAD Scholarships            (scraper)  https://www.daad.de/en/study-and-research-in-germany/scholarships/
+--     2. Chevening Scholarships       (scraper)  https://www.chevening.org/scholarships/
+--     3. Commonwealth Scholarships    (scraper)  https://cscuk.fcdo.gov.uk/apply/
+--     4. NHS Jobs International        (scraper)  https://www.jobs.nhs.uk/candidate/search/results?keyword=nurse
+--     5. Health Careers UK            (rss)      https://www.healthcareers.nhs.uk/feed
+--     6. Make It In Germany           (scraper)  https://www.make-it-in-germany.com/en/visa-residence/types/
+--     7. Canada IRCC Express Entry    (scraper)  https://www.canada.ca/en/immigration-refugees-citizenship/news.html
+--     8. UAE Golden Visa News         (scraper)  https://u.ae/en/information-and-services/visa-and-emirates-id/
+--   Job / freelance / other:
+--     9.  Andela Network Jobs         (api)      https://andela.com/jobs-feed.json
+--     10. Jobberman International      (rss)      https://www.jobberman.com/feed/international
+--     11. Remote OK Africa            (api)      https://remoteok.com/remote-africa-jobs.json
+--     12. We Work Remotely            (rss)      https://weworkremotely.com/categories/remote-full-stack-programming-jobs.rss
+--     13. Scholars4Dev Africa         (rss)      https://www.scholars4dev.com/feed/
+--     14. Opportunity Desk Scholarships (rss)    https://opportunitydesk.org/category/scholarships/feed/
+--     15. Contra Remote Jobs          (api)      https://contra.com/api/jobs
+--   Manual (admin paste-URL only — no scraper needed, just flip to active when curated):
+--     16. NurseConnect UAE            (manual)
+--     17. Right to Dream Africa       (manual)
+--     18. Canton Fair Registration    (manual)
+--     19. GITEX Global                (manual)
+--     20. LinkedIn Nigeria Remote     (scraper — LinkedIn blocks bots; likely stay manual/curate)
+--     21. TransferMarkt Africa Trials (scraper — anti-bot; likely stay manual/curate)
+--
+-- Implementation notes:
+--   - RSS sources (5,10,12,13,14): add adapter branches in fetchFromAPI /
+--     createRSSEvidence (they already handle rss; just ensure URL + parse works).
+--   - JSON API sources (9,11,15): add normalize branches in fetchFromAPI.
+--   - HTML scrapers (1,2,3,4,6,7,8 + 20,21): new server-side fetch + Cheerio/
+--     regex extraction in a new src/lib/scrapers/*.ts; respect robots/ToS;
+--     15s timeout; circuit breaker already exists in ingest route.
+--   - After building, flip: UPDATE opportunity_sources SET source_status='active'
+--     WHERE name = '<name>';
+-- ============================================================
