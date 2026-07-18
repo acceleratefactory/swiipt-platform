@@ -81,6 +81,7 @@ export async function enrich(request: AIEnrichRequest): Promise<AIEnrichResponse
   }
 
   const errors: string[] = [];
+  let lastDetail: string | undefined;
   for (let attempt = 0; attempt <= RATE_LIMIT_MAX_RETRIES; attempt++) {
     let anyRateLimited = false;
     let anyNonRateLimitedFailure = false;
@@ -91,10 +92,13 @@ export async function enrich(request: AIEnrichRequest): Promise<AIEnrichResponse
         // Failed, but still tried: skip it and continue to the next provider.
         if (result.rateLimited) anyRateLimited = true;
         else anyNonRateLimitedFailure = true;
+        if (result.detail) lastDetail = `${p.slug}/${result.model}: ${result.detail}`;
         errors.push(`${p.slug}: provider returned failure`);
       } catch (err: any) {
         anyNonRateLimitedFailure = true;
-        errors.push(`${p.slug}: ${err?.message || "unknown error"}`);
+        const msg = err?.message || "unknown error";
+        lastDetail = `throw/${p.slug}: ${msg}`;
+        errors.push(`${p.slug}: ${msg}`);
       }
     }
     // Retry only if the chain failed ENTIRELY due to rate-limiting. If any
@@ -105,7 +109,7 @@ export async function enrich(request: AIEnrichRequest): Promise<AIEnrichResponse
       await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_BACKOFF_MS * Math.pow(2, attempt)));
     }
   }
-  return { success: false, enriched: { errors }, confidence: null, provider: "none", model: "", cost: 0 };
+  return { success: false, enriched: { errors }, confidence: null, provider: "none", model: "", cost: 0, detail: lastDetail };
 }
 
 /**

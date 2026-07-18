@@ -13,6 +13,9 @@ export interface AIEnrichResponse {
   cost: number;
   /** Set when the provider rejected with HTTP 429 (rate-limited). */
   rateLimited?: boolean;
+  /** Diagnostic: underlying failure detail from the last attempted provider
+   *  (HTTP body, exception message, or "empty response"). Undefined on success. */
+  detail?: string;
 }
 
 export interface AIProviderAdapter {

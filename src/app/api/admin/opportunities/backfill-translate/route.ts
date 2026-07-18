@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
         failed++;
         // Surface the raw provider output for diagnostics.
         if (!lastError) {
-          lastError = `provider=${result?.provider || "?"} success=${result?.success} out=${JSON.stringify(out).slice(0,500)}`;
+          lastError = `provider=${result?.provider || "?"} success=${result?.success} detail=${result?.detail || "(none)"} out=${JSON.stringify(out).slice(0,500)}`;
         }
         continue;
       }

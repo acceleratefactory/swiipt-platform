@@ -56,6 +56,7 @@ export const opencodeProvider: AIProviderAdapter = {
     const baseUrl = process.env.OPENCODE_URL || DEFAULT_BASE_URL;
     const models = resolveModels(modelOverride);
     let lastModel = models[0];
+    let lastErrorBody = "";
     for (const model of models) {
       lastModel = model;
       const res = await fetch(`${baseUrl}/chat/completions`, {
@@ -68,6 +69,9 @@ export const opencodeProvider: AIProviderAdapter = {
       });
       if (!res.ok) {
         if (res.status === 429) return { success: false, enriched: {}, confidence: null, provider: "opencode", model, cost: 0, rateLimited: true };
+        let body = "";
+        try { body = (await res.text()).slice(0, 300); } catch {}
+        lastErrorBody = `HTTP ${res.status} ${body}`;
         continue; // try next free model
       }
       const data = await res.json();
@@ -87,6 +91,6 @@ export const opencodeProvider: AIProviderAdapter = {
         cost: 0,
       };
     }
-    return { success: false, enriched: {}, confidence: null, provider: "opencode", model: lastModel, cost: 0 };
+    return { success: false, enriched: {}, confidence: null, provider: "opencode", model: lastModel, cost: 0, detail: lastErrorBody || "no model in chain returned usable content" };
   },
 };
