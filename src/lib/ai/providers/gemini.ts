@@ -38,7 +38,9 @@ export const geminiProvider: AIProviderAdapter = {
       body: JSON.stringify(buildRequestBody(request)),
     });
     if (!res.ok) {
-      return { success: false, enriched: {}, confidence: null, provider: "gemini", model: MODEL, cost: 0 };
+      let body = "";
+      try { body = await res.text(); } catch {}
+      return { success: false, enriched: { error: `HTTP ${res.status}: ${body.slice(0, 300)}` }, confidence: null, provider: "gemini", model: MODEL, cost: 0 };
     }
     const data = await res.json();
     const { enriched, confidence } = parseResponse(data);
