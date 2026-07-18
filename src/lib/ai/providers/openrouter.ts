@@ -2,14 +2,30 @@ import type { AIProviderAdapter, AIEnrichRequest, AIEnrichResponse } from "./ind
 import { buildDefaultPrompt } from "../prompts";
 
 const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
-// Model is env-overridable so the exact free slug (must include ":free")
-// can be set in Vercel without a code deploy.
-const MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini:free";
+// Free OpenRouter models, best-first. Tried in order; a 429/empty on one
+// free model falls through to the next (free tiers rate-limit under load).
+// Override the whole list with OPENROUTER_MODELS (comma-separated) in Vercel,
+// or just the first with OPENROUTER_MODEL.
+const DEFAULT_MODELS = [
+  "openai/gpt-oss-20b:free",
+  "meta-llama/llama-3.3-70b-instruct:free",
+  "qwen/qwen3-coder:free",
+  "google/gemma-4-31b-it:free",
+];
 
-function buildRequestBody(request: AIEnrichRequest, modelOverride?: string): any {
+function resolveModels(modelOverride?: string): string[] {
+  if (modelOverride) return [modelOverride];
+  if (process.env.OPENROUTER_MODELS) {
+    return process.env.OPENROUTER_MODELS.split(",").map((m) => m.trim()).filter(Boolean);
+  }
+  if (process.env.OPENROUTER_MODEL) return [process.env.OPENROUTER_MODEL];
+  return DEFAULT_MODELS;
+}
+
+function buildRequestBody(request: AIEnrichRequest, model: string): any {
   const prompt = buildDefaultPrompt(request);
   return {
-    model: modelOverride || MODEL,
+    model,
     max_tokens: 2000,
     stream: false,
     messages: [{ role: "user", content: prompt }],
@@ -38,27 +54,32 @@ export const openrouterProvider: AIProviderAdapter = {
   },
   async enrich(request: AIEnrichRequest, apiKey: string, modelOverride?: string): Promise<AIEnrichResponse> {
     const baseUrl = process.env.OPENROUTER_URL || DEFAULT_BASE_URL;
-    const model = modelOverride || MODEL;
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(buildRequestBody(request, modelOverride)),
-    });
-    if (!res.ok) {
-      return { success: false, enriched: {}, confidence: null, provider: "openrouter", model, cost: 0 };
+    const models = resolveModels(modelOverride);
+    let lastModel = models[0];
+    for (const model of models) {
+      lastModel = model;
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(buildRequestBody(request, model)),
+      });
+      if (!res.ok) continue; // try next free model
+      const data = await res.json();
+      const { enriched, confidence } = parseResponse(data);
+      const hasContent = !!(enriched.title || enriched.description || enriched.raw_text);
+      if (!hasContent) continue; // try next free model
+      return {
+        success: true,
+        enriched,
+        confidence,
+        provider: "openrouter",
+        model,
+        cost: 0,
+      };
     }
-    const data = await res.json();
-    const { enriched, confidence } = parseResponse(data);
-    return {
-      success: true,
-      enriched,
-      confidence,
-      provider: "openrouter",
-      model,
-      cost: 0,
-    };
+    return { success: false, enriched: {}, confidence: null, provider: "openrouter", model: lastModel, cost: 0 };
   },
 };

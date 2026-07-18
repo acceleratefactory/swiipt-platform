@@ -2,14 +2,30 @@ import type { AIProviderAdapter, AIEnrichRequest, AIEnrichResponse } from "./ind
 import { buildDefaultPrompt } from "../prompts";
 
 const DEFAULT_BASE_URL = "https://opencode.ai/zen/v1";
-// Model is env-overridable so the exact free slug can be set in Vercel
-// without a code deploy. Default is a known-valid OpenCode free model.
-const MODEL = process.env.OPENCODE_MODEL || "deepseek/deepseek-v3:free";
+// Free OpenCode Zen models, best-first. The first is the default; the rest
+// are tried in order if a model is rate-limited (free tiers 429 under load).
+// Override the whole list with OPENCODE_MODELS (comma-separated) in Vercel,
+// or just the first with OPENCODE_MODEL.
+const DEFAULT_MODELS = [
+  "deepseek-v4-flash-free",
+  "mimo-v2.5-free",
+  "north-mini-code-free",
+  "hy3-free",
+];
 
-function buildRequestBody(request: AIEnrichRequest, modelOverride?: string): any {
+function resolveModels(modelOverride?: string): string[] {
+  if (modelOverride) return [modelOverride];
+  if (process.env.OPENCODE_MODELS) {
+    return process.env.OPENCODE_MODELS.split(",").map((m) => m.trim()).filter(Boolean);
+  }
+  if (process.env.OPENCODE_MODEL) return [process.env.OPENCODE_MODEL];
+  return DEFAULT_MODELS;
+}
+
+function buildRequestBody(request: AIEnrichRequest, model: string): any {
   const prompt = buildDefaultPrompt(request);
   return {
-    model: modelOverride || MODEL,
+    model,
     max_tokens: 2000,
     stream: false,
     messages: [{ role: "user", content: prompt }],
@@ -38,35 +54,36 @@ export const opencodeProvider: AIProviderAdapter = {
   },
   async enrich(request: AIEnrichRequest, apiKey: string, modelOverride?: string): Promise<AIEnrichResponse> {
     const baseUrl = process.env.OPENCODE_URL || DEFAULT_BASE_URL;
-    const model = modelOverride || MODEL;
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(buildRequestBody(request, modelOverride)),
-    });
-    if (!res.ok) {
-      return { success: false, enriched: {}, confidence: null, provider: "opencode", model, cost: 0 };
+    const models = resolveModels(modelOverride);
+    let lastModel = models[0];
+    for (const model of models) {
+      lastModel = model;
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(buildRequestBody(request, model)),
+      });
+      if (!res.ok) continue; // try next free model
+      const data = await res.json();
+      const { enriched, confidence } = parseResponse(data);
+      // An empty/parsed-empty response is not a usable result — treat as a
+      // failure so enrich() falls through to the next provider instead of
+      // silently returning nothing (which made translate backfill count every
+      // row as failed).
+      const hasContent = !!(enriched.title || enriched.description || enriched.raw_text);
+      if (!hasContent) continue; // try next free model
+      return {
+        success: true,
+        enriched,
+        confidence,
+        provider: "opencode",
+        model,
+        cost: 0,
+      };
     }
-    const data = await res.json();
-    const { enriched, confidence } = parseResponse(data);
-    // An empty/parsed-empty response is not a usable result — treat as a
-    // failure so enrich() falls through to the next provider instead of
-    // silently returning nothing (which made translate backfill count every
-    // row as failed).
-    const hasContent = !!(enriched.title || enriched.description || enriched.raw_text);
-    if (!hasContent) {
-      return { success: false, enriched: { error: "empty response" }, confidence: null, provider: "opencode", model, cost: 0 };
-    }
-    return {
-      success: true,
-      enriched,
-      confidence,
-      provider: "opencode",
-      model,
-      cost: 0,
-    };
+    return { success: false, enriched: {}, confidence: null, provider: "opencode", model: lastModel, cost: 0 };
   },
 };
