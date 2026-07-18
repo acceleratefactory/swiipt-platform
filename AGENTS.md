@@ -2,12 +2,17 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-**You are joining after Session 47 (Feed interaction fixes, ServiceCTA routing, Instagram-style covers, always-render cover tile).** Do not start from scratch. Read this first. See Session 47 (§11) for the most recent work; Sessions 44-46 cover feed personalization, UX, and non-English filtering/translation.
+**You are joining after Session 49 (AI provider hardening + P0#1a generic scrapers + P0#7 cover Storage).** Do not start from scratch. Read this first. See Sessions 47-49 (§11) for the most recent work; Sessions 44-46 cover feed personalization, UX, and non-English filtering/translation. The single most important operational rule is in §11 note: **after ANY code change, you MUST redeploy on Vercel with "Clear build cache" checked** — a plain redeploy serves stale code.
 
 ### Current State
 - **Session 42 — Vercel Stale Code Investigation (✅ RESOLVED 2026-07-11)** — Root cause was a **Vercel serving issue**: a PRE-`a215198` build was live despite all commits being pushed to `origin/main` (proven via `git log origin/main..HEAD` empty + live response with no `version` field). Fix = **Promote the `ac9aee0` deployment to Production** in Vercel dashboard (plain "Redeploy" had failed because a rollback/alias pinned production to an old commit). After promotion, live response shows `"version":3` and **`ai_generated=true` reached 258** opportunities. Added `safeSegment()` FK validation (`a611aae`) to prevent AI returning invalid `segment_slug` (e.g. "tech" vs "tech_professional") which would silently fail the INSERT. Pipeline is now publishing correctly.
-- **Session 43 — Feed Cover Image Rework (✅ Rework done, ⚠️ browser render of real covers deferred)** — Replaced uniform gradient+emoji tiles. New system: real OG/page-hero photos where available (proxied first-party via `/api/opportunities/cover`, SSRF-guarded + streaming), clean **logo-on-colour or typographic** `FallbackTile` where none (NO emoji/globe). Commits `c15f947` + `633b427`. Live distribution ≈ **58.8% real / 41.2% clean fallback / 0 SVG** across 2881 active rows. **Deferred bug:** real covers don't paint in the browser though the proxy returns HTTP 200 + valid PNG — leading cause suspected to be an ad-blocker matching the `url=` param (or card CSS); user paused to work on other tasks. Full detail in Session 43 below. (Replaces Session 38's 4-layer OG→Logo→AI→Branded cover system — the AI and Branded-SVG layers were removed.)
-- **Session 38 — Evidence-First Architecture (✅ Built, ⚠️ Pipeline Not Yet Working)** — Evidence table, API adapters (Himalayas, Arbeitnow, RemoteOK, Adzuna, USAJOBS), cover image system (4-layer: OG → Logo → AI → Branded), watcher system (page change detection), source health monitoring, 12 extended opportunity types, 60+ real opportunities seeded, pg_cron pipeline automation, 20+ SQL migrations, verification scripts. See `reports/opportunity_ingestion_investigation.md` for full spec.
+- **Session 43 — Feed Cover Image Rework (✅ Rework done, ⚠️ browser render deferred → FIXED in P0#7)** — Replaced uniform gradient+emoji tiles. New system: real OG/page-hero photos where available, clean **logo-on-colour or typographic** `FallbackTile` where none (NO emoji/globe). Commits `c15f947` + `633b427`. Live distribution ≈ **58.8% real / 41.2% clean fallback / 0 SVG** across 2881 active rows. **The browser-render bug (real covers not painting, suspected ad-blocker matching the proxy `url=` param) was FIXED in P0#7** by storing covers in our own Supabase Storage bucket (`opportunity-covers`) and serving them first-party from an opaque path `/opportunity-covers/...`; external URLs that cannot be stored are still proxied through `/api/opportunities/cover` so the upstream domain stays hidden. See P0#7 below. (Replaces Session 38's 4-layer OG→Logo→AI→Branded cover system — the AI and Branded-SVG layers were removed.)
+- **Session 38 — Evidence-First Architecture (✅ Built, ⚠️ Pipeline Not Yet Working)** — Evidence table, API adapters (Himalayas, Arbeitnow, RemoteOK, Adzuna, USAJOBS), cover image system, watcher system (page change detection), source health monitoring, 12 extended opportunity types, 60+ real opportunities seeded, pg_cron pipeline automation, 20+ SQL migrations, verification scripts. See `reports/opportunity_ingestion_investigation.md` for full spec.
+- **Session 48 — P0 Pipeline Quality Hardening (BUILT, PENDING DEPLOY + SQL RUN)** — Fixes ingestion quality/relevance from `findings/ingestion-pipeline-quality-and-feed-engagement-audit.md` §1.1–§1.8. Covers: P0#1 source-registry integrity (14 adapter-less `trusted` sources flagged `pending_scraper`), P0#2 expiry/freshness (`expire_stale_opportunities()`), P0#3 quality gate (`evaluateQuality()` on every item, real `needs_review` queue), P0#4 cross-source URL dedupe (`normalize_url()` + `src/lib/url-normalize.ts`), P0#5 language integrity (`is_non_english` flag), P0#6 two-DB integrity diagnostic. Full detail in the §12 "P0 Pipeline Quality Hardening" block. Most of these SQL files are still UNRUN — the live pipeline currently relies on mechanical fallbacks only.
+- **Session 49 — P0#7 Cover Storage + P0#1a Generic Scrapers + AI Provider Chain (BUILT, PENDING DEPLOY + SQL RUN)**
+  - **P0#7 Cover Storage (fixes the Session 43 browser-render bug):** Covers are now stored in a Supabase Storage bucket `opportunity-covers` (public) and served first-party via an opaque `/opportunity-covers/...` path so ad-blockers/hotlink protection can't suppress them. `OpportunityCard.tsx` detects stored covers (`cover_image_url.includes("/opportunity-covers/")`) and serves them directly; only non-stored external URLs go through `/api/opportunities/cover`. Backfill cursor advances via `cover_stored_at`. SQL: `swiipt/p0_7_cover_storage_bucket.sql` + `swiipt/p0_7_cover_cursor_column.sql` (UNRUN).
+  - **P0#1a Generic HTML Scrapers (unblocks the 14 silent `trusted` sources):** New `src/lib/html-extractor.ts` (dependency-free: JSON-LD → OG/Twitter meta → `<h1>`/`<p>`, deadline regex, sub-link discovery) + `src/lib/scraper-adapters.ts` wrapper. Ingest route (`ingest/route.ts`) now dispatches `source_type='scraper'` (added to the active-source filter). SQL `swiipt/p0_1a_register_scrapers.sql` activates DAAD, Chevening, Commonwealth, NHS, Make It In Germany, Canada IRCC, UAE Golden Visa, LinkedIn Nigeria, TransferMarkt, plus 5 RSS + 3 JSON-API sources. **Note:** the first version of that SQL missed `is_active=true` (ingest silently skipped all scrapers) — fixed in `86ec4c4`. `version:4` added to ingest response to confirm the scraper build is live.
+  - **AI Provider chain hardening (commits `0e4f49d`->`589e9be`):** `enrich()` in `src/lib/ai-service.ts` now (a) supports a per-row `model` from `ai_providers`, (b) retries the WHOLE provider chain with exponential backoff (8s->16s->32s->64s, up to 4x) when EVERY provider is only rate-limited (HTTP 429) so backfills drain without manual re-runs, and (c) adapters (opencode/openrouter) try several free models in order on 429/empty. **OmniRoute is DISABLED** (`p0_ai_disable_omniroute.sql`) — it's a self-hosted gateway with no URL, only wasted a fallback slot. Provider model rows updated to current free models (`gemini-2.0-flash-001`, `gpt-oss-20b:free`, `deepseek-v4-flash-free`) via `p0_register_free_providers.sql`.
 - **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
 - **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed. 5 new DB tables, PDF generation, Stripe integration.
 - **Sprint 16, System 2 (Trade Show Group Savings)** — built and deployed. Paused before booking phase.
@@ -33,7 +38,7 @@
 
 ### Where to Start
 1. Read this entire AGENTS.md (platform overview, architecture, all sprints, all sessions)
-2. **CRITICAL: Vercel stale code — process-queue never served our fixes.** Read Session 42 + 43 below. Fix requires manual Vercel redeployment with **"Clear build cache"** checked. This bit us AGAIN in Session 43 (feed-cover proxy) — a plain redeploy served a pre-`c15f947` build until we cleared cache; the live client bundle proved it.
+2. **CRITICAL: Vercel stale code — every deploy needs "Clear build cache".** Read Session 42 + 43 below. A plain redeploy serves a PREVIOUS build (we've proven this repeatedly via `version:` fields in API responses and the live client bundle). After ANY code change, force a manual Vercel redeploy with **"Clear build cache"** checked, OR the old build stays live. This applies to P0#7 covers, P0#1a scrapers, and the AI provider chain too.
 3. Read `reports/sprint_19_complete_walkthrough.md` for the full Sprint 19 walkthrough
 4. **To activate Sprint 19:** Run all 10 SQL migrations in Supabase SQL Editor in order (listed in the walkthrough §15)
 5. Read `reports/sprint_16_trade_show_booking_flow_analysis.md` for the booking phase plan
@@ -54,7 +59,12 @@
 | 9 | Expand Career Segments — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more segments when 3+ sources exist per segment |
 | 10 | Expand Opportunity Types — Add when sources exist (see §13 of ingestion report) | ⏳ Add 5-10 more types when 3+ sources exist per type |
 | 11 | **MUST BUILD: Admin Custom Cover Image Upload** | ⏳ Schema ready (`custom` in CHECK), UI not built. See §12 below for full spec. |
-| 12 | **Feed real covers not rendering in browser (deferred)** | ⚠️ OPEN — proxy returns 200 + valid PNG, but cards show `FallbackTile` instead of the `<img>`. Suspected: ad-blocker matching `url=` param or card CSS. User paused to work elsewhere; diagnostic + fix in Session 43. |
+| 12 | ~~Feed real covers not rendering in browser~~ | ✅ RESOLVED in P0#7 — covers now stored in Supabase Storage bucket `opportunity-covers` and served first-party (opaque path); ad-blockers can't suppress them. |
+| 13 | **P0 Pipeline Quality Hardening — run SQL + deploy** | ⏳ Session 48: `p0_1_source_registry_integrity.sql` … `p0_5_language_integrity.sql` UNRUN; then Redeploy + Clear build cache + `expire_stale_opportunities()` + verify two-DB (`p0_6`). |
+| 14 | **P0#7 Cover Storage — run SQL + deploy** | ⏳ `p0_7_cover_storage_bucket.sql` + `p0_7_cover_cursor_column.sql` UNRUN; then Redeploy + Clear build cache + run `run_backfill_covers.ps1`. |
+| 15 | **P0#1a Scrapers — run SQL + deploy** | ⏳ `p0_1a_register_scrapers.sql` UNRUN (activates 14+ sources incl. DAAD/Chevening/Commonwealth/NHS/IRCC); then Redeploy + Clear build cache + run `run_ingest.ps1`. |
+| 16 | **AI Provider chain — run SQL + set key** | ⏳ `p0_register_free_providers.sql` + `p0_ai_disable_omniroute.sql` UNRUN; all providers need API keys in Vercel env (`GEMINI_API_KEY` etc.) — without a key `enrich()` has no provider and `translate` backfill fails (pipeline still publishes via mechanical fallbacks). |
+| 17 | **Translate non-English rows** | ⏳ ~2,752 `is_non_english` rows (2743 `deu` + spa/por/fra) hidden from feed until an AI key is set and `run_backfill_translate.ps1` re-run. |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -1751,10 +1761,38 @@ Trigger manual redeployment from Vercel dashboard with **"Clear build cache"** o
 | `4c1fb04` | Full-width featured cards + fix double auto-refresh |
 | `a0c2a39` | Always render cover tile (FallbackTile for no-image rows) + backfill correction |
 
-#### Still OPEN after Session 47
-- **Deferred cover browser-render bug (Session 43 item 12):** real fetched OG images still may not paint in-browser (proxy returns 200); this session's cover-tile fix guarantees a FallbackTile at minimum, but the real-photo render path is still to be verified/fixed (recommended: store images at backfill and serve opaque `/media/<id>.jpg`).
+#### Still OPEN after Session 47 (resolved/advanced in later sessions)
+- **Deferred cover browser-render bug (Session 43 item 12):** ✅ RESOLVED in P0#7 — covers now stored in Supabase Storage bucket `opportunity-covers` and served first-party (opaque `/opportunity-covers/...` path); ad-blockers/hotlink protection can no longer suppress them. `OpportunityCard.tsx` serves stored covers directly; only non-stored external URLs proxy through `/api/opportunities/cover`.
 - **Comment thread (Fix 2 Option A only):** `opportunity_comments` UI + RLS policies not built.
 - **Global like counts:** deferred pending non-owner-readable count source for `opportunity_signals`.
+
+---
+
+### Session 48 — P0 Pipeline Quality Hardening (BUILT 2026-07-17)
+
+- **Goal:** Fix ingestion pipeline quality/relevance gaps from `findings/ingestion-pipeline-quality-and-feed-engagement-audit.md` §1.1–§1.8 (NOT feed-engagement or user-submission items — those deferred).
+- **Approach:** Source-registry fix = (B) quick-fix now + (A) build real scrapers as follow-up. The 14 valuable `trusted` sources are NOT disabled forever — they were flagged `source_status='pending_scraper'` (rows preserved) pending real scrapers (which landed in Session 49 as P0#1a).
+- **What was built (code + SQL migrations in `swiipt/`):**
+  1. **P0#1 Source registry integrity** — `swiipt/p0_1_source_registry_integrity.sql` flags the 14 adapter-less sources `pending_scraper`; `swiipt/p0_1_followup_scrapers.sql` lists them as follow-up (flip back to `active` per-source). Ingest route now skips non-`active` sources.
+  2. **P0#2 Expiry & freshness** — `swiipt/p0_2_expiry_freshness.sql` adds `expire_stale_opportunities()` (deadline+7d grace, or 120d TTL for no-deadline) + daily pg_cron. Feed already filters `is_active=true`, so expired rows auto-drop.
+  3. **P0#3 Quality gate** — `swiipt/p0_3_quality_gate_columns.sql` adds `ai_quality_score`/`is_scam_risk`/`quality_reason`. `process-queue/route.ts` runs `evaluateQuality()` on EVERY item (spam-pattern rejection, strengthened mechanical gate: title>15, desc>80, valid http(s) URL, org required for trusted), rejects <0.4, queues 0.4–0.6 to **real review** (`needs_review`, not "failed"), publishes ≥0.6. `review_all` tier now also routes to real review queue (was misrouted to "failed").
+  4. **P0#4 Cross-source dedupe** — `swiipt/p0_4_cross_source_dedupe.sql` adds `normalized_url` (strips trackers, lowercases host, http→https) on `evidence`+`opportunities` + `normalize_url()` SQL fn + backfill. New `src/lib/url-normalize.ts` mirrors it; ingest + process-queue dedupe on `normalized_url`.
+  5. **P0#5 Language integrity** — `swiipt/p0_5_language_integrity.sql` ensures `language` column + adds generated `is_non_english` flag + index. `src/lib/language.ts` adds a non-English stopword backstop. Feeds filter on `is_non_english`.
+  6. **P0#6 Two-DB integrity verify** — Diagnostic only (`findings/p0_6_two_db_integrity_verification.md`). Confirm Vercel `NEXT_PUBLIC_SUPABASE_URL` == SQL-editor project ref (`frmvjjgblbapdjgszvdi`).
+- **Commit:** `84112be` (P0 pipeline quality hardening). Most P0 SQL files remain UNRUN at time of writing.
+
+### Session 49 — P0#7 Cover Storage + P0#1a Generic Scrapers + AI Provider Chain (2026-07-17 → 07-18)
+
+- **P0#7 Cover Storage (fixes Session 43 browser-render bug):** New Supabase Storage bucket `opportunity-covers` (public). Covers stored at backfill time; `OpportunityCard.tsx` serves stored covers first-party via opaque `/opportunity-covers/...` so ad-blockers/hotlink protection can't suppress them. Non-stored external URLs still proxy through `/api/opportunities/cover`. Backfill cursor advances via `cover_stored_at`. SQL: `swiipt/p0_7_cover_storage_bucket.sql`, `swiipt/p0_7_cover_cursor_column.sql`. Backfill script: `swiipt/run_backfill_covers.ps1`. Commits `695d54c` (store in Storage), `a9b5c30` (cursor picks up fetched external covers), `420b7a8` (backfill cursor fix), `a9b5c30`.
+- **P0#1a Generic HTML Scrapers (unblocks the 14 silent `trusted` sources):** New `src/lib/html-extractor.ts` (dependency-free: JSON-LD → OG/Twitter meta → `<h1>`/`<p>`, deadline regex, sub-link discovery, 15s timeout, SwiiptBot UA) + `src/lib/scraper-adapters.ts` wrapper. Ingest route (`ingest/route.ts`) now dispatches `source_type='scraper'` (added to the active-source filter `.in("source_type", ["rss","api","scraper"])`). `version:4` added to ingest response to confirm the scraper build is live. SQL `swiipt/p0_1a_register_scrapers.sql` activates DAAD, Chevening, Commonwealth, NHS Jobs International, Make It In Germany, Canada IRCC Express Entry, UAE Golden Visa News, LinkedIn Nigeria Remote, TransferMarket Africa Trials (scraper) + 5 RSS + 3 JSON-API sources. **Gotcha:** the first version of that SQL missed `is_active=true` (ingest silently skipped all scrapers → 0 web evidence); fixed in `86ec4c4`. Commits `7dce61c` (scraper), `0a29f48` (version:4), `86ec4c4` (is_active fix).
+- **AI Provider chain hardening (commits `0e4f49d`→`589e9be`, 2026-07-18):**
+  - `src/lib/ai-service.ts` `enrich()`: supports per-row `model` from `ai_providers`; retries the WHOLE provider chain with exponential backoff (8s→16s→32s→64s, up to 4x) when EVERY provider is only rate-limited (HTTP 429) so backfills drain without manual re-runs; never throws.
+  - Adapters `opencode.ts` / `openrouter.ts` try several free models in order on 429/empty response (4-deep chain: `deepseek-v4-flash-free` → `mimo-v2.5-free` → `north-mini-code-free` → `hy3-free`). Per-row model override via `OPENCODE_MODEL` / `OPENCODE_MODELS` / `OPENROUTER_MODEL` env vars.
+  - Empty/parsed-empty AI responses now treated as failure (fall through to next provider) instead of silently returning nothing.
+  - **OmniRoute DISABLED** (`swiipt/p0_ai_disable_omniroute.sql`) — self-hosted gateway, always "fetch failed" without `OMNIROUTE_URL`.
+  - `swiipt/p0_register_free_providers.sql` updates the 3 working provider rows to current free models (`gemini-2.0-flash-001`, `openai/gpt-oss-20b:free`, `deepseek-v4-flash-free`) + priorities (opencode 10 / gemini 20 / openrouter 30 / deepseek 40 / qwen 50 / omniroute 60). `swiipt/fix_provider_priority.sql` also present. Commit `589e9be`.
+  - **Status:** All these SQL files are UNRUN; all providers need API keys in Vercel env (`GEMINI_API_KEY`, etc.). Without a key, `enrich()` has no provider — pipeline still publishes via mechanical fallbacks, but `translate` backfill fails 100%.
+- **Current HEAD at time of writing:** `589e9be` (fix(ai): update stale ai_providers models + priorities).
 
 ---
 
@@ -1827,13 +1865,13 @@ Trigger manual redeployment from Vercel dashboard with **"Clear build cache"** o
   4. **P0#4 Cross-source dedupe** — `swiipt/p0_4_cross_source_dedupe.sql` adds `normalized_url` (strips trackers, lowercases host, http→https) on `evidence`+`opportunities` + `normalize_url()` SQL fn + backfill. New `src/lib/url-normalize.ts` mirrors it; ingest + process-queue dedupe on `normalized_url` (catches same job across Himalayas/RemoteOK/etc.).
   5. **P0#5 Language integrity** — `swiipt/p0_5_language_integrity.sql` ensures `language` column + adds generated `is_non_english` flag + index. `src/lib/language.ts` adds a non-English **stopword backstop** so short German/French titles franc returns as `und` are still caught. Feeds filter on `is_non_english`.
   6. **P0#6 Two-DB integrity verify** — Diagnostic only (`findings/p0_6_two_db_integrity_verification.md`). User must confirm Vercel `NEXT_PUBLIC_SUPABASE_URL` == SQL-editor project ref (`frmvjjgblbapdjgszvdi`). No code.
-- **Deferred to P1:** P0#7 Cover browser-render (opaque `/media/<id>` storage) — tracked, NOT forgotten.
+- **P0#7 Cover Storage (BUILT in Session 49):** Covers stored in Supabase Storage bucket `opportunity-covers` (public) and served first-party via opaque `/opportunity-covers/...` path — defeats ad-blockers/hotlink protection (the root cause of the Session 43 browser-render bug). `OpportunityCard.tsx` detects stored covers (`cover_image_url.includes("/opportunity-covers/")`) and serves them directly; only non-stored external URLs proxy through `/api/opportunities/cover`. Backfill cursor advances via `cover_stored_at`. SQL `swiipt/p0_7_cover_storage_bucket.sql` + `swiipt/p0_7_cover_cursor_column.sql` (UNRUN). Backfill script: `swiipt/run_backfill_covers.ps1`.
 - **Deploy checklist (user deploys — Vercel CLI not authed locally):**
-  1. Run SQL in order: `p0_1_source_registry_integrity.sql`, `p0_2_expiry_freshness.sql`, `p0_3_quality_gate_columns.sql`, `p0_4_cross_source_dedupe.sql`, `p0_5_language_integrity.sql` (all idempotent, Supabase SQL Editor).
-  2. **Redeploy + Clear build cache** (stale-code pattern — see §11 note).
-  3. Run `SELECT expire_stale_opportunities();` once to clean existing stale rows.
-  4. Run `findings/p0_6_two_db_integrity_verification.md` checks.
-  5. Re-run ingest + process-queue; verify `ai_generated` count + `enrichment_status` distribution.
+   1. Run SQL in order: `p0_1_source_registry_integrity.sql`, `p0_2_expiry_freshness.sql`, `p0_3_quality_gate_columns.sql`, `p0_4_cross_source_dedupe.sql`, `p0_5_language_integrity.sql` (all idempotent, Supabase SQL Editor).
+   2. **Redeploy + Clear build cache** (stale-code pattern — see §11 note).
+   3. Run `SELECT expire_stale_opportunities();` once to clean existing stale rows.
+   4. Run `findings/p0_6_two_db_integrity_verification.md` checks.
+   5. Re-run ingest + process-queue; verify `ai_generated` count + `enrichment_status` distribution.
 
 ### FUTURE BUILD: User-Submitted Opportunities (NOT built — do not forget)
 - **Decision (2026-07-17):** Deferred. Only a B2B **partner** submission exists today (`partner_submissions` table + `POST /api/opportunities/submit`, API-key auth). There is **NO logged-in-user submission** feature.
@@ -1885,15 +1923,16 @@ Full file upload with Supabase Storage. More complex but allows drag-and-drop.
 **Recommendation: Build Option A first.** It covers 90% of use cases. Option B can be added as a follow-up if direct file upload is needed.
 
 ### DEFERRED REMINDER: AI Provider Key Needed for Translation (do not forget)
-- **Date flagged:** 2026-07-17 (P0 pipeline verification, Session 48 follow-up).
-- **Status:** DEFERRED by user — leave as-is for now; pipeline + feed are working without it.
-- **Symptom observed:** `backfill-translate` returns `translated=0 failed=15` on every call; `ai_generated` + English feed rows are fine, but **2752 non-English opportunities (2743 `deu`, plus spa/por/fra/etc.) stay hidden** from the feed via the `is_non_english` filter (P0#5).
-- **Root cause:** ALL 6 rows in `ai_providers` are `is_active=true` but `key_status=no_key` — no API key is set, so `enrich()` has no provider to call. `process-queue` still publishes because it uses mechanical fallbacks (no AI needed); `translate` REQUIRES an AI call and fails 100%.
-- **To re-enable later (recovers ~2752 feed rows):** add ONE provider key to Vercel env + activate it, then re-run `run_backfill_translate.ps1`:
-  1. Get a free key: https://aistudio.google.com/apikey (Gemini).
-  2. Vercel dashboard → Settings → Environment Variables → add `GEMINI_API_KEY=...`.
-  3. Redeploy (any commit) with **Clear build cache** (env baked at build time).
-  4. `cd C:\Users\User\Desktop\Swiipt\Swiipt\swiipt; .\run_backfill_translate.ps1`
+- **Date flagged:** 2026-07-17 (P0 pipeline verification); still relevant after Session 49.
+- **Status:** DEFERRED by user — leave as-is for now; pipeline + feed are working without it (mechanical fallbacks publish English-sourced items).
+- **Symptom observed:** `backfill-translate` returns `translated=0 failed=15` on every call; `ai_generated` + English feed rows are fine, but **~2,752 non-English opportunities (2743 `deu`, plus spa/por/fra/etc.) stay hidden** from the feed via the `is_non_english` filter (P0#5).
+- **Root cause:** Provider rows are `is_active=true` but have **no API key** in Vercel env (`GEMINI_API_KEY` etc.), so `enrich()` has no working provider. `process-queue` still publishes because it uses mechanical fallbacks (no AI needed); `translate` REQUIRES an AI call and fails 100%. OmniRoute is DISABLED (self-hosted gateway, no URL). The active fallback chain is opencode (primary, free) → gemini → openrouter → deepseek/qwen (all need keys).
+- **To re-enable later (recovers ~2,752 feed rows):** add ONE provider key to Vercel env + run the provider/SQL setup, then re-run the translate backfill:
+   1. First run `swiipt/p0_register_free_providers.sql` + `swiipt/p0_ai_disable_omniroute.sql` in Supabase (sets current free models + priorities, disables OmniRoute).
+   2. Get a free key: https://aistudio.google.com/apikey (Gemini); or any OpenCode Zen / OpenRouter free key.
+   3. Vercel dashboard → Settings → Environment Variables → add the matching key (`GEMINI_API_KEY`, `OPENCODE_API_KEY`, `OPENROUTER_API_KEY`, etc.).
+   4. Redeploy (any commit) with **Clear build cache** (env baked at build time).
+   5. `cd C:\Users\User\Desktop\Swiipt\Swiipt\swiipt; .\run_backfill_translate.ps1`
 - **Verify after:** `SELECT is_non_english, count(*) FROM opportunities GROUP BY is_non_english;` — `true` count should drop sharply as rows become `eng`.
 - **Note:** This is the ONLY blocker to showing non-English-sourced opportunities. Nothing else is broken.
 
