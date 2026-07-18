@@ -17,8 +17,8 @@ function buildRequestBody(request: AIEnrichRequest): any {
 function parseResponse(raw: any): { enriched: Record<string, any>; confidence: number | null } {
   const text = raw?.choices?.[0]?.message?.content || "";
   try {
-    const cleaned = text.replace(/```json?\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned);
+    const cleanedText = text.replace(/```json?\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(cleanedText);
     return {
       enriched: parsed,
       confidence: parsed.confidence_score ?? null,

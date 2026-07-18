@@ -2,7 +2,9 @@ import type { AIProviderAdapter, AIEnrichRequest, AIEnrichResponse } from "./ind
 import { buildDefaultPrompt } from "../prompts";
 
 const BASE_URL = "https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent";
-const MODEL = "gemini-2.0-flash";
+// Model is env-overridable so the exact slug can be set in Vercel without a
+// deploy. Default is the valid production Gemini 2.0 Flash model.
+const MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-001";
 
 function buildRequestBody(request: AIEnrichRequest): { contents: { parts: { text: string }[] }[] } {
   const prompt = buildDefaultPrompt(request);
@@ -14,8 +16,8 @@ function buildRequestBody(request: AIEnrichRequest): { contents: { parts: { text
 function parseResponse(raw: any): { enriched: Record<string, any>; confidence: number | null } {
   const text = raw?.candidates?.[0]?.content?.parts?.[0]?.text || "";
   try {
-    const cleaned = text.replace(/```json?\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned);
+    const cleanedText = text.replace(/```json?\n?/g, "").replace(/```\n?/g, "").trim();
+    const parsed = JSON.parse(cleanedText);
     return {
       enriched: parsed,
       confidence: parsed.confidence_score ?? null,
