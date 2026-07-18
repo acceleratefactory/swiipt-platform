@@ -26,7 +26,7 @@ function buildRequestBody(request: AIEnrichRequest, model: string): any {
   const prompt = buildDefaultPrompt(request);
   return {
     model,
-    max_tokens: 8000,
+    max_tokens: 16000,
     stream: false,
     messages: [{ role: "user", content: prompt }],
   };
@@ -42,6 +42,19 @@ function parseResponse(raw: any): { enriched: Record<string, any>; confidence: n
       confidence: parsed.confidence_score ?? null,
     };
   } catch {
+    // Best-effort recovery: if the model was cut off at max_tokens mid-JSON,
+    // try to parse the longest complete {...} object from the start of the text.
+    const open = text.indexOf("{");
+    if (open >= 0) {
+      for (let end = text.lastIndexOf("}"); end > open; end = text.lastIndexOf("}", end - 1)) {
+        try {
+          const parsed = JSON.parse(text.slice(open, end + 1));
+          if (parsed && (parsed.title || parsed.description)) {
+            return { enriched: parsed, confidence: parsed.confidence_score ?? null };
+          }
+        } catch { /* keep shrinking */ }
+      }
+    }
     return { enriched: { raw_text: text }, confidence: null };
   }
 }
