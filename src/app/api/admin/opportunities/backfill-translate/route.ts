@@ -69,8 +69,10 @@ export async function POST(request: NextRequest) {
       // Guard: only accept a translation that actually produced English text.
       if (!result?.success || (!out.title && !out.description)) {
         failed++;
-        // Surface the provider error for diagnostics.
-        if (!lastError) lastError = `${result?.provider || "?"}: ${JSON.stringify(out).slice(0, 300)}`;
+        // Surface the raw provider output for diagnostics.
+        if (!lastError) {
+          lastError = `provider=${result?.provider || "?"} success=${result?.success} out=${JSON.stringify(out).slice(0,500)}`;
+        }
         continue;
       }
 
