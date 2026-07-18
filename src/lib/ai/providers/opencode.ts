@@ -76,6 +76,15 @@ export const opencodeProvider: AIProviderAdapter = {
       }
       const data = await res.json();
       const { enriched, confidence } = parseResponse(data);
+      if (!enriched.title && !enriched.description && !enriched.raw_text) {
+        // Capture the raw model output so the diagnostic shows what opencode
+        // actually returned (error JSON, prose, or empty choices).
+        try {
+          lastErrorBody = `HTTP 200 empty: ${JSON.stringify(data).slice(0, 400)}`;
+        } catch {
+          lastErrorBody = "HTTP 200 empty: (unserializable response)";
+        }
+      }
       // An empty/parsed-empty response is not a usable result — treat as a
       // failure so enrich() falls through to the next provider instead of
       // silently returning nothing (which made translate backfill count every
