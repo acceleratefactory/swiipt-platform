@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createRSSEvidence } from "@/lib/evidence-adapters";
 import { fetchFromAPI } from "@/lib/api-adapters";
+import { createScraperEvidence } from "@/lib/scraper-adapters";
 import { normalizeUrl } from "@/lib/url-normalize";
 
 const DEGRADE_THRESHOLD = 5;
@@ -85,6 +86,9 @@ async function processSource(
       evidenceRecords = await createRSSEvidence(source.source_url, source.name, 100);
     } else if (source.source_type === "api") {
       evidenceRecords = await fetchFromAPI(source.name, source.source_url, 100);
+    } else if (source.source_type === "scraper") {
+      // P0#1a — generic HTML scraper for sources with no RSS/JSON feed.
+      evidenceRecords = await createScraperEvidence(source.source_url, source.name, 20);
     }
 
     itemsFound = evidenceRecords.length;
@@ -201,7 +205,7 @@ export async function POST(request: NextRequest) {
     .select("*")
     .eq("is_active", true)
     .eq("source_status", "active")
-    .in("source_type", ["rss", "api"]);
+    .in("source_type", ["rss", "api", "scraper"]);
 
   if (!sources || sources.length === 0) {
     return NextResponse.json({ ingested: 0 });
