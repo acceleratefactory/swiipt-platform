@@ -18,7 +18,10 @@ import { detectOpportunityLanguage, isEnglishCode } from "@/lib/language";
 export const runtime = "nodejs";
 export const maxDuration = 300;
 
-const BATCH_SIZE = 15;
+// Keep each invocation well under the Vercel Hobby 60s function cap:
+// 15 AI-translate rows routinely exceeded it (504 Gateway Timeout). 3 rows
+// is safe and still makes progress across repeated calls.
+const BATCH_SIZE = 3;
 
 export async function POST(request: NextRequest) {
   if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
