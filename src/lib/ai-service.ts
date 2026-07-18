@@ -30,6 +30,7 @@ interface ActiveProvider {
   apiKey: string;
   adapter: AIProviderAdapter;
   priority: number;
+  model?: string;
 }
 
 /**
@@ -52,7 +53,7 @@ async function getActiveProviders(): Promise<ActiveProvider[]> {
     if (!adapter) continue;
     const apiKey = process.env[API_KEY_ENV_MAP[row.provider_slug]] || row.api_key;
     if (!apiKey) continue;
-    providers.push({ slug: row.provider_slug, apiKey, adapter, priority: row.priority });
+    providers.push({ slug: row.provider_slug, apiKey, adapter, priority: row.priority, model: row.model || undefined });
   }
   return providers;
 }
@@ -71,7 +72,7 @@ export async function enrich(request: AIEnrichRequest): Promise<AIEnrichResponse
   const errors: string[] = [];
   for (const p of providers) {
     try {
-      const result = await p.adapter.enrich(request, p.apiKey);
+      const result = await p.adapter.enrich(request, p.apiKey, p.model);
       if (result.success) return result;
       errors.push(`${p.slug}: provider returned failure`);
     } catch (err: any) {

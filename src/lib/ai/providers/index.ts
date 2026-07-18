@@ -16,6 +16,6 @@ export interface AIEnrichResponse {
 export interface AIProviderAdapter {
   slug: string;
   name: string;
-  enrich(request: AIEnrichRequest, apiKey: string): Promise<AIEnrichResponse>;
+  enrich(request: AIEnrichRequest, apiKey: string, modelOverride?: string): Promise<AIEnrichResponse>;
   isAvailable(apiKey: string): boolean;
 }

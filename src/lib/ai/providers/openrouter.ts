@@ -6,10 +6,10 @@ const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
 // can be set in Vercel without a code deploy.
 const MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini:free";
 
-function buildRequestBody(request: AIEnrichRequest): any {
+function buildRequestBody(request: AIEnrichRequest, modelOverride?: string): any {
   const prompt = buildDefaultPrompt(request);
   return {
-    model: MODEL,
+    model: modelOverride || MODEL,
     max_tokens: 2000,
     stream: false,
     messages: [{ role: "user", content: prompt }],
@@ -36,18 +36,19 @@ export const openrouterProvider: AIProviderAdapter = {
   isAvailable(apiKey: string) {
     return !!apiKey;
   },
-  async enrich(request: AIEnrichRequest, apiKey: string): Promise<AIEnrichResponse> {
+  async enrich(request: AIEnrichRequest, apiKey: string, modelOverride?: string): Promise<AIEnrichResponse> {
     const baseUrl = process.env.OPENROUTER_URL || DEFAULT_BASE_URL;
+    const model = modelOverride || MODEL;
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify(buildRequestBody(request)),
+      body: JSON.stringify(buildRequestBody(request, modelOverride)),
     });
     if (!res.ok) {
-      return { success: false, enriched: {}, confidence: null, provider: "openrouter", model: MODEL, cost: 0 };
+      return { success: false, enriched: {}, confidence: null, provider: "openrouter", model, cost: 0 };
     }
     const data = await res.json();
     const { enriched, confidence } = parseResponse(data);
@@ -56,7 +57,7 @@ export const openrouterProvider: AIProviderAdapter = {
       enriched,
       confidence,
       provider: "openrouter",
-      model: MODEL,
+      model,
       cost: 0,
     };
   },
