@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
 
   let translated = 0;
   let failed = 0;
+  let lastError: string | null = null;
 
   for (const opp of opportunities) {
     try {
@@ -68,6 +69,8 @@ export async function POST(request: NextRequest) {
       // Guard: only accept a translation that actually produced English text.
       if (!result?.success || (!out.title && !out.description)) {
         failed++;
+        // Surface the provider error for diagnostics.
+        if (!lastError) lastError = `${result?.provider || "?"}: ${JSON.stringify(out).slice(0, 300)}`;
         continue;
       }
 
@@ -97,6 +100,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     translated,
     failed,
+    lastError: lastError || undefined,
     remaining: "Run again to process more",
   });
 }
