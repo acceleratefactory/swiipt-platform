@@ -61,8 +61,14 @@ async function getActiveProviders(): Promise<ActiveProvider[]> {
 /**
  * Enrich opportunity data using the best available AI provider.
  * Tries providers in priority order. Falls back to next on failure.
- * Never throws — returns { success: false } if no provider succeeds.
+ * If EVERY provider failed only because it was rate-limited (HTTP 429),
+ * retry the whole chain with exponential backoff — free tiers reset their
+ * limits after a short wait, so this lets the backfill drain without
+ * manual re-runs. Never throws.
  */
+const RATE_LIMIT_MAX_RETRIES = 4;
+const RATE_LIMIT_BACKOFF_MS = 8000; // 8s, then 16s, 32s, 64s
+
 export async function enrich(request: AIEnrichRequest): Promise<AIEnrichResponse> {
   const providers = await getActiveProviders();
   if (providers.length === 0) {
@@ -70,13 +76,26 @@ export async function enrich(request: AIEnrichRequest): Promise<AIEnrichResponse
   }
 
   const errors: string[] = [];
-  for (const p of providers) {
-    try {
-      const result = await p.adapter.enrich(request, p.apiKey, p.model);
-      if (result.success) return result;
-      errors.push(`${p.slug}: provider returned failure`);
-    } catch (err: any) {
-      errors.push(`${p.slug}: ${err?.message || "unknown error"}`);
+  for (let attempt = 0; attempt <= RATE_LIMIT_MAX_RETRIES; attempt++) {
+    let allRateLimited = true;
+    for (const p of providers) {
+      try {
+        const result = await p.adapter.enrich(request, p.apiKey, p.model);
+        if (result.success) return result;
+        if (!result.rateLimited) allRateLimited = false;
+        errors.push(`${p.slug}: provider returned failure`);
+      } catch (err: any) {
+        allRateLimited = false;
+        errors.push(`${p.slug}: ${err?.message || "unknown error"}`);
+      }
+    }
+    // If at least one provider failed for a non-429 reason, don't retry —
+    // the failure is structural (bad key, parse error), not a transient limit.
+    if (!allRateLimited) break;
+    // Every provider was rate-limited. Wait with exponential backoff, then
+    // re-fetch the provider list (in case the DB changed) and retry.
+    if (attempt < RATE_LIMIT_MAX_RETRIES) {
+      await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_BACKOFF_MS * Math.pow(2, attempt)));
     }
   }
   return { success: false, enriched: { errors }, confidence: null, provider: "none", model: "", cost: 0 };

@@ -11,6 +11,8 @@ export interface AIEnrichResponse {
   provider: string;
   model: string;
   cost: number;
+  /** Set when the provider rejected with HTTP 429 (rate-limited). */
+  rateLimited?: boolean;
 }
 
 export interface AIProviderAdapter {

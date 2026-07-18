@@ -66,7 +66,10 @@ export const openrouterProvider: AIProviderAdapter = {
         },
         body: JSON.stringify(buildRequestBody(request, model)),
       });
-      if (!res.ok) continue; // try next free model
+      if (!res.ok) {
+        if (res.status === 429) return { success: false, enriched: {}, confidence: null, provider: "openrouter", model, cost: 0, rateLimited: true };
+        continue; // try next free model
+      }
       const data = await res.json();
       const { enriched, confidence } = parseResponse(data);
       const hasContent = !!(enriched.title || enriched.description || enriched.raw_text);
