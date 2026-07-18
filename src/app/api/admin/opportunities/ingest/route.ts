@@ -250,6 +250,7 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     ingested: totalIngested,
+    version: 4,
     metrics: {
       sources_processed: sorted.length,
       items_found: totalFound,
