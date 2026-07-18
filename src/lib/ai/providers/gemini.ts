@@ -42,6 +42,10 @@ export const geminiProvider: AIProviderAdapter = {
     }
     const data = await res.json();
     const { enriched, confidence } = parseResponse(data);
+    const hasContent = !!(enriched.title || enriched.description || enriched.raw_text);
+    if (!hasContent) {
+      return { success: false, enriched: { error: "empty response" }, confidence: null, provider: "gemini", model: MODEL, cost: 0 };
+    }
     return {
       success: true,
       enriched,

@@ -49,6 +49,14 @@ export const opencodeProvider: AIProviderAdapter = {
     }
     const data = await res.json();
     const { enriched, confidence } = parseResponse(data);
+    // An empty/parsed-empty response is not a usable result — treat as a
+    // failure so enrich() falls through to the next provider instead of
+    // silently returning nothing (which made translate backfill count every
+    // row as failed).
+    const hasContent = !!(enriched.title || enriched.description || enriched.raw_text);
+    if (!hasContent) {
+      return { success: false, enriched: { error: "empty response" }, confidence: null, provider: "opencode", model: MODEL, cost: 0 };
+    }
     return {
       success: true,
       enriched,
