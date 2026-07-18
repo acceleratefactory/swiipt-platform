@@ -1,7 +1,6 @@
 import type { AIProviderAdapter, AIEnrichRequest, AIEnrichResponse } from "./index";
 import { buildDefaultPrompt } from "../prompts";
 
-const DEFAULT_BASE_URL = "http://localhost:20128/v1";
 const MODEL = "auto/best-fast";
 
 function buildRequestBody(request: AIEnrichRequest): any {
@@ -35,7 +34,12 @@ export const omnirouteProvider: AIProviderAdapter = {
     return !!apiKey;
   },
   async enrich(request: AIEnrichRequest, apiKey: string): Promise<AIEnrichResponse> {
-    const baseUrl = process.env.OMNIROUTE_URL || DEFAULT_BASE_URL;
+    // Require an explicit OMMIROUTE_URL — the old localhost default made
+    // every call fail with a silent "fetch failed".
+    const baseUrl = process.env.OMNIROUTE_URL;
+    if (!baseUrl) {
+      return { success: false, enriched: { error: "OMMIROUTE_URL not set" }, confidence: null, provider: "omniroute", model: MODEL, cost: 0 };
+    }
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {

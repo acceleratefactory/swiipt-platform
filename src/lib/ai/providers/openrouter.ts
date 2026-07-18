@@ -2,7 +2,9 @@ import type { AIProviderAdapter, AIEnrichRequest, AIEnrichResponse } from "./ind
 import { buildDefaultPrompt } from "../prompts";
 
 const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
-const MODEL = "openai/gpt-4o-mini";
+// Model is env-overridable so the exact free slug (must include ":free")
+// can be set in Vercel without a code deploy.
+const MODEL = process.env.OPENROUTER_MODEL || "openai/gpt-4o-mini:free";
 
 function buildRequestBody(request: AIEnrichRequest): any {
   const prompt = buildDefaultPrompt(request);

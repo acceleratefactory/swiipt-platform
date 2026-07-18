@@ -2,7 +2,9 @@ import type { AIProviderAdapter, AIEnrichRequest, AIEnrichResponse } from "./ind
 import { buildDefaultPrompt } from "../prompts";
 
 const DEFAULT_BASE_URL = "https://opencode.ai/zen/v1";
-const MODEL = "deepseek-v4-flash-free";
+// Model is env-overridable so the exact free slug can be set in Vercel
+// without a code deploy. Default is a known-valid OpenCode free model.
+const MODEL = process.env.OPENCODE_MODEL || "deepseek/deepseek-v3:free";
 
 function buildRequestBody(request: AIEnrichRequest): any {
   const prompt = buildDefaultPrompt(request);
