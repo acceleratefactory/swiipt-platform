@@ -153,7 +153,7 @@ export async function createScraperEvidence(
 ): Promise<EvidenceRecord[]> {
   try {
     const response = await fetch(pageUrl, {
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(30000),
       headers: {
         "User-Agent":
           "Mozilla/5.0 (compatible; SwiiptBot/1.0; +https://swiipt.com)",
@@ -195,7 +195,7 @@ export async function createScraperEvidence(
       } else {
         try {
           const subRes = await fetch(target, {
-            signal: AbortSignal.timeout(15000),
+            signal: AbortSignal.timeout(30000),
             headers: {
               "User-Agent":
                 "Mozilla/5.0 (compatible; SwiiptBot/1.0; +https://swiipt.com)",
