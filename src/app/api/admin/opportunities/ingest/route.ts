@@ -20,6 +20,7 @@ interface SourceRecord {
   total_ingested: number;
   consecutive_errors: number;
   is_degraded: boolean;
+  last_error_at: string | null;
   rate_limit_per_hour: number;
   rate_used_this_hour: number;
   rate_window_start: string | null;
@@ -36,7 +37,16 @@ function isRateLimited(source: SourceRecord): boolean {
 }
 
 function isCircuitOpen(source: SourceRecord): boolean {
-  return source.is_degraded || source.consecutive_errors >= CIRCUIT_BREAKER_THRESHOLD;
+  // TEMPORARY breaker: only skip a source if it is actively erroring RIGHT
+  // NOW (errors within the last hour). A permanently-degraded source that
+  // never recovers silently kills throughput, so we let it retry after the
+  // cooldown window instead of disabling it forever.
+  const recentErrorCutoff = Date.now() - 60 * 60 * 1000;
+  const lastErr = source.last_error_at ? new Date(source.last_error_at).getTime() : 0;
+  if (lastErr && lastErr > recentErrorCutoff) {
+    return source.consecutive_errors >= CIRCUIT_BREAKER_THRESHOLD;
+  }
+  return false;
 }
 
 function sortByPriority(sources: SourceRecord[]): SourceRecord[] {
@@ -53,7 +63,10 @@ async function processSource(
   serviceSupabase: any,
   source: SourceRecord
 ): Promise<{ itemsNew: number; itemsFound: number; durationMs: number; error: string | null }> {
-  const pullFrequencyHours = source.pull_frequency_hours || 6;
+  // Effective cooldown capped at 1h so healthy sources are re-pulled often
+  // enough to keep the feed stocked. Long 6h+ frequencies were throttling
+  // throughput to a trickle.
+  const pullFrequencyHours = Math.min(source.pull_frequency_hours || 6, 1);
   const lastPulledAt = source.last_pulled_at ? new Date(source.last_pulled_at).getTime() : 0;
   const cooldownMs = pullFrequencyHours * 60 * 60 * 1000;
   if (lastPulledAt && Date.now() - lastPulledAt < cooldownMs) {

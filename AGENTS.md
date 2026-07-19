@@ -1936,7 +1936,30 @@ Full file upload with Supabase Storage. More complex but allows drag-and-drop.
 - **Verify after:** `SELECT is_non_english, count(*) FROM opportunities GROUP BY is_non_english;` — `true` count should drop sharply as rows become `eng`.
 - **Note:** This is the ONLY blocker to showing non-English-sourced opportunities. Nothing else is broken.
 
+## 14. SESSION 50 — THROUGHPUT ROOT CAUSE (2026-07-19) — user complaint: 20 working sources produce only ~27 new opps in 15h
+
+### The actual problem (not translate, not dead URLs)
+- User's real concern: scrapers used to fetch ~1000/day; with 20 working sources they now get only ~27 NEW opportunities in 15 hours. Prior sessions over-diagnosed side quests (translate, dead URLs, dedupe) and missed the core throughput collapse.
+- `diag_feed_visible.sql` result: **opportunities = 5,020 total, feed_visible (is_active + not non_english + language in eng/sco/und) = 1,294.** So data exists; the pipe is throttled, not empty.
+
+### ROOT CAUSE — ingest circuit breaker + cooldown (src/app/api/admin/opportunities/ingest/route.ts)
+1. **Permanent circuit break:** old `isCircuitOpen()` returned true if `is_degraded` (set after 5 consecutive errors). Degraded NEVER reset, so any flaky source was **silently skipped forever** → sources died one by one → throughput collapsed to a trickle.
+2. **6h cooldown** per source (`pull_frequency_hours || 6`) capped each source at 4 pulls/day regardless of health.
+
+### FIXES APPLIED (session 50, code edits — NOT yet built/pushed/deployed)
+- `isCircuitOpen()` rewritten to be **time-based**: now only skips a source if it has >=3 errors AND the last error was within the last 1h. Degraded sources recover automatically after the cooldown instead of being permanently disabled.
+- Cooldown capped at **1h** (`Math.min(pull_frequency_hours || 6, 1)`) so healthy sources are re-pulled ~24x/day.
+- SQL `swiipt/p0_reset_source_throttle.sql`: `UPDATE opportunity_sources SET consecutive_errors=0, is_degraded=false, last_error=NULL, last_error_at=NULL, last_pulled_at=NULL;` to unstick all currently-degraded sources so they pull on next ingest.
+
+### ACTION REQUIRED (user must run — these are NOT done automatically)
+1. Push committed code edit → **Redeploy with "Clear build cache"** (env changes + stale build trap).
+2. Run `swiipt/p0_reset_source_throttle.sql` in Supabase SQL Editor.
+3. Run `swiipt/run_ingest.ps1` (loops until done) — expect many more than 27 new now.
+4. Run `swiipt/run_process_queue.ps1` to convert evidence→opportunities.
+5. Re-run `swiipt/diag_feed_visible.sql` — `feed_visible` should climb well above 1,294.
+
+### Still separate / unresolved
+- Translate backfill (non-English → eng) still draining ~2,752 rows; run `swiipt/run_backfill_translate.ps1` to completion to recover those hidden rows. This is INDEPENDENT of the throughput fix above.
+- `p0_deactivate_dead_sources.sql` (XPRIZE/Lanyrd/500 Startups/Nomad List/Erasmus/Grants.gov) and `p0_disable_dead_providers.sql` (gemini/openrouter) still need manual SQL run in Supabase.
+
 ## 13. VERIFICATION SCRIPTS
-- **Build:** `npm run build` — pass with zero TS errors
-- **Lint:** `npm run lint`
-- No test framework installed — would need Jest/Vitest/Playwright setup from scratch
