@@ -8,12 +8,20 @@ export async function GET(request: NextRequest) {
 
   const serviceSupabase = createServiceClient();
 
-  const { data: sources } = await (serviceSupabase as any)
-    .from("opportunity_sources")
-    .select("id, name, source_type, is_active, is_degraded, consecutive_errors, last_error, last_error_at, last_pulled_at, total_ingested, total_published, trust_tier")
-    .order("name");
+  let sources: any[] = [];
+  let sourceErr: string | null = null;
+  try {
+    const { data, error } = await (serviceSupabase as any)
+      .from("opportunity_sources")
+      .select("*")
+      .order("name");
+    if (error) sourceErr = error.message;
+    sources = data || [];
+  } catch (e: any) {
+    sourceErr = e?.message || "query failed";
+  }
 
-  const sourceIds = (sources || []).map((s: any) => s.id);
+  const sourceIds = sources.map((s: any) => s.id);
 
   let recentLogs: any[] = [];
   if (sourceIds.length > 0) {
@@ -23,7 +31,6 @@ export async function GET(request: NextRequest) {
       .in("source_id", sourceIds)
       .order("pulled_at", { ascending: false })
       .limit(sourceIds.length * 10);
-
     recentLogs = data || [];
   }
 
@@ -33,7 +40,7 @@ export async function GET(request: NextRequest) {
     logsBySource[log.source_id].push(log);
   }
 
-  const healthSummary = (sources || []).map((source: any) => {
+  const healthSummary = sources.map((source: any) => {
     const logs = logsBySource[source.id] || [];
     const successfulPulls = logs.filter((l: any) => l.success);
     const failedPulls = logs.filter((l: any) => !l.success);
@@ -48,6 +55,7 @@ export async function GET(request: NextRequest) {
 
     const lastSuccessful = successfulPulls[0]?.pulled_at || null;
     const lastFailed = failedPulls[0]?.pulled_at || null;
+    const lastErrorMsg = failedPulls[0]?.error_message || source.last_error || null;
 
     const errorRate = totalPulls > 0
       ? Math.round((failedPulls.length / totalPulls) * 100)
@@ -70,10 +78,11 @@ export async function GET(request: NextRequest) {
       source_type: source.source_type,
       trust_tier: source.trust_tier,
       is_active: source.is_active,
+      source_status: source.source_status,
       health_status: healthStatus,
       consecutive_errors: source.consecutive_errors || 0,
-      last_error: source.last_error,
-      last_error_at: source.last_error_at,
+      last_error: lastErrorMsg,
+      last_error_at: source.last_error_at || lastFailed,
       last_pulled_at: source.last_pulled_at,
       total_ingested: source.total_ingested,
       total_published: source.total_published,
@@ -92,7 +101,8 @@ export async function GET(request: NextRequest) {
   });
 
   const overall = {
-    total_sources: sources?.length || 0,
+    query_error: sourceErr,
+    total_sources: sources.length,
     active_sources: healthSummary.filter((s: any) => s.is_active).length,
     degraded_sources: healthSummary.filter((s: any) => s.health_status === "degraded").length,
     healthy_sources: healthSummary.filter((s: any) => s.health_status === "healthy").length,
