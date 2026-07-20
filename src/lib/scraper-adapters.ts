@@ -11,6 +11,10 @@ import { scholarshipsScraper } from "./scrapers/scholarships-com";
 import { tenTimesScraper } from "./scrapers/10times";
 import { erasmusPlusScraper } from "./scrapers/erasmus-plus";
 import { courseraScraper } from "./scrapers/coursera";
+import { scholars4devScraper } from "./scrapers/scholars4dev";
+import { britishCouncilScraper } from "./scrapers/british-council";
+import { fulbrightScraper } from "./scrapers/fulbright";
+import { gatesCambridgeScraper } from "./scrapers/gates-cambridge";
 
 type ScraperFn = (
   pageUrl: string,
@@ -40,6 +44,10 @@ const SCRAPER_MAP: Record<string, ScraperFn> = {
   "EventsEye Trade Shows": tenTimesScraper,
   "Erasmus+ Programme": erasmusPlusScraper,
   "Coursera Free Courses": courseraScraper,
+  "Scholars4Dev": scholars4devScraper,
+  "British Council Scholarships": britishCouncilScraper,
+  "Fulbright Program": fulbrightScraper,
+  "Gates Cambridge": gatesCambridgeScraper,
 };
 
 export async function createScraperEvidence(
