@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     .select("*")
     .eq("enrichment_status", "pending")
     .order("captured_at", { ascending: true })
-    .limit(50);
+    .limit(8);
 
   if (!evidenceItems || evidenceItems.length === 0) {
     return NextResponse.json({ processed: 0 });
