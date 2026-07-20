@@ -1,5 +1,5 @@
 import type { EvidenceRecord } from "../evidence-adapters";
-import { computeHash, parseDate, stripHtml, extractFromHtmlGeneric, makeRecord, absolutizeUrl } from "./utils";
+import { parseDate, extractFromHtmlGeneric, makeRecord, absolutizeUrl } from "./utils";
 
 export async function euFundingScraper(
   pageUrl: string,

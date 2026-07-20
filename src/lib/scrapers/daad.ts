@@ -1,5 +1,5 @@
 import type { EvidenceRecord } from "../evidence-adapters";
-import { computeHash, parseDate, extractFromHtmlGeneric, makeRecord } from "./utils";
+import { parseDate, extractFromHtmlGeneric, makeRecord } from "./utils";
 
 function tryParseScholarshipData(text: string): any[] | null {
   const patterns = [

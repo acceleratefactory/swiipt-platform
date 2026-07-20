@@ -1,5 +1,5 @@
 import type { EvidenceRecord } from "../evidence-adapters";
-import { computeHash, parseDate, stripHtml, extractFromHtmlGeneric, makeRecord } from "./utils";
+import { extractFromHtmlGeneric, makeRecord } from "./utils";
 
 const VISA_PAGES = [
   {
@@ -59,7 +59,7 @@ async function fetchWithTimeout(url: string, ms: number): Promise<string | null>
 export async function ukVisaScraper(
   pageUrl: string,
   sourceName: string,
-  maxItems: number = 10
+  _maxItems: number = 10
 ): Promise<EvidenceRecord[]> {
   const records: EvidenceRecord[] = [];
 

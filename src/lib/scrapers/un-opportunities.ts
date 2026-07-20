@@ -1,5 +1,5 @@
 import type { EvidenceRecord } from "../evidence-adapters";
-import { computeHash, parseDate, stripHtml, extractFromHtmlGeneric, makeRecord, absolutizeUrl } from "./utils";
+import { parseDate, extractFromHtmlGeneric, makeRecord, absolutizeUrl } from "./utils";
 
 const UN_SOURCES = [
   { name: "UN Volunteers", url: "https://www.unv.org/volunteer-opportunities", org: "United Nations Volunteers" },

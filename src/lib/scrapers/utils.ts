@@ -45,7 +45,7 @@ export function parseDate(text: string): string | null {
       const [, mo, d, y] = m;
       return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
     }
-    const day = m[1]!.length <= 2 ? parseInt(m[1]!) : parseInt(m[2]!);
+    const _day = m[1]!.length <= 2 ? parseInt(m[1]!) : parseInt(m[2]!);
     const monStr = m[1]!.length <= 2 ? m[2]! : m[1]!;
     const year = parseInt(m[3]!);
     const mon = months[monStr.slice(0, 3).toLowerCase()];
@@ -111,7 +111,7 @@ export function makeRecord(
   };
 }
 
-export function extractFromHtmlGeneric(html: string, pageUrl: string): { title: string; description: string; organisation: string } {
+export function extractFromHtmlGeneric(html: string, _pageUrl: string): { title: string; description: string; organisation: string } {
   const jsonLd = findJsonLd(html);
   const ogTitle = metaContent(html, "og:title");
   const ogDesc = metaContent(html, "og:description");

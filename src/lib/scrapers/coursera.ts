@@ -1,5 +1,5 @@
 import type { EvidenceRecord } from "../evidence-adapters";
-import { parseDate, stripHtml, extractFromHtmlGeneric, makeRecord, absolutizeUrl } from "./utils";
+import { extractFromHtmlGeneric, makeRecord, absolutizeUrl } from "./utils";
 
 export async function courseraScraper(
   pageUrl: string,
