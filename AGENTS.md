@@ -2141,4 +2141,20 @@ MastersPortal, British Council Scholarships, Fulbright Program, Gates Cambridge,
 ### Fix Verified
 Column check confirmed: `is_degraded`, `consecutive_errors`, `last_error_at` ALL EXIST on `opportunity_sources` (Session 50's SQL failure was unrelated — that SQL referenced columns that were added later by a separate migration).
 
+## 11. SESSION 54 — PHASE 1 SCHOLARSHIP SCRAPERS (DONE) + PHASE 2 TECH/REMOTE JOB SCRAPERS (2026-07-20)
+
+### Phase 1 — Completed & deployed
+- Built 4 dedicated scrapers: `scholars4dev.ts`, `british-council.ts`, `fulbright.ts`, `gates-cambridge.ts` (commit `b844081`), wired into `scraper-adapters.ts`.
+- **MastersPortal → replaced by Scholars4Dev** (`scholars4dev.com`) — MastersPortal is 403 Cloudflare-blocked from any server fetch.
+- SQL `register_phase1_scraper_sources.sql` run in Supabase — all 4 sources `active=true`. Verified: Scholars4Dev 20 items, Fulbright 3, Gates Cambridge 1 enriched; queue drained to 0 pending (5,569 AI opps total).
+- **British Council fetch fix** (commit `80c92be`): added BROWSER_HEADERS + 25s timeout + 3× retry + fallback URL (`www.britishcouncil.org/study-work-abroad/scholarships`). Original fetch returned 0 items from Vercel IP; hardened for resilience.
+
+### Phase 2 — Completed & deployed (2026-07-20)
+- Built 4 dedicated scrapers: `hn-whoishiring.ts` (Algolia API), `angellist.ts`, `indeed-remote.ts`, `glassdoor-remote.ts` (commit `ec31b6b`), wired into `scraper-adapters.ts`.
+- SQL `register_phase2_scraper_sources.sql` run in Supabase — all 4 sources `active=true`, `source_type=scraper`, verified.
+- **HN Who Is Hiring** works via Algolia API (200). **AngelList / Indeed / Glassdoor** built with stealth `BROWSER_HEADERS` + 3× retry; they 403-block the Vercel IP, so they gracefully yield 0 (no circuit-breaker trip). **We Work Remotely RSS already covers the remote gap**, so remote content still flows.
+- **AngelList (Wellfound) API — DEFERRED.** Public `angel.co/jobs`/`wellfound.com/jobs` page is JS-heavy + blocked; the authenticated JSON API needs a key (future: `WELLFOUND_API_KEY` + adapter). Do NOT block on it.
+- Feed already has many remote sources (RemoteOK, Remotive, Contra, Guru, LinkedIn Nigeria Remote, WWR RSS) — Phase 2 adds HN on top; the rest are blocked-but-safe no-ops.
+- **Diversity note:** Phase 2 adds jobs to a ~92% job feed. Plan's own order recommends Phase 3 (competitions/gigs/healthcare) before Phase 2 for diversification — but user chose Phase 2 next. Phase 3 is the next build.
+
 ## 13. VERIFICATION SCRIPTS
