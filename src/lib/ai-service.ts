@@ -6,6 +6,7 @@ import { deepseekProvider } from "./ai/providers/deepseek";
 import { qwenProvider } from "./ai/providers/qwen";
 import { opencodeProvider } from "./ai/providers/opencode";
 import { openrouterProvider } from "./ai/providers/openrouter";
+import { aiandProvider } from "./ai/providers/aiand";
 
 const ADAPTERS: Record<string, AIProviderAdapter> = {
   omniroute: omnirouteProvider,
@@ -14,6 +15,7 @@ const ADAPTERS: Record<string, AIProviderAdapter> = {
   qwen: qwenProvider,
   opencode: opencodeProvider,
   openrouter: openrouterProvider,
+  aiand: aiandProvider,
 };
 
 const API_KEY_ENV_MAP: Record<string, string> = {
@@ -23,6 +25,7 @@ const API_KEY_ENV_MAP: Record<string, string> = {
   qwen: "QWEN_API_KEY",
   opencode: "OPENCODE_API_KEY",
   openrouter: "OPENROUTER_API_KEY",
+  aiand: "AIAND_API_KEY",
 };
 
 interface ActiveProvider {
