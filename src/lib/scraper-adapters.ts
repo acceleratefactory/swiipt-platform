@@ -15,6 +15,10 @@ import { scholars4devScraper } from "./scrapers/scholars4dev";
 import { britishCouncilScraper } from "./scrapers/british-council";
 import { fulbrightScraper } from "./scrapers/fulbright";
 import { gatesCambridgeScraper } from "./scrapers/gates-cambridge";
+import { hnWhoIsHiringScraper } from "./scrapers/hn-whoishiring";
+import { angellistScraper } from "./scrapers/angellist";
+import { indeedRemoteScraper } from "./scrapers/indeed-remote";
+import { glassdoorRemoteScraper } from "./scrapers/glassdoor-remote";
 
 type ScraperFn = (
   pageUrl: string,
@@ -48,6 +52,10 @@ const SCRAPER_MAP: Record<string, ScraperFn> = {
   "British Council Scholarships": britishCouncilScraper,
   "Fulbright Program": fulbrightScraper,
   "Gates Cambridge": gatesCambridgeScraper,
+  "HN Who Is Hiring": hnWhoIsHiringScraper,
+  "AngelList Talent": angellistScraper,
+  "Indeed Global Remote": indeedRemoteScraper,
+  "Glassdoor Remote Jobs": glassdoorRemoteScraper,
 };
 
 export async function createScraperEvidence(
