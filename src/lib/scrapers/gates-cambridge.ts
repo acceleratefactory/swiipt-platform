@@ -4,7 +4,7 @@ import { extractFromHtmlGeneric, makeRecord } from "./utils";
 export async function gatesCambridgeScraper(
   pageUrl: string,
   sourceName: string,
-  maxItems: number = 20
+  _maxItems: number = 20
 ): Promise<EvidenceRecord[]> {
   const records: EvidenceRecord[] = [];
 

@@ -1,5 +1,5 @@
 import type { EvidenceRecord } from "../evidence-adapters";
-import { parseDate, extractFromHtmlGeneric, makeRecord, absolutizeUrl } from "./utils";
+import { parseDate, extractFromHtmlGeneric, makeRecord } from "./utils";
 
 const BASE_URL = "https://www.scholars4dev.com";
 
