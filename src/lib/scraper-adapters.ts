@@ -1,15 +1,60 @@
-// P0#1a — Generic scraper adapter. Thin wrapper over the
-// dependency-free HTML extractor so the ingest route can dispatch
-// source_type='scraper' sources. Mirrors createRSSEvidence /
-// createAPIEvidence's return shape (EvidenceRecord[]).
-
 import { createScraperEvidence as extract } from "./html-extractor";
 import type { EvidenceRecord } from "./evidence-adapters";
+import { daadScraper } from "./scrapers/daad";
+import { devpostScraper } from "./scrapers/devpost";
+import { euFundingScraper } from "./scrapers/eu-funding";
+import { unScraper } from "./scrapers/un-opportunities";
+import { schwarzmanScraper } from "./scrapers/schwarzman";
+import { ukVisaScraper } from "./scrapers/uk-visas";
+import { grantsGovScraper } from "./scrapers/grants-gov";
+import { scholarshipsScraper } from "./scrapers/scholarships-com";
+import { tenTimesScraper } from "./scrapers/10times";
+import { erasmusPlusScraper } from "./scrapers/erasmus-plus";
+import { courseraScraper } from "./scrapers/coursera";
+
+type ScraperFn = (
+  pageUrl: string,
+  sourceName: string,
+  maxItems?: number
+) => Promise<EvidenceRecord[]>;
+
+const SCRAPER_MAP: Record<string, ScraperFn> = {
+  "DAAD Scholarships": daadScraper,
+  "Devpost Hackathons": devpostScraper,
+  "European Commission Funding": euFundingScraper,
+  "UN Volunteers": unScraper,
+  "WHO Internships": unScraper,
+  "UNESCO Internships": unScraper,
+  "Schwarzman Scholars": schwarzmanScraper,
+  "UK Global Talent Visa": ukVisaScraper,
+  "EU Blue Card": ukVisaScraper,
+  "Germany Opportunity Card": ukVisaScraper,
+  "Canada Global Talent Stream": ukVisaScraper,
+  "Australia Global Talent Visa": ukVisaScraper,
+  "Portugal D7 Visa": ukVisaScraper,
+  "Spain Digital Nomad Visa": ukVisaScraper,
+  "Grants.gov": grantsGovScraper,
+  "Scholarships.com": scholarshipsScraper,
+  "International Scholarships": scholarshipsScraper,
+  "10times Events": tenTimesScraper,
+  "EventsEye Trade Shows": tenTimesScraper,
+  "Erasmus+ Programme": erasmusPlusScraper,
+  "Coursera Free Courses": courseraScraper,
+};
 
 export async function createScraperEvidence(
   pageUrl: string,
   sourceName: string,
   maxItems: number = 20
 ): Promise<EvidenceRecord[]> {
+  const dedicated = SCRAPER_MAP[sourceName];
+  if (dedicated) {
+    try {
+      const result = await dedicated(pageUrl, sourceName, maxItems);
+      if (result.length > 0) return result;
+    } catch {
+      // fall through to generic extractor
+    }
+  }
   return extract(pageUrl, sourceName, maxItems);
 }
