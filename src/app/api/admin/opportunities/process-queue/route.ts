@@ -3,6 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { enrich } from "@/lib/ai-service";
 import { detectOpportunityLanguage } from "@/lib/language";
 import { normalizeUrl } from "@/lib/url-normalize";
+import { stripHtml } from "@/lib/strip-html";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
           raw_title: raw.title,
           raw_organisation: raw.organisation,
           raw_location: raw.location,
-          raw_description: raw.description,
+          raw_description: raw.description ? stripHtml(raw.description) : "",
           raw_salary: raw.salary,
           raw_deadline: raw.deadline,
           raw_url: raw.url,

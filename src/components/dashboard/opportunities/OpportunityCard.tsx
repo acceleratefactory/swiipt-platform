@@ -6,6 +6,7 @@ import FallbackTile from "./FallbackTile";
 import ServiceCTA from "./ServiceCTA";
 import { HeartIcon, CommentIcon, ReshareIcon, SaveIcon, ApplyIcon } from "./Icons";
 import { trackSignal } from "@/lib/feed-signals";
+import { stripHtml } from "@/lib/strip-html";
 
 interface Oppty {
   id: string;
@@ -148,6 +149,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
     return true;
   })();
 
+  const cleanedDescription = stripHtml(opp.description || "");
   const daysLeft = getDaysLeft(opp.deadline);
   const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
   const [coverFailed, setCoverFailed] = useState(false);
@@ -217,7 +219,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
   }, [opp.id, liked, likeCount]);
 
   const handleShare = useCallback(async () => {
-    const text = `${opp.title} at ${opp.organisation} — ${opp.location_country}\n\n${opp.description.slice(0, 200)}...\n\nView on Swiipt: ${window.location.origin}/dashboard/opportunities/${opp.id}`;
+    const text = `${opp.title} at ${opp.organisation} — ${opp.location_country}\n\n${cleanedDescription.slice(0, 200)}...\n\nView on Swiipt: ${window.location.origin}/dashboard/opportunities/${opp.id}`;
     trackSignal(opp.id, "share");
     if (navigator.share) {
       try { await navigator.share({ title: opp.title, text }); } catch {}
@@ -341,10 +343,11 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
       </div>
 
       <div style={{ fontSize: "0.8125rem", color: "#000000", lineHeight: 1.4, marginTop: "0.25rem", padding: "0 0.75rem" }}>
-        <span style={descExpanded ? {} : { display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-          {opp.description}
+        <span>
+          {descExpanded ? cleanedDescription : cleanedDescription.slice(0, 150)}
+          {!descExpanded && cleanedDescription.length > 150 && "..."}
         </span>
-        {!descExpanded && opp.description.length > 120 && (
+        {!descExpanded && cleanedDescription.length > 150 && (
           <span
             onClick={(e) => { e.stopPropagation(); setDescExpanded(true); trackSignal(opp.id, "expand"); }}
             style={{ color: "#8e8e8e", cursor: "pointer", marginLeft: "0.25rem", fontSize: "0.8125rem" }}
