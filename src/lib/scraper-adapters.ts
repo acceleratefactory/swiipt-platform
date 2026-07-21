@@ -25,6 +25,11 @@ import { globalFootballTrialsScraper } from "./scrapers/global-football-trials";
 import { angellistScraper } from "./scrapers/angellist";
 import { indeedRemoteScraper } from "./scrapers/indeed-remote";
 import { glassdoorRemoteScraper } from "./scrapers/glassdoor-remote";
+import { canadaJobBankScraper } from "./scrapers/canada-job-bank";
+import { joobleScraper } from "./scrapers/jooble";
+import { careerjetUkScraper } from "./scrapers/careerjet-uk";
+import { australiaHomeAffairsScraper } from "./scrapers/australia-home-affairs";
+import { govUkVisasScraper } from "./scrapers/gov-uk-visas";
 
 type ScraperFn = (
   pageUrl: string,
@@ -68,6 +73,11 @@ const SCRAPER_MAP: Record<string, ScraperFn> = {
   "Allied Health Careers": alliedHealthScraper,
   "Nursing Jobs Australia": nursingJobsAuScraper,
   "Global Football Trials UK": globalFootballTrialsScraper,
+  "Canada Job Bank": canadaJobBankScraper,
+  "Jooble": joobleScraper,
+  "Careerjet UK": careerjetUkScraper,
+  "Australia Home Affairs": australiaHomeAffairsScraper,
+  "UK Visas & Immigration": govUkVisasScraper,
 };
 
 export async function createScraperEvidence(
