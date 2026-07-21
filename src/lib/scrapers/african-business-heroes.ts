@@ -20,7 +20,7 @@ const BROWSER_HEADERS: Record<string, string> = {
 export async function africanBusinessHeroesScraper(
   pageUrl: string,
   sourceName: string,
-  maxItems: number = 20
+  _maxItems: number = 20
 ): Promise<EvidenceRecord[]> {
   const records: EvidenceRecord[] = [];
 
