@@ -1,5 +1,5 @@
 import type { EvidenceRecord } from "../evidence-adapters";
-import { makeRecord, stripHtml, absolutizeUrl, parseDate } from "./utils";
+import { makeRecord, stripHtml, absolutizeUrl } from "./utils";
 
 const BASE_URL = "https://jobbank.gc.ca";
 
@@ -47,7 +47,6 @@ export async function canadaJobBankScraper(
     listings.push({ title: linkText.slice(0, 300), url: abs, organisation: org || "Canada Job Bank", location: "Canada", deadline: null });
   }
 
-  const dateRe = /(?:Posted|Date|Closing|Deadline)[:\s]*((?:\d{4}-\d{2}-\d{2})|(?:\d{1,2}\s+\w+\s+\d{4}))/gi;
   for (const item of listings.slice(0, maxItems)) {
     const record = makeRecord(item.title, "", item.url, sourceName, url, {
       organisation: item.organisation,
