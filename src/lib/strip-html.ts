@@ -1,3 +1,4 @@
+export const STRIP_HTML_BUILD = "v4";
 export function stripHtml(text: string): string {
   return text
     .replace(/&amp;/g, "&")

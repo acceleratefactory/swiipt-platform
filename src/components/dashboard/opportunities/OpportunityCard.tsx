@@ -6,7 +6,7 @@ import FallbackTile from "./FallbackTile";
 import ServiceCTA from "./ServiceCTA";
 import { HeartIcon, CommentIcon, ReshareIcon, SaveIcon, ApplyIcon } from "./Icons";
 import { trackSignal } from "@/lib/feed-signals";
-import { stripHtml } from "@/lib/strip-html";
+import { stripHtml, STRIP_HTML_BUILD } from "@/lib/strip-html";
 
 interface Oppty {
   id: string;
@@ -343,7 +343,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
         )}
       </div>
 
-      <div style={{ fontSize: "0.8125rem", color: "#000000", lineHeight: 1.4, marginTop: "0.25rem", padding: "0 0.75rem" }}>
+      <div data-build={STRIP_HTML_BUILD} style={{ fontSize: "0.8125rem", color: "#000000", lineHeight: 1.4, marginTop: "0.25rem", padding: "0 0.75rem" }}>
         <span>
           {descExpanded ? cleanedDescription : cleanedDescription.slice(0, 150)}
           {!descExpanded && cleanedDescription.length > 150 && "..."}
