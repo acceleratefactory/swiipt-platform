@@ -16,6 +16,12 @@ import { britishCouncilScraper } from "./scrapers/british-council";
 import { fulbrightScraper } from "./scrapers/fulbright";
 import { gatesCambridgeScraper } from "./scrapers/gates-cambridge";
 import { hnWhoIsHiringScraper } from "./scrapers/hn-whoishiring";
+import { peoplePerHourScraper } from "./scrapers/peopleperhour";
+import { africanBusinessHeroesScraper } from "./scrapers/african-business-heroes";
+import { seedstarsScraper } from "./scrapers/seedstars";
+import { alliedHealthScraper } from "./scrapers/allied-health";
+import { nursingJobsAuScraper } from "./scrapers/nursing-jobs-au";
+import { globalFootballTrialsScraper } from "./scrapers/global-football-trials";
 import { angellistScraper } from "./scrapers/angellist";
 import { indeedRemoteScraper } from "./scrapers/indeed-remote";
 import { glassdoorRemoteScraper } from "./scrapers/glassdoor-remote";
@@ -56,6 +62,12 @@ const SCRAPER_MAP: Record<string, ScraperFn> = {
   "AngelList Talent": angellistScraper,
   "Indeed Global Remote": indeedRemoteScraper,
   "Glassdoor Remote Jobs": glassdoorRemoteScraper,
+  "PeoplePerHour": peoplePerHourScraper,
+  "African Business Heroes": africanBusinessHeroesScraper,
+  "Seedstars World": seedstarsScraper,
+  "Allied Health Careers": alliedHealthScraper,
+  "Nursing Jobs Australia": nursingJobsAuScraper,
+  "Global Football Trials UK": globalFootballTrialsScraper,
 };
 
 export async function createScraperEvidence(
