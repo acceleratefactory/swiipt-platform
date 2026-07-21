@@ -37,3 +37,6 @@ next-env.d.ts
 
 # local findings / planning documents
 /findings/
+
+# local PowerShell scripts (can contain secrets)
+/swiipt/*.ps1

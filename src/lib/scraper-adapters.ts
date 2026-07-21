@@ -30,6 +30,11 @@ import { joobleScraper } from "./scrapers/jooble";
 import { careerjetUkScraper } from "./scrapers/careerjet-uk";
 import { australiaHomeAffairsScraper } from "./scrapers/australia-home-affairs";
 import { govUkVisasScraper } from "./scrapers/gov-uk-visas";
+import { gitexScraper } from "./scrapers/gitex";
+import { cantonFairScraper } from "./scrapers/canton-fair";
+import { imgAcademyScraper } from "./scrapers/img-academy";
+import { aspireAcademyScraper } from "./scrapers/aspire-academy";
+import { rightToDreamScraper } from "./scrapers/right-to-dream";
 
 type ScraperFn = (
   pageUrl: string,
@@ -78,6 +83,13 @@ const SCRAPER_MAP: Record<string, ScraperFn> = {
   "Careerjet UK": careerjetUkScraper,
   "Australia Home Affairs": australiaHomeAffairsScraper,
   "UK Visas & Immigration": govUkVisasScraper,
+
+  "Erasmus Mundus": erasmusPlusScraper,
+  "GITEX Global": gitexScraper,
+  "Canton Fair Registration": cantonFairScraper,
+  "IMG Academy Soccer": imgAcademyScraper,
+  "Aspire Academy Qatar": aspireAcademyScraper,
+  "Right to Dream Africa": rightToDreamScraper,
 };
 
 export async function createScraperEvidence(
