@@ -84,9 +84,14 @@ async function fetchWithRetry(url: string, ms: number, retries: number): Promise
         headers: BROWSER_HEADERS,
         redirect: "follow",
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        if (attempt < retries) { await new Promise((r) => setTimeout(r, 1000)); continue; }
+        return null;
+      }
       const text = await res.text();
-      return text.length > 200 ? text : null;
+      if (text.length > 200) return text;
+      if (attempt < retries) { await new Promise((r) => setTimeout(r, 1000)); continue; }
+      return null;
     } catch {
       if (attempt < retries) await new Promise((r) => setTimeout(r, 1000));
     }

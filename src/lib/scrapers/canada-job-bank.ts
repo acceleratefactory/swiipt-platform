@@ -1,7 +1,7 @@
 import type { EvidenceRecord } from "../evidence-adapters";
 import { makeRecord, stripHtml, absolutizeUrl } from "./utils";
 
-const BASE_URL = "https://jobbank.gc.ca";
+const BASE_URL = "https://www.jobbank.gc.ca";
 
 const BROWSER_HEADERS: Record<string, string> = {
   "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -28,7 +28,7 @@ export async function canadaJobBankScraper(
   if (!html) return [];
 
   const seen = new Set<string>();
-  const listings: Array<{ title: string; url: string; organisation: string; location: string; deadline: string | null }> = [];
+  const listings: Array<{ title: string; url: string; organisation: string; location: string; deadline: string | null; salary: string | null }> = [];
 
   const linkRe = /<a[^>]+href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
   let m: RegExpExecArray | null;
@@ -36,15 +36,20 @@ export async function canadaJobBankScraper(
     const href = m[1];
     const linkText = stripHtml(m[2]).trim();
     if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("javascript:")) continue;
-    if (!/\/job\//i.test(href)) continue;
+    if (!/\/jobsearch\/jobposting\//i.test(href)) continue;
     if (linkText.length < 4) continue;
     const abs = absolutizeUrl(href, BASE_URL).split("#")[0];
     const key = abs + linkText.slice(0, 50);
     if (seen.has(key)) continue;
     seen.add(key);
-    const orgMatch = html.slice(m.index).match(/<span[^>]*class=["'][^"']*(?:org|employer|company)[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
+    const articleHtml = html.slice(m.index, m.index + 600);
+    const orgMatch = articleHtml.match(/<li class="business">([^<]+)<\/li>/i) || articleHtml.match(/<span[^>]*class=["'][^"']*(?:org|employer|company)[^"']*["'][^>]*>([\s\S]*?)<\/span>/i);
     const org = orgMatch ? stripHtml(orgMatch[1]).trim() : "";
-    listings.push({ title: linkText.slice(0, 300), url: abs, organisation: org || "Canada Job Bank", location: "Canada", deadline: null });
+    const locMatch = articleHtml.match(/<li class="location">.*?<span[^>]*>([^<]+)<\/span>/i) || articleHtml.match(/location[:\s]*<[^>]+>([^<]+)</i);
+    const location = locMatch ? stripHtml(locMatch[1]).trim() : "Canada";
+    const salaryMatch = articleHtml.match(/<li class="salary">[^<]*(?:\$[\d,]+(?:\.\d+)?(?:\s*(?:annually|yearly|hour|per|month|week|day))?)/i);
+    const salary = salaryMatch ? salaryMatch[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : null;
+    listings.push({ title: linkText.slice(0, 300), url: abs, organisation: org || "Canada Job Bank", location, deadline: null, salary: salary || null });
   }
 
   for (const item of listings.slice(0, maxItems)) {
@@ -52,6 +57,7 @@ export async function canadaJobBankScraper(
       organisation: item.organisation,
       location: item.location,
       deadline: item.deadline,
+      salary: item.salary,
     });
     if (record) records.push(record);
   }
@@ -82,9 +88,14 @@ async function fetchWithRetry(url: string, ms: number, retries: number): Promise
         headers: BROWSER_HEADERS,
         redirect: "follow",
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        if (attempt < retries) { await new Promise((r) => setTimeout(r, 1000)); continue; }
+        return null;
+      }
       const text = await res.text();
-      return text.length > 200 ? text : null;
+      if (text.length > 200) return text;
+      if (attempt < retries) { await new Promise((r) => setTimeout(r, 1000)); continue; }
+      return null;
     } catch {
       if (attempt < retries) await new Promise((r) => setTimeout(r, 1000));
     }

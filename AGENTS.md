@@ -12,6 +12,7 @@
 - **Session 48 — P0 Pipeline Quality Hardening (✅ Code built, ⏳ P0 SQL files partially run)** — `consecutive_errors`/`last_error_at`/`is_degraded` columns exist on `opportunity_sources` (circuit breaker works). P0 SQL files: some run (circuit breaker columns), some still pending (expiry, quality_gate columns, dedupe, language integrity).
 - **Session 49 — P0#7 Cover Storage + P0#1a Generic Scrapers + AI Provider Chain (✅ Deployed, ⏳ SQL pending)** — P0#1a scraper code is live (version=4). 19 scraper entries registered. SQL files for cover storage and provider updates still UNRUN.
 - **Session 52 — 5 New Dedicated Scrapers (✅ DEPLOYED + PROVEN WORKING)** — All 6 new scrapers (Grants.gov, Scholarships.com, 10times/EventsEye, Erasmus+, Coursera) are live and producing evidence. All 5 sources active=true. `register_5_new_scraper_sources.sql` run by user. `add_eventseye_source.sql` still needs run but EventsEye already has evidence (likely registered via scraper-adapter). Ingest producing 120+ items per run. Evidence total: 5,385. Feed: 5,259 opportunities.
+- **Session 54 — Scraper Phases 1-3 Complete (✅ DONE 2026-07-21)** — 14 scrapers built across 3 phases: Phase 1 (Scholars4Dev, British Council, Fulbright, Gates Cambridge), Phase 2 (HN Who Is Hiring, AngelList, Indeed Remote, Glassdoor Remote), Phase 3 (PeoplePerHour, African Business Heroes, Seedstars World, Allied Health Careers, Nursing Jobs Australia, Global Football Trials UK). Code committed + deployed. SQL run for all phases. 5/6 Phase 3 sources confirmed active — **Global Football Trials UK source row missing**, needs investigation. Next up: **Phase 4 — Trade Worker & Visa/Official Scrapers**.
 - **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
 - **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed. 5 new DB tables, PDF generation, Stripe integration.
 - **Sprint 16, System 2 (Trade Show Group Savings)** — built and deployed. Paused before booking phase.
@@ -66,6 +67,9 @@
 | 17 | **Translate non-English rows** | ✅ 3,092 German (`deu`) items translated (Session 51). ⏳ **128 non-German items remain** (spa/fra/por etc.) — run `swiipt/run_translate_local.ps1` again. |
 | 18 | **Deprecate 10times RSS in favor of scraper** | ⏳ Once `10times.ts` scraper proves stable, deactivate 10times RSS to avoid duplicates. |
 | 19 | **User to find more sources for underserved types** | ⏳ conference, competition, exchange need more sources. |
+| 20 | **Phase 4 — Trade Worker & Visa/Official Scrapers** | ⏳ 5 scrapers: Skilled Trades Canada, Trade Jobs Abroad, Trades UK Visa Jobs, Australia Home Affairs, UK Visas & Immigration. See `findings/pending-scrapers-implementation-plan.md`. |
+| 21 | **Phase 5 — Manual→Scraper Conversions + RSS + Watchers** | ⏳ 5a (manual→scraper), 5b (RSS reactivation), 5c (watcher activation). See plan doc. |
+| 22 | **Global Football Trials UK missing from DB** | ⏳ Phase 3 SQL was run, 5 of 6 sources are active, but Global Football Trials UK source row is absent. Fix after Phases 4 & 5. |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -2135,13 +2139,14 @@ The process-queue cron was silently failing every hour (timeout due to limit(50)
 All have `consecutive_errors >= 3` and `last_error_at` set. The circuit breaker skips them for 1h, then retries. These are known dead URLs:
 FlexJobs International, GitHub Jobs, Citizenship by Investment, GitHub Jobs API, Nannies Inc Jobs, European Design Awards, GEN News, HackerNews Hiring, Healthcareers Aus, GraphQL Jobs, Scholarship Positions, Michael Page Africa, Construction Jobs UK
 
-### 19 Pending Scraper Sources (not built)
-MastersPortal, British Council Scholarships, Fulbright Program, Gates Cambridge, Global Football Trials UK, PeoplePerHour, UK Visas & Immigration, Indeed Global Remote, Nursing Jobs Australia, Allied Health Careers, Seedstars World, African Business Heroes, Glassdoor Remote Jobs, AngelList Talent, HN Who Is Hiring, 500 Startups (rss), Trades UK Visa Jobs, Australia Home Affairs, Trade Jobs Abroad, Skilled Trades Canada, XPRIZE Competitions (rss), Lanyrd Conferences (rss)
+### Pending Scraper Sources (not yet built)
+**Phase 4 (next build):** Skilled Trades Canada, Trade Jobs Abroad, Trades UK Visa Jobs, Australia Home Affairs, UK Visas & Immigration
+**Phase 5 (future):** Y Combinator Startup School, Ventures Platform, GITEX Global, Canton Fair Registration, Right to Dream Africa, VisaGuide World, 500 Startups (rss), XPRIZE Competitions (rss), Lanyrd Conferences (rss) — plus 21 manual/RSS/watcher sources (see `findings/pending-scrapers-implementation-plan.md`)
 
 ### Fix Verified
 Column check confirmed: `is_degraded`, `consecutive_errors`, `last_error_at` ALL EXIST on `opportunity_sources` (Session 50's SQL failure was unrelated — that SQL referenced columns that were added later by a separate migration).
 
-## 11. SESSION 54 — PHASE 1 SCHOLARSHIP SCRAPERS (DONE) + PHASE 2 TECH/REMOTE JOB SCRAPERS (2026-07-20)
+## 11. SESSION 54 — SCRAPER PHASES 1-3 COMPLETE (2026-07-20 → 07-21)
 
 ### Phase 1 — Completed & deployed
 - Built 4 dedicated scrapers: `scholars4dev.ts`, `british-council.ts`, `fulbright.ts`, `gates-cambridge.ts` (commit `b844081`), wired into `scraper-adapters.ts`.
@@ -2155,6 +2160,19 @@ Column check confirmed: `is_degraded`, `consecutive_errors`, `last_error_at` ALL
 - **HN Who Is Hiring** works via Algolia API (200). **AngelList / Indeed / Glassdoor** built with stealth `BROWSER_HEADERS` + 3× retry; they 403-block the Vercel IP, so they gracefully yield 0 (no circuit-breaker trip). **We Work Remotely RSS already covers the remote gap**, so remote content still flows.
 - **AngelList (Wellfound) API — DEFERRED.** Public `angel.co/jobs`/`wellfound.com/jobs` page is JS-heavy + blocked; the authenticated JSON API needs a key (future: `WELLFOUND_API_KEY` + adapter). Do NOT block on it.
 - Feed already has many remote sources (RemoteOK, Remotive, Contra, Guru, LinkedIn Nigeria Remote, WWR RSS) — Phase 2 adds HN on top; the rest are blocked-but-safe no-ops.
-- **Diversity note:** Phase 2 adds jobs to a ~92% job feed. Plan's own order recommends Phase 3 (competitions/gigs/healthcare) before Phase 2 for diversification — but user chose Phase 2 next. Phase 3 is the next build.
+- **Diversity note:** Phase 2 adds jobs to a ~92% job feed. Plan's own order recommends Phase 3 (competitions/gigs/healthcare) before Phase 2 for diversification — but user chose Phase 2 next.
+
+### Phase 3 — Completed & deployed (2026-07-21)
+- Built 6 dedicated scrapers: `peopleperhour.ts`, `african-business-heroes.ts`, `seedstars.ts`, `allied-health.ts`, `nursing-jobs-au.ts`, `global-football-trials.ts` (commits `27b9b29`, `04d6a47`), wired into `scraper-adapters.ts` (lines 65-70).
+- SQL `register_phase3_scraper_sources.sql` run in Supabase — 5 of 6 sources confirmed `active=true`:
+  - PeoplePerHour, African Business Heroes, Seedstars World, Allied Health Careers, Nursing Jobs Australia
+- **⚠️ Global Football Trials UK missing** — source row does not appear in `opportunity_sources` after running the SQL. Need investigation: the INSERT in `register_phase3_scraper_sources.sql` should have created it, but it's absent. Possibly the name doesn't exactly match, or the source was already registered under a different name. **Deferred — fix after Phases 4 & 5.**
+- **AngelList / Indeed / Glassdoor** (Phase 2) still 403-blocked from Vercel IP — gracefully yield 0. **AngelList (Wellfound) API — DEFERRED** pending `WELLFOUND_API_KEY`.
+- All 3 phases produce 14 active scraper sources (plus 5 from Session 52 = 19 total scraper sources live).
+
+### Next: Phase 4 — Trade Worker & Visa/Official Scrapers
+- 5 sources: Skilled Trades Canada, Trade Jobs Abroad, Trades UK Visa Jobs, Australia Home Affairs, UK Visas & Immigration
+- See `findings/pending-scrapers-implementation-plan.md` for spec
+- **Before starting Phase 4, fix Global Football Trials UK missing source row**
 
 ## 13. VERIFICATION SCRIPTS
