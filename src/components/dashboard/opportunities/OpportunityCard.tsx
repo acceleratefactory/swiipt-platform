@@ -149,6 +149,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
     return true;
   })();
 
+  const cleanedTitle = stripHtml(opp.title || "");
   const cleanedDescription = stripHtml(opp.description || "");
   const daysLeft = getDaysLeft(opp.deadline);
   const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
@@ -329,7 +330,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
 
       <div style={{ padding: "0 0.75rem" }}>
         <div style={{ fontSize: "0.8125rem", color: "#000000", fontWeight: 600 }}>
-          {opp.title}{opp.location_country ? ` — ${opp.location_country}` : ""}
+          {cleanedTitle}{opp.location_country ? ` — ${opp.location_country}` : ""}
         </div>
 
         {(daysLeft || opp.salary_range) && (
