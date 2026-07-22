@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { redirect } from "next/navigation";
 import OpportunityFeed from "@/components/dashboard/opportunities/OpportunityFeed";
 import HideScrollbar from "@/components/dashboard/opportunities/HideScrollbar";
@@ -103,12 +104,43 @@ export default async function OpportunitiesPage() {
     like_count: likedIds.has(opp.id) ? 1 : 0,
   }));
 
+  const serviceClient = createServiceClient();
+  const { data: activeAds } = await serviceClient
+    .from("feed_ads")
+    .select("*")
+    .eq("status", "active")
+    .order("priority", { ascending: true });
+
+  const injected: Oppty[] = [];
+  let adIndex = 0;
+  for (let i = 0; i < allOpportunities.length; i++) {
+    injected.push(allOpportunities[i]);
+    if ((i + 1) % 7 === 0 && activeAds && adIndex < activeAds.length) {
+      const ad = activeAds[adIndex % activeAds.length];
+      injected.push({
+        ...allOpportunities[i],
+        id: `ad-${ad.id}`,
+        title: ad.headline,
+        organisation: ad.advertiser_name || "Sponsored",
+        description: ad.body || "",
+        type: "ad",
+        application_url: ad.cta_url,
+        cover_image_url: ad.cover_image_url || null,
+        media_type: ad.cover_image_url ? "image" : "none",
+        is_featured: false,
+        relevanceScore: 0,
+        created_at: new Date().toISOString(),
+      } as Oppty);
+      adIndex++;
+    }
+  }
+
   return (
     <div style={{ marginLeft: "-1.5rem", marginRight: "-1.5rem", marginTop: "-1.5rem", width: "calc(100% + 3rem)" }}>
       <HideScrollbar />
       <div style={{ maxWidth: 470, margin: "0 auto" }}>
         <OpportunityFeed
-          allOpportunities={allOpportunities}
+          allOpportunities={injected}
           userTier={userTier}
           referralLink={referralLink}
         />
