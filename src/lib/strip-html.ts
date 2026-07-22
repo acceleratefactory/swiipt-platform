@@ -1,4 +1,4 @@
-export const STRIP_HTML_BUILD = "v7";
+export const STRIP_HTML_BUILD = "v8";
 
 function decodeEntities(text: string): string {
   return text

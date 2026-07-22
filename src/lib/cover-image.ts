@@ -1,4 +1,5 @@
 import { fetchOGMedia } from "./og-fetch";
+import { getCoverForType } from "./pollinations-cover";
 
 // ─── Types ────────────────────────────────────────────────────
 interface CoverResult {
@@ -200,10 +201,10 @@ export async function fetchOrgLogo(
 // we never generate a fake/guessed image.
 export async function getCoverImage(
   url: string | null,
-  _title: string,
-  _organisation: string,
-  _type: string,
-  _country: string,
+  title: string,
+  organisation: string,
+  type: string,
+  country: string,
   sourceUrl?: string | null
 ): Promise<CoverResult> {
   // Layer 1: the original opportunity image (OG / page hero). Prefer the
@@ -216,6 +217,15 @@ export async function getCoverImage(
   if (sourceUrl) {
     const og = await fetchOGCover(sourceUrl);
     if (og.cover_image_url) return og;
+  }
+
+  // Layer 2: AI-generated cover via Pollinations.ai. Only for types that map
+  // to styles A, B, or D (style C uses the pure-CSS FallbackTile from Phase 2
+  // and doesn't need an AI image). Built prompts are deterministic per type +
+  // country so the same opportunity always gets the same prompt.
+  const ai = getCoverForType(type, country || "Global");
+  if (ai.url) {
+    return { cover_image_url: ai.url, cover_source: "ai" };
   }
 
   return { cover_image_url: null, cover_source: "none" };
