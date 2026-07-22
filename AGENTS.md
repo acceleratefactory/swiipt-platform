@@ -2,25 +2,33 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-**You are joining after Session 53 (process-queue timeout fix + aiand provider + pipeline automation confirmed).** Do not start from scratch. Read this first. See Session 53 (§17) for the most recent work. The single most important operational rule is in §11 note: **after ANY code change, you MUST redeploy on Vercel with "Clear build cache" checked** — a plain redeploy serves stale code.
+- **You are joining after Session 62 (Feed Quality Phase 6 Pt.A — description quality mechanical fix).** Do not start from scratch. Read this first. See Session 62 below for the most recent work. The single most important operational rule is in §11 note: **after ANY code change, you MUST redeploy on Vercel with "Clear build cache" checked** — a plain redeploy serves stale code.
 
 ### Current State
-- **Session 53 — Process-queue timeout fix + aiand provider + pipeline investigation (✅ COMPLETED 2026-07-20)** — Root cause of process-queue timeout was commit `159a918` increasing batch size from 8→50, exceeding Vercel Hobby 60s limit. Reduced back to 8 (`c33c22a`). Added aiand provider (Qwen3.6-27B free) as fallback at priority 25 (`818093b`). Confirmed pg_cron is running: ingest every 6h at :00 (evidence captured at 00:00, 06:00, 12:00, 18:00), process-queue every hour at :15. All 6 new scrapers are live and producing evidence (Coursera 24, Intl Scholarships 23, EventsEye 20, etc.). Reset 20 evidence items stuck in "processing" status. Feed has 5,259 total opportunities, 4,278 feed-visible. Old `limit(50)` was silently timing out every hour — now self-healing.
-- **Session 51 — German Translation Backfill (✅ COMPLETED 2026-07-20)** — All 3,092 German (`deu`) opportunities translated to English via local PowerShell script. Feed-visible opportunities jumped from ~1,294 to ~4,412. **128 non-German non-English items remain** (spa/fra/por etc.). Solution: `swiipt/run_translate_local.ps1` bypasses Vercel entirely.
-- **Session 42 — Vercel Stale Code Investigation (✅ RESOLVED 2026-07-11)** — Root cause was Vercel serving pre-`a215198` build. Fixed by promoting `ac9aee0` to Production. `version:3` live. Added `safeSegment()` FK hardening.
-- **Session 43 — Feed Cover Image Rework (✅ Rework done, ✅ browser render FIXED in P0#7)** — Real OG/page-hero photos + clean FallbackTile (logo-on-colour or typographic). Cover storage in Supabase Storage bucket `opportunity-covers` fixes ad-blocker suppression. See P0#7 below.
-- **Session 48 — P0 Pipeline Quality Hardening (✅ Code built, ⏳ P0 SQL files partially run)** — `consecutive_errors`/`last_error_at`/`is_degraded` columns exist on `opportunity_sources` (circuit breaker works). P0 SQL files: some run (circuit breaker columns), some still pending (expiry, quality_gate columns, dedupe, language integrity).
-- **Session 49 — P0#7 Cover Storage + P0#1a Generic Scrapers + AI Provider Chain (✅ Deployed, ⏳ SQL pending)** — P0#1a scraper code is live (version=4). 19 scraper entries registered. SQL files for cover storage and provider updates still UNRUN.
-- **Session 52 — 5 New Dedicated Scrapers (✅ DEPLOYED + PROVEN WORKING)** — All 6 new scrapers (Grants.gov, Scholarships.com, 10times/EventsEye, Erasmus+, Coursera) are live and producing evidence. All 5 sources active=true. `register_5_new_scraper_sources.sql` run by user. `add_eventseye_source.sql` still needs run but EventsEye already has evidence (likely registered via scraper-adapter). Ingest producing 120+ items per run. Evidence total: 5,385. Feed: 5,259 opportunities.
-- **Session 54 — Scraper Phases 1-3 Complete (✅ DONE 2026-07-21)** — 14 scrapers built across 3 phases: Phase 1 (Scholars4Dev, British Council, Fulbright, Gates Cambridge), Phase 2 (HN Who Is Hiring, AngelList, Indeed Remote, Glassdoor Remote), Phase 3 (PeoplePerHour, African Business Heroes, Seedstars World, Allied Health Careers, Nursing Jobs Australia, Global Football Trials UK). Code committed + deployed. SQL run for all phases. 5/6 Phase 3 sources confirmed active — **Global Football Trials UK source row missing**, needs investigation. Next up: **Phase 4 — Trade Worker & Visa/Official Scrapers**.
-- **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files need running in Supabase Editor in order). See `reports/sprint_19_complete_walkthrough.md` for full walkthrough. Master spec: `docs/Sprint_19_Unified.md`. Implementation plan: `docs/Sprint_19_Implementation_Plan.md`.
-- **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed. 5 new DB tables, PDF generation, Stripe integration.
+- **Session 62 — Feed Quality Phase 6 Pt.A (✅ COMPLETED 2026-07-22)** — Mechanical description quality fix: added gibberish filters to `cleanDescription()` (repeated punctuation, repeated digits, nav boilerplate, non-word runs), default maxLength 3000→800. Card collapsed preview 150→100 chars, expanded 3000→600 chars with "View full details →" link to detail page. Detail page applies `stripHtml()`+`cleanDescription()` to description + requirements. `STRIP_HTML_BUILD=v9`. Commit `281f5a8`.
+- **Session 61 — Feed Quality Phase 5 (✅ COMPLETED 2026-07-22)** — Feed reshuffle with session-based random offset via `useRef` seed in `buildDisplayed()`. Each browser tab/refresh starts at a different position in the ranked pool. Commit `4581af4`.
+- **Session 60 — Feed Quality Phase 4 (✅ COMPLETED 2026-07-22)** — AI cover generation via Pollinations.ai. Created `src/lib/pollinations-cover.ts` with type-specific prompt maps for Styles A (abstract geometric), B (professional photo), D (dramatic scene). Style C (competition/conference/exchange) uses pure CSS (no AI). AI layer added to `getCoverImage()` — returns Pollinations URL which backfill downloads + stores in `opportunity-covers` bucket. `STRIP_HTML_BUILD=v8`. Commit `054ef94`.
+- **Session 59 — Feed Quality Phase 3 (✅ COMPLETED 2026-07-22)** — Wired `cleanDescription(stripHtml(text))` into `OpportunityCard.tsx`, added Instagram-style "less" collapse button, injected `CLEAN_DESC_RULE` into AI enrich prompt. `STRIP_HTML_BUILD=v7`. Commit `cd59057`.
+- **Session 58 — Feed Quality Phase 2 (✅ COMPLETED 2026-07-22)** — Replaced gradient+monogram FallbackTile with 4 art-directed pure-CSS cover styles (A/B/C/D) mapped to 18+ opportunity types via `selectCoverStyle()`. Created `cover-styles/` directory. `STRIP_HTML_BUILD=v6`. Commit `e16da8f`.
+- **Session 57 — Feed Quality Phase 1 (✅ COMPLETED 2026-07-21→22)** — Added decimal NCR decode `&#(\d+);`, hex NCR decode `&#x([0-9A-Fa-f]+);`, 8 named entity decodes (`&rsquo;`, `&lsquo;`, `&rdquo;`, `&ldquo;`, `&mdash;`, `&ndash;`, `&hellip;`, `&bull;`). Preliminary fixes: reordered entity-decode before tag-strip, stripped bracket-less HTML remnants, cleaned title whitespace, fixed backfill cursor for 1,403 stale cover rows. `STRIP_HTML_BUILD=v4→v5`. Commits `6cabc96`, `823e444`, `4047c2c`, `95f64a8`.
+- **Session 56 — Scraper Phase 5 (✅ COMPLETED 2026-07-21)** — Manual→Scraper conversions (5A), RSS reactivation (5B), watchers (5C). Commit `281597a`.
+- **Session 55 — Scraper Phase 4 (✅ COMPLETED 2026-07-21)** — 5 trade worker & visa scrapers: Canada Job Bank, Jooble, Careerjet UK, Australia Home Affairs, UK Visas & Immigration. Process-queue batch fix. Commits `fdb6969`, `193e8d6`.
+- **Session 54 — Scraper Phases 1-3 (✅ COMPLETED 2026-07-20→21)** — 14 scrapers built across 3 phases: Phase 1 (Scholars4Dev, British Council, Fulbright, Gates Cambridge), Phase 2 (HN Who Is Hiring, AngelList, Indeed Remote, Glassdoor Remote), Phase 3 (PeoplePerHour, African Business Heroes, Seedstars World, Allied Health Careers, Nursing Jobs Australia, Global Football Trials UK). Code committed + deployed. SQL run for all phases. 5/6 Phase 3 sources confirmed active — **Global Football Trials UK source row missing**, needs investigation.
+- **Session 53 — Process-queue timeout fix + aiand provider + pipeline investigation (✅ COMPLETED 2026-07-20)** — Root cause of process-queue timeout was commit `159a918` increasing batch size from 8→50. Reduced back to 8. Added aiand provider (Qwen3.6-27B free). pg_cron confirmed running.
+- **Session 51 — German Translation Backfill (✅ COMPLETED 2026-07-20)** — All 3,092 German (`deu`) opportunities translated to English via local PowerShell script. Feed-visible jumped from ~1,294 to ~4,412. **128 non-German non-English items remain.** Solution: `swiipt/run_translate_local.ps1`.
+- **Session 42 — Vercel Stale Code Investigation (✅ RESOLVED 2026-07-11)**
+- **Session 43 — Feed Cover Image Rework (✅ Rework done, ✅ browser render FIXED in P0#7)** — Covers stored in `opportunity-covers` bucket defeats ad-blockers.
+- **Session 48 — P0 Pipeline Quality Hardening (✅ Code built, ⏳ P0 SQL files partially run)**
+- **Session 49 — P0#7 Cover Storage + P0#1a Generic Scrapers + AI Provider Chain (✅ Deployed, ⏳ SQL pending)**
+- **Session 52 — 5 New Dedicated Scrapers (✅ DEPLOYED + PROVEN WORKING)** — Grants.gov, Intl Scholarships, EventsEye, Erasmus+, Coursera.
+- **Sprint 19 — Opportunity Feed & Intelligence System** — fully built, SQL migrations pending (10 files). See `reports/sprint_19_complete_walkthrough.md`.
+- **Sprint 17 — Global Profile, Certificates, Agent Escrow, Diaspora Gifts** — built and deployed.
 - **Sprint 16, System 2 (Trade Show Group Savings)** — built and deployed. Paused before booking phase.
 - **Sprint 16, System 3 (Opportunity Score)** — built and deployed.
 - **Sprint 18 — Feed, Growth Mechanics, Affiliates** — built and deployed.
 - Groups can: form → members join with invite link → members save into locked goals → admin confirms deposits → group reaches `funded`
-- **Paused before booking phase** — the `funded → booking → confirmed → completed` pipeline is NOT built. See `reports/sprint_16_trade_show_booking_flow_analysis.md` for the plan.
-- **Exhaustive Career Segments & Opportunity Types** — Full lists documented: 50+ career segments, 60+ opportunity types. 12 extended types added to DB in Session 38. See `reports/opportunity_ingestion_investigation.md` §10-11 for full lists and §13 for rollout recommendations.
+- **Paused before booking phase** — the `funded → booking → confirmed → completed` pipeline is NOT built. See `reports/sprint_16_trade_show_booking_flow_analysis.md`.
+- **Exhaustive Career Segments & Opportunity Types** — Full lists documented: 50+ career segments, 60+ opportunity types. See `reports/opportunity_ingestion_investigation.md` §10-11.
 
 ### What NOT to Touch
 - Existing goal savings + visa redemption flows (Sprint 5)
@@ -67,9 +75,8 @@
 | 17 | **Translate non-English rows** | ✅ 3,092 German (`deu`) items translated (Session 51). ⏳ **128 non-German items remain** (spa/fra/por etc.) — run `swiipt/run_translate_local.ps1` again. |
 | 18 | **Deprecate 10times RSS in favor of scraper** | ⏳ Once `10times.ts` scraper proves stable, deactivate 10times RSS to avoid duplicates. |
 | 19 | **User to find more sources for underserved types** | ⏳ conference, competition, exchange need more sources. |
-| 20 | **Phase 4 — Trade Worker & Visa/Official Scrapers** | ⏳ 5 scrapers: Skilled Trades Canada, Trade Jobs Abroad, Trades UK Visa Jobs, Australia Home Affairs, UK Visas & Immigration. See `findings/pending-scrapers-implementation-plan.md`. |
-| 21 | **Phase 5 — Manual→Scraper Conversions + RSS + Watchers** | ⏳ 5a (manual→scraper), 5b (RSS reactivation), 5c (watcher activation). See plan doc. |
-| 22 | **Global Football Trials UK missing from DB** | ⏳ Phase 3 SQL was run, 5 of 6 sources are active, but Global Football Trials UK source row is absent. Fix after Phases 4 & 5. |
+| 20 | **Feed Quality Phase 6 Pt.B — AI quality scoring** | ⏳ Add `description_score` to cards; use AI to rate completeness, readability, gibberish-free, structure |
+| 21 | **Global Football Trials UK missing from DB** | ⏳ Phase 3 SQL was run, 5 of 6 sources are active, but Global Football Trials UK source row is absent. Needs investigation. |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -101,7 +108,7 @@ Nigeria (primary), UAE, Qatar, UK, Canada, Portugal, Georgia, St Kitts, Caribbea
 - **Remote:** `https://github.com/acceleratefactory/swiipt-platform.git`
 - **Branches:** `main` (production, protected) ← `staging` ← `develop` ← feature branches
 - **Current branch:** `main`
-- **Latest commit:** `a0c2a39` — Feed: always render cover tile (FallbackTile for no-image rows) + backfill correction (Session 47)
+- **Latest commit:** `281f5a8` — fix: Phase 6 Pt.A — description quality mechanical fix
 - **Deployment:** Push to `main` auto-deploys to Vercel. No CI/CD scripts — manual git push. No `.github/workflows/`.
 - **Author:** `acceleratefactory` / `tech@acceleratefactory.com`
 
@@ -2170,9 +2177,103 @@ Column check confirmed: `is_degraded`, `consecutive_errors`, `last_error_at` ALL
 - **AngelList / Indeed / Glassdoor** (Phase 2) still 403-blocked from Vercel IP — gracefully yield 0. **AngelList (Wellfound) API — DEFERRED** pending `WELLFOUND_API_KEY`.
 - All 3 phases produce 14 active scraper sources (plus 5 from Session 52 = 19 total scraper sources live).
 
-### Next: Phase 4 — Trade Worker & Visa/Official Scrapers
-- 5 sources: Skilled Trades Canada, Trade Jobs Abroad, Trades UK Visa Jobs, Australia Home Affairs, UK Visas & Immigration
-- See `findings/pending-scrapers-implementation-plan.md` for spec
-- **Before starting Phase 4, fix Global Football Trials UK missing source row**
+### Pending Items
+- **Global Football Trials UK** missing source row — needs investigation. Deferred.
+- **AngelList (Wellfound)** API still deferred — needs `WELLFOUND_API_KEY` + adapter.
+- **P0 SQL migrations** — 10 files still pending in Supabase Editor. See `reports/sprint_19_complete_walkthrough.md`.
 
-## 13. VERIFICATION SCRIPTS
+## 12. SESSION 55 — SCRAPER PHASE 4: TRADE WORKER & VISA (2026-07-21)
+
+### Built & Deployed
+- 5 dedicated scrapers (commit `fdb6969`):
+  - `canada-job-bank.ts` — Canada Job Bank (`jobbank.gc.ca`)
+  - `jooble.ts` — Jooble global aggregator
+  - `careerjet-uk.ts` — Careerjet UK
+  - `australia-home-affairs.ts` — Australia Home Affairs visa options
+  - `uk-visas-immigration.ts` — UK Visas & Immigration
+- ESLint fix: removed unused `parseDate` import + `dateRe` regex from `canada-job-bank.ts` (commit `b5e5b41`)
+- Process-queue batch fix (commit `193e8d6`): confirmed batch size = 8 for Hobby 60s timeout
+
+### SQL
+- `register_phase4_scraper_sources.sql` run in Supabase — all 5 sources `active=true`
+
+## 13. SESSION 56 — SCRAPER PHASE 5: MANUAL→SCRAPER + RSS + WATCHERS (2026-07-21)
+
+### Built & Deployed (commit `281597a`)
+- **5A — Manual→Scraper conversions:** converted 7 adapter-less manual sources to full scrapers
+- **5B — RSS reactivation:** re-enabled RSS feeds for sources that previously had no scraper
+- **5C — Watchers:** added watch-based update detection for sources that change infrequently
+
+## 14. SESSION 57 — FEED QUALITY PHASE 1: ENTITY DECODE (2026-07-21 → 07-22)
+
+### Preliminary Fixes
+- **Fix 1** (commit `6cabc96`): strip HTML from descriptions, truncate to 150 chars in collapsed state, fix backfill cursor for 1,403 stale cover rows
+- **Fix 2** (commit `823e444`): reorder `stripHtml()` so entity-decode runs BEFORE tag-strip; strip bracket-less HTML remnants (`&lt;`, `&gt;`); clean title whitespace
+- **Fix 3** (commit `4047c2c`): add `STRIP_HTML_BUILD=v4` marker to force new Vercel build hash
+
+### Phase 1 Core (commit `95f64a8`)
+- Added decimal NCR decode: `&#(\d+);` → `String.fromCharCode(match)`
+- Added hex NCR decode: `&#x([0-9A-Fa-f]+);` → `String.fromCharCode(parseInt(match, 16))`
+- Added 8 named entity decodes: `&rsquo;`, `&lsquo;`, `&rdquo;`, `&ldquo;`, `&mdash;`, `&ndash;`, `&hellip;`, `&bull;`
+- `STRIP_HTML_BUILD=v5`
+
+## 15. SESSION 58 — FEED QUALITY PHASE 2: COVER STYLES (2026-07-22)
+
+### Built & Deployed (commit `e16da8f`)
+- Replaced single gradient+monogram `FallbackTile` with **4 art-directed pure-CSS cover styles**:
+  - **Style A** — Abstract geometric (gradient triangles/circles) — for tech, startup, general business
+  - **Style B** — Professional photo composition (grid + accent) — for scholarships, grants, fellowships
+  - **Style C** — Competition conference exchange badge — for competitions, conferences, exchange programs
+  - **Style D** — Dramatic scene (dark gradient + glow) — for healthcare, nursing, trades, high-stakes roles
+- Created `cover-styles/` directory with `selectCoverStyle()` function mapping 18+ opportunity types
+- `getCoverImage()` returns style if no real cover image exists
+- `STRIP_HTML_BUILD=v6`
+
+## 16. SESSION 59 — FEED QUALITY PHASE 3: CLEAN PIPELINE (2026-07-22)
+
+### Built & Deployed (commit `cd59057`)
+- Wired `cleanDescription(stripHtml(text))` into `OpportunityCard.tsx`
+- Added Instagram-style "less" collapse button — card starts collapsed, user taps to expand
+- Injected `CLEAN_DESC_RULE` into AI enrich prompt so enriched descriptions are clean from origin
+- `STRIP_HTML_BUILD=v7`
+
+## 17. SESSION 60 — FEED QUALITY PHASE 4: AI COVER GENERATION (2026-07-22)
+
+### Built & Deployed (commit `054ef94`)
+- Created `src/lib/pollinations-cover.ts` with type-specific prompt maps:
+  - **Style A** — abstract geometric (gradients, shapes, patterns matching opportunity domain)
+  - **Style B** — professional photo (clean business composition with depth of field)
+  - **Style D** — dramatic scene (dark atmospheric with rim lighting)
+- AI layer added to `getCoverImage()`: if `opportunity_type` maps to a Pollinations prompt, returns `https://pollinations.ai/p/{encoded prompt}` URL
+- Backfill (`backfill_covers.ts`) downloads AI-generated image + stores in `opportunity-covers` Supabase bucket
+- Style C (competition/conference/exchange) uses pure CSS (no AI)
+- `STRIP_HTML_BUILD=v8`
+
+## 18. SESSION 61 — FEED QUALITY PHASE 5: FEED RESHUFFLE (2026-07-22)
+
+### Built & Deployed (commit `4581af4`)
+- Added session-based random offset to feed display via `useRef` seed in `buildDisplayed()`
+- Each browser tab/refresh starts at a different position in the ranked pool
+- Prevents same user from seeing the same order every session
+- Does NOT affect rankings or scoring — only display offset
+
+## 19. SESSION 62 — FEED QUALITY PHASE 6 PT.A: DESCRIPTION FIX (2026-07-22)
+
+### Built & Deployed (commit `281f5a8`)
+- Added gibberish filters to `cleanDescription()`:
+  - Repeated punctuation detection (e.g. `!!!!`, `????`, `......`)
+  - Repeated digit sequences (e.g. `123456789012`)
+  - Navigation boilerplate (e.g. `Home About Contact`, `Skip to content`)
+  - Non-word character runs (e.g. `sjhdfkjshdfkjsd`)
+- Default `maxLength` reduced from 3000 → 800
+- Card collapsed preview: 150 → 100 chars
+- Card expanded preview: 3000 → 600 chars with "View full details →" link to `/opportunity/{id}`
+- Detail page (`/opportunity/[id]`) applies `stripHtml()`+`cleanDescription()` to both description + requirements
+- `STRIP_HTML_BUILD=v9`
+
+### Next: Feed Quality Phase 6 Pt.B — AI quality scoring of description
+- Add a quality score (`description_score` 0-100) to the card as a small badge or subtle background indicator
+- Use AI to rate description quality on factors: completeness, readability, gibberish-free, structure
+- Optionally filter out items below a threshold
+
+## 20. VERIFICATION SCRIPTS

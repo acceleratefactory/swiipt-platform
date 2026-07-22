@@ -137,7 +137,7 @@ export async function POST(request: NextRequest) {
       appliedIds,
     });
 
-    const { data: activeAds } = await (supabase as any)
+    const { data: activeAds } = await ADMIN_SUPABASE
       .from("feed_ads")
       .select("*")
       .eq("status", "active")
@@ -171,15 +171,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const feedRecords = injected.map((opp: any) => ({
-      user_id: user.id,
-      opportunity_id: opp.id,
-    }));
+    const feedRecords = injected
+      .filter((opp: any) => !opp.is_ad)
+      .map((opp: any) => ({
+        user_id: user.id,
+        opportunity_id: opp.id,
+      }));
 
-    await (supabase as any).from("user_opportunity_feed").upsert(feedRecords, {
-      onConflict: "user_id, opportunity_id",
-      ignoreDuplicates: false,
-    });
+    const { error: upsertError } = await (supabase as any)
+      .from("user_opportunity_feed")
+      .upsert(feedRecords, {
+        onConflict: "user_id, opportunity_id",
+        ignoreDuplicates: false,
+      });
+
+    if (upsertError) {
+      console.error("Feed upsert error:", upsertError);
+    }
 
     const { data: referralCount } = await supabase
       .from("referrals")
