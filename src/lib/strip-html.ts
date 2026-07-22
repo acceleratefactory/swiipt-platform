@@ -1,4 +1,4 @@
-export const STRIP_HTML_BUILD = "v5";
+export const STRIP_HTML_BUILD = "v6";
 
 function decodeEntities(text: string): string {
   return text
@@ -19,6 +19,16 @@ function decodeEntities(text: string): string {
     .replace(/&#(\d+);/g, (_, n: string) => String.fromCharCode(parseInt(n, 10)))
     .replace(/&#x([0-9A-Fa-f]+);/g, (_, h: string) => String.fromCharCode(parseInt(h, 16)))
     .replace(/&[a-zA-Z]+;/g, "");
+}
+
+export function cleanDescription(text: string, maxLength = 3000): string {
+  return text
+    .replace(/#\w+/g, "")
+    .replace(/@\w+/g, "")
+    .replace(/https?:\/\/\S+/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
 }
 
 export function stripHtml(text: string): string {
