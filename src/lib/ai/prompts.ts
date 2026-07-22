@@ -22,14 +22,16 @@ export function buildDefaultPrompt(request: AIEnrichRequest): string {
 // Shared English-output rule injected into enrichment prompts (Session 46 Step 2).
 const ENGLISH_RULE = `IMPORTANT: The audience is English-speaking. If any input field is not in English, TRANSLATE it into natural, fluent English. Every field you return MUST be in English — never return German, French, or any other language.`;
 
+const CLEAN_DESC_RULE = `Return a clean plaintext description with NO HTML entities, NO markup, NO social tags (#hashtags, @mentions, URLs). Maximum 200 words.`;
+
 export function buildProcessQueuePrompt(data: Record<string, any>, tier?: string): string {
   const isFormatOnly = tier === "trusted" || tier === "standard";
   const instructions = isFormatOnly
-    ? `Clean and format the following opportunity data. Fix typos, format the description (100-150 words), extract a clean title, a clean organisation name, and assign the best-matching type and segment. Do NOT evaluate legitimacy or confidence — that is not your job.`
+    ? `Clean and format the following opportunity data. Fix typos, format the description (100-150 words), extract a clean title, a clean organisation name, and assign the best-matching type and segment. Do NOT evaluate legitimacy or confidence — that is not your job. ${CLEAN_DESC_RULE}`
     : `Analyze this opportunity for Swiipt, a Nigerian global mobility platform. Return valid JSON only.
 
 Evaluate: confidence_score (0.0-1.0), is_legitimate, is_relevant_for_nigerians, is_scam_risk.
-Then provide: cleaned_title, cleaned_description (100-200 words), cleaned_organisation, location_country, location_city, type, segment_slug, salary_range, deadline, requirements.`;
+Then provide: cleaned_title, cleaned_description (100-200 words), cleaned_organisation, location_country, location_city, type, segment_slug, salary_range, deadline, requirements. ${CLEAN_DESC_RULE}`;
 
   return `You are an opportunity processing assistant for Swiipt.
 ${instructions}

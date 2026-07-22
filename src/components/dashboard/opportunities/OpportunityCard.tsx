@@ -6,7 +6,7 @@ import FallbackTile from "./FallbackTile";
 import ServiceCTA from "./ServiceCTA";
 import { HeartIcon, CommentIcon, ReshareIcon, SaveIcon, ApplyIcon } from "./Icons";
 import { trackSignal } from "@/lib/feed-signals";
-import { stripHtml, STRIP_HTML_BUILD } from "@/lib/strip-html";
+import { stripHtml, cleanDescription, STRIP_HTML_BUILD } from "@/lib/strip-html";
 
 interface Oppty {
   id: string;
@@ -150,7 +150,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
   })();
 
   const cleanedTitle = stripHtml(opp.title || "");
-  const cleanedDescription = stripHtml(opp.description || "");
+  const cleanedDescription = cleanDescription(stripHtml(opp.description || ""));
   const daysLeft = getDaysLeft(opp.deadline);
   const hasCover = opp.cover_image_url && opp.media_source !== "fallback";
   const [coverFailed, setCoverFailed] = useState(false);
@@ -348,12 +348,12 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
           {descExpanded ? cleanedDescription : cleanedDescription.slice(0, 150)}
           {!descExpanded && cleanedDescription.length > 150 && "..."}
         </span>
-        {!descExpanded && cleanedDescription.length > 150 && (
+        {cleanedDescription.length > 150 && (
           <span
-            onClick={(e) => { e.stopPropagation(); setDescExpanded(true); trackSignal(opp.id, "expand"); }}
+            onClick={(e) => { e.stopPropagation(); if (descExpanded) { setDescExpanded(false); } else { setDescExpanded(true); trackSignal(opp.id, "expand"); } }}
             style={{ color: "#8e8e8e", cursor: "pointer", marginLeft: "0.25rem", fontSize: "0.8125rem" }}
           >
-            more
+            {descExpanded ? "less" : "more"}
           </span>
         )}
       </div>
