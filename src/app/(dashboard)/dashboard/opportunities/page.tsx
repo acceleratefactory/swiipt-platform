@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import OpportunityFeed from "@/components/dashboard/opportunities/OpportunityFeed";
 import HideScrollbar from "@/components/dashboard/opportunities/HideScrollbar";
@@ -104,8 +104,11 @@ export default async function OpportunitiesPage() {
     like_count: likedIds.has(opp.id) ? 1 : 0,
   }));
 
-  const serviceClient = createServiceClient();
-  const { data: activeAds } = await serviceClient
+  const ADMIN_SUPABASE = createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+  const { data: activeAds } = await ADMIN_SUPABASE
     .from("feed_ads")
     .select("*")
     .eq("status", "active")
@@ -124,6 +127,9 @@ export default async function OpportunitiesPage() {
         organisation: ad.advertiser_name || "Sponsored",
         description: ad.body || "",
         type: "ad",
+        is_ad: true,
+        ad_data: ad,
+        cta_label: ad.cta_label,
         application_url: ad.cta_url,
         cover_image_url: ad.cover_image_url || null,
         media_type: ad.cover_image_url ? "image" : "none",
