@@ -85,6 +85,11 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
 
   const visible = allOpportunities;
 
+  // Session-based random seed so each browser tab / refresh starts at a
+  // different position in the feed. Stable per component lifecycle (ref
+  // avoids the exhaustive-deps warning on buildDisplayed).
+  const sessionSeed = useRef(Math.floor(Math.random() * 1000));
+
   // Fix 3: a deduplicated list of genuinely high-relevance matches (not a
   // single repeated card). Only items scoring >= threshold qualify; capped at
   // K so we feature a handful of DISTINCT matches, each shown once.
@@ -112,7 +117,7 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
       const items: DisplayItem[] = [];
       for (let i = 0; i < count; i++) {
         const loopIndex = Math.floor(i / visible.length);
-        const posInLoop = i % visible.length;
+        const posInLoop = (i + sessionSeed.current) % visible.length;
         items.push({ opp: visible[posInLoop], loopIndex, posInLoop });
       }
       return items;
