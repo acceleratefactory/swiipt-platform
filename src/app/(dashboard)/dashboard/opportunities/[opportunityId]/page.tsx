@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import { stripHtml, cleanDescription } from "@/lib/strip-html";
 
 interface Props {
   params: { opportunityId: string };
@@ -71,7 +72,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
             About this opportunity
           </h2>
           <p style={{ fontSize: "0.875rem", color: "#475569", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
-            {opp.description}
+            {cleanDescription(stripHtml(opp.description || ""))}
           </p>
         </section>
 
@@ -81,7 +82,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
               Requirements
             </h2>
             <p style={{ fontSize: "0.875rem", color: "#475569", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
-              {opp.requirements}
+              {cleanDescription(stripHtml(opp.requirements || ""))}
             </p>
           </section>
         )}

@@ -1,4 +1,4 @@
-export const STRIP_HTML_BUILD = "v8";
+export const STRIP_HTML_BUILD = "v9";
 
 function decodeEntities(text: string): string {
   return text
@@ -21,11 +21,15 @@ function decodeEntities(text: string): string {
     .replace(/&[a-zA-Z]+;/g, "");
 }
 
-export function cleanDescription(text: string, maxLength = 3000): string {
+export function cleanDescription(text: string, maxLength = 800): string {
   return text
     .replace(/#\w+/g, "")
     .replace(/@\w+/g, "")
     .replace(/https?:\/\/\S+/g, "")
+    .replace(/(\d{2,})\1{2,}/g, "") // repeated digits (444444)
+    .replace(/([!?,.;:-])\1{2,}/g, "$1$1") // repeated punctuation → max 2
+    .replace(/([^\w\s]){5,}/g, "") // long strings of non-word chars
+    .replace(/\b(?:read\s?more|click\s?here|apply\s?now|learn\s?more|view\s?details|sign\s?up|register\s?now|get\s?started)\b/gi, "")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);

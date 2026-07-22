@@ -345,15 +345,23 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
 
       <div data-build={STRIP_HTML_BUILD} style={{ fontSize: "0.8125rem", color: "#000000", lineHeight: 1.4, marginTop: "0.25rem", padding: "0 0.75rem" }}>
         <span>
-          {descExpanded ? cleanedDescription : cleanedDescription.slice(0, 150)}
-          {!descExpanded && cleanedDescription.length > 150 && "..."}
+          {descExpanded ? cleanedDescription.slice(0, 600) : cleanedDescription.slice(0, 100)}
+          {!descExpanded && cleanedDescription.length > 100 && "..."}
         </span>
-        {cleanedDescription.length > 150 && (
+        {cleanedDescription.length > 100 && (
           <span
             onClick={(e) => { e.stopPropagation(); if (descExpanded) { setDescExpanded(false); } else { setDescExpanded(true); trackSignal(opp.id, "expand"); } }}
             style={{ color: "#8e8e8e", cursor: "pointer", marginLeft: "0.25rem", fontSize: "0.8125rem" }}
           >
             {descExpanded ? "less" : "more"}
+          </span>
+        )}
+        {descExpanded && cleanedDescription.length > 600 && (
+          <span
+            onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/opportunities/${opp.id}`); }}
+            style={{ color: "#8e8e8e", cursor: "pointer", marginLeft: "0.25rem", fontSize: "0.8125rem" }}
+          >
+            {" View full details \u2192"}
           </span>
         )}
       </div>
