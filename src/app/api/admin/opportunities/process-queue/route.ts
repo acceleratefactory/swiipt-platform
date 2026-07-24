@@ -4,6 +4,7 @@ import { enrich } from "@/lib/ai-service";
 import { detectOpportunityLanguage } from "@/lib/language";
 import { normalizeUrl } from "@/lib/url-normalize";
 import { stripHtml } from "@/lib/strip-html";
+import { cleanOpportunityContent } from "@/lib/opportunities/content-cleaner";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -150,29 +151,58 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // High quality → publish (Path A for trusted, Path B otherwise).
+      // High quality → publish. Content cleaner runs before insert.
       const oppId = crypto.randomUUID();
       const seg = safeSegment(enriched.segment_slug, sourceRecord?.segment_slug);
+
+      const cleanResult = await cleanOpportunityContent({
+        rawTitle: enriched.cleaned_title || raw.title || "",
+        rawDescription: enriched.cleaned_description || raw.description || "",
+        rawRequirements: enriched.requirements || raw.requirements || null,
+        rawSalary: enriched.salary_range || raw.salary || null,
+        rawDeadline: enriched.deadline || raw.deadline || null,
+        organisation: resolveOrganisation(enriched, raw),
+        locationCountry: enriched.location_country || raw.location || "Global",
+        opportunityType: safeType(enriched.type, seg),
+      });
+
+      if (!cleanResult.success) {
+        await (serviceSupabase as any)
+          .from("evidence")
+          .update({
+            enrichment_status: "failed",
+            quality_score: qc.qualityScore,
+            enriched_data: { ...enriched, cleaning_failed: true, cleaning_reason: cleanResult.failure_reason },
+            ai_confidence: confidence,
+          })
+          .eq("id", item.id);
+        rejected++;
+        continue;
+      }
+
       const { data: publishedOpp, error: insertErr } = await (serviceSupabase as any)
         .from("opportunities")
         .insert({
           id: oppId,
           segment_slug: seg,
-          title: enriched.cleaned_title || raw.title || "Untitled",
+          title: cleanResult.title,
           organisation: resolveOrganisation(enriched, raw),
           location_country: enriched.location_country || raw.location || "Global",
           location_city: enriched.location_city || null,
           type: safeType(enriched.type, seg),
-          description: enriched.cleaned_description || raw.description || "",
-          requirements: enriched.requirements || raw.requirements || null,
-          salary_range: enriched.salary_range || raw.salary || null,
-          deadline: enriched.deadline || raw.deadline || null,
+          description: cleanResult.description,
+          full_description: cleanResult.full_description,
+          requirements: cleanResult.requirements,
+          salary_range: cleanResult.funding_display || enriched.salary_range || raw.salary || null,
+          deadline: cleanResult.deadline || enriched.deadline || raw.deadline || null,
+          editorial_score: cleanResult.editorial_score,
+          content_cleaned: true,
           application_url: raw.url,
           normalized_url: normalizeUrl(raw.url),
           cover_image_url: null,
           language: detectOpportunityLanguage(
-            enriched.cleaned_title || raw.title,
-            enriched.cleaned_description || raw.description
+            cleanResult.title,
+            cleanResult.description
           ),
           source_url: item.source_url || null,
           source_name: item.source_name,
