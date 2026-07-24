@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { cleanOpportunityContent } from "@/lib/opportunities/content-cleaner";
+import { stripHtml } from "@/lib/strip-html";
 
 export const runtime = "nodejs";
-export const maxDuration = 60;
+export const maxDuration = 300;
+
+function mechanicalScore(desc: string): number {
+  const len = desc.length;
+  if (len > 500) return 70;
+  if (len > 200) return 50;
+  if (len > 80) return 30;
+  return 10;
+}
 
 export async function POST(request: NextRequest) {
   if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
@@ -16,7 +25,7 @@ export async function POST(request: NextRequest) {
     .from("opportunities")
     .select("*")
     .eq("content_cleaned", false)
-    .limit(4);
+    .limit(10);
 
   if (!opps || opps.length === 0) {
     return NextResponse.json({ cleaned: 0, failed: 0, remaining: 0, message: "All opportunities cleaned." });
@@ -26,7 +35,7 @@ export async function POST(request: NextRequest) {
   let failed = 0;
 
   for (const opp of opps) {
-    const result = await cleanOpportunityContent({
+    const aiResult = await cleanOpportunityContent({
       rawTitle: opp.title || "",
       rawDescription: opp.description || "",
       rawRequirements: opp.requirements || null,
@@ -37,28 +46,31 @@ export async function POST(request: NextRequest) {
       opportunityType: opp.type || "job",
     });
 
-    if (result.success) {
+    if (aiResult.success) {
       await (serviceSupabase as any)
         .from("opportunities")
         .update({
-          title: result.title,
-          description: result.description,
-          full_description: result.full_description,
-          requirements: result.requirements,
-          salary_range: result.funding_display || opp.salary_range,
-          deadline: result.deadline || opp.deadline,
-          editorial_score: result.editorial_score,
+          title: aiResult.title,
+          description: aiResult.description,
+          full_description: aiResult.full_description,
+          requirements: aiResult.requirements,
+          salary_range: aiResult.funding_display || opp.salary_range,
+          deadline: aiResult.deadline || opp.deadline,
+          editorial_score: aiResult.editorial_score,
           content_cleaned: true,
           content_cleaned_at: new Date().toISOString(),
         })
         .eq("id", opp.id);
       cleaned++;
     } else {
+      const clean = stripHtml(opp.description || "");
+      const score = mechanicalScore(clean);
       await (serviceSupabase as any)
         .from("opportunities")
         .update({
-          needs_review: true,
-          review_reason: `Content cleaning failed: ${result.failure_reason}`,
+          full_description: clean.length > 600 ? clean.slice(0, 600) : clean,
+          description: clean.length > 200 ? clean.slice(0, 200) : clean,
+          editorial_score: score,
           content_cleaned: true,
           content_cleaned_at: new Date().toISOString(),
         })
