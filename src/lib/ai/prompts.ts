@@ -14,6 +14,8 @@ export function buildDefaultPrompt(request: AIEnrichRequest): string {
       return buildPublicSubmissionPrompt(data);
     case "translate":
       return buildTranslatePrompt(data);
+    case "content-clean":
+      return buildContentCleanPrompt(data);
     default:
       return JSON.stringify(data);
   }
@@ -135,4 +137,62 @@ function buildPublicSubmissionPrompt(data: Record<string, any>): string {
 }
 
 Submitted Data: ${JSON.stringify(data)}`;
+}
+
+export function buildContentCleanPrompt(data: Record<string, any>): string {
+  return `You are an editorial assistant for Swiipt, a Nigerian platform helping Africans access global opportunities. Clean and rewrite this opportunity content for a mobile feed card.
+
+${ENGLISH_RULE}
+
+SOURCE DATA:
+Title: ${data.rawTitle || ""}
+Description: ${data.rawDescription || ""}
+Requirements: ${data.rawRequirements || ""}
+Salary/Funding: ${data.rawSalary || ""}
+Deadline: ${data.rawDeadline || ""}
+Organisation: ${data.organisation || ""}
+Country: ${data.locationCountry || ""}
+Type: ${data.opportunityType || ""}
+
+RULES:
+1. Title: max 80 characters. Lead with the outcome for a Nigerian reader. Not the programme name.
+   Good: "Germany funds your Master's — DAAD Scholarship 2027"
+   Bad: "DAAD Scholarships in Germany for Development-Related Postgraduate Courses"
+2. Description (card preview): max 200 characters. What do they get? How much? Nothing else.
+   Good: "DAAD funds your full postgraduate degree in Germany. €992–€1,300/month stipend + health insurance + travel allowance."
+   Bad: Long paragraph copied from source.
+3. Full description (detail page): max 600 characters. 2-3 sentences covering: what it is, what you get, who can apply. Plain English. No copied text. No HTML.
+4. Requirements: extract the 3-4 most important eligibility criteria. Rewrite in plain English. Format: "Criterion 1 · Criterion 2 · Criterion 3". Max 300 characters.
+5. Funding display: the money/benefit in one line. Format: amount + currency + frequency + key extras. Max 80 characters.
+   Good: "€992–€1,300/month + health insurance + travel allowance"
+   Good: "£32,000–£38,000/year + visa sponsorship"
+   Good: "Full tuition + $35,000/year living allowance + flights"
+6. Deadline: extract as YYYY-MM-DD. If range given (e.g. "August-October 2026"), use last day of range (2026-10-31). If no deadline found, return null. Never guess.
+7. Editorial score (0-100): score this opportunity on impact (20), trust (20), urgency (15), audience fit for Nigerians (15), accessibility (15), difficulty (10), evergreen value (5).
+
+Return ONLY valid JSON, no other text:
+{
+  "success": true,
+  "title": "string (max 80 chars)",
+  "description": "string (max 200 chars)",
+  "full_description": "string (max 600 chars)",
+  "requirements": "string (max 300 chars, bullet format with ·)",
+  "funding_display": "string (max 80 chars)",
+  "deadline": "YYYY-MM-DD or null",
+  "editorial_score": 0-100,
+  "failure_reason": null
+}
+
+If you cannot produce a clean title and description (e.g. source data is too incomplete), return:
+{
+  "success": false,
+  "failure_reason": "brief explanation",
+  "title": "",
+  "description": "",
+  "full_description": "",
+  "requirements": "",
+  "funding_display": "",
+  "deadline": null,
+  "editorial_score": 0
+}`;
 }
