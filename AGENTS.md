@@ -78,6 +78,8 @@
 | 20 | **Feed Quality Phase 6 Pt.B — AI quality scoring** | ⏳ Add `description_score` to cards; use AI to rate completeness, readability, gibberish-free, structure |
 | 21 | **Global Football Trials UK missing from DB** | ⏳ Phase 3 SQL was run, 5 of 6 sources are active, but Global Football Trials UK source row is absent. Needs investigation. |
 | 22 | **Feed Ads: configurable frequency/priority + buildDisplayed injection** | ✅ Admin create/list/edit forms, POST payload, feed/route.ts frequency, buildDisplayed()-level ad injection. Commit `c99afee`. |
+| 23 | **Sprint 19 Content Cleaning Phase 5 — clean-existing + admin UI** | ✅ `POST /api/admin/opportunities/clean-existing`, admin "Clean N descriptions" button, editorial_score column. SQL: `swiipt/sprint_19_content_cleaning.sql` (needs run). |
+| 24 | **AI-generated opportunities hidden from feed** | ✅ `swiipt/hide_ai_opportunities.sql` — sets `is_active=false` for all `ai_generated=true` rows. Seed data remains visible. Reversible. |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -2298,4 +2300,25 @@ Column check confirmed: `is_degraded`, `consecutive_errors`, `last_error_at` ALL
 ### Commits
 `d02fab3`, `88f53da`, `67e78b0`, `c99afee`
 
-## 21. VERIFICATION SCRIPTS
+## 21. SESSION 64 — SPRINT 19 PHASE 5: CLEAN-EXISTING + SALARY STYLE FIX + HIDE AI OPPORTUNITIES (2026-07-24)
+
+**Goal:** Create the backfill endpoint + admin UI for Sprint 19 Content Cleaning, fix salary text styling, and soft-hide all AI-generated opportunities from the feed while preserving seed rows.
+
+### Part A — clean-existing endpoint + admin UI
+- **Endpoint:** `POST /api/admin/opportunities/clean-existing` — batch of 10, calls `cleanOpportunityContent()` with AI rewrite, falls back to mechanical cleanup (stripHtml + length-based score) when AI fails/times out. Sets `content_cleaned=true`, `editorial_score`, `full_description`.
+- **Admin UI:** "Clean N descriptions" button on admin opportunities page + `editorial_score` column with green/amber/red badge.
+- **SQL:** `swiipt/sprint_19_content_cleaning.sql` — adds `full_description`, `editorial_score`, `content_cleaned`, `content_cleaned_at` columns. Must be run in Supabase SQL Editor.
+- **Runner script:** `swiipt/run_clean_existing.ps1` — loops until `remaining: 0` (gitignored, local only).
+
+### Part B — Salary text styling fix
+- `OpportunityCard.tsx:339` — salary text changed from `color: var(--teal)`, `fontSize: 1.0625rem`, `fontWeight: 800` to `color: #000000`, `fontSize: 0.8125rem`, `fontWeight: 600` — matches the card title styling exactly.
+
+### Part C — Hide AI-generated opportunities from feed
+- **SQL:** `swiipt/hide_ai_opportunities.sql` — sets `is_active = false` for all `ai_generated = true` rows, leaving the 54 seed opportunities visible. Reversible via the commented restore query in the same file.
+- **Effect:** Feed shows only seed/manual opportunities. AI-generated data is preserved and can be restored later by running the RESTORE section of the SQL.
+- **No app files changed.** Only a SQL flag toggle.
+
+### Commits
+`c99fe5f`, `1be6405`, `12cd96d`, `61eae7b`, `2657332`, `32291c9`
+
+## 22. VERIFICATION SCRIPTS
