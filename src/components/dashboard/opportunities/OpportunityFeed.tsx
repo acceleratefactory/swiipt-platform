@@ -115,13 +115,14 @@ export default function OpportunityFeed({ allOpportunities, activeAds, userTier,
   const buildDisplayed = useCallback(
     (count: number): DisplayItem[] => {
       if (visible.length === 0) return [];
+      const ads = activeAds ?? [];
       const items: DisplayItem[] = [];
       let adIndex = 0;
-      const baseFreq = activeAds && activeAds.length > 0 ? (activeAds[0].frequency || 5) : 0;
+      const baseFreq = ads.length > 0 ? (ads[0].frequency || 5) : 0;
       for (let i = 0; i < count; i++) {
-        const shouldInjectAd = baseFreq > 0 && items.length > 0 && items.length % baseFreq === 0 && adIndex < (activeAds?.length ?? 0);
+        const shouldInjectAd = baseFreq > 0 && items.length > 0 && items.length % baseFreq === 0 && adIndex < ads.length;
         if (shouldInjectAd) {
-          const ad = activeAds[adIndex % activeAds.length];
+          const ad = ads[adIndex % ads.length];
           const opp: any = {
             id: `ad-${ad.id}`,
             title: ad.headline,
