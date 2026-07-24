@@ -5,8 +5,8 @@
 - **You are joining after Session 62 (Feed Quality Phase 6 Pt.A — description quality mechanical fix).** Do not start from scratch. Read this first. See Session 62 below for the most recent work. The single most important operational rule is in §11 note: **after ANY code change, you MUST redeploy on Vercel with "Clear build cache" checked** — a plain redeploy serves stale code.
 
 ### Current State
+- **Session 63 — Feed Ads: configurable frequency/priority + buildDisplayed injection (✅ COMPLETED 2026-07-24)** — Moved ad injection from `page.tsx`/`feed/route.ts` into `OpportunityFeed.tsx`'s `buildDisplayed()` so `sessionSeed` random offset no longer mispositions ads. Admin UI now exposes `frequency` (default 5) and `priority` (default 0) on create, list, and edit forms; `POST /api/admin/feed-ads` payload includes both. Server-rendered `page.tsx` passes `activeAds` as separate prop. Commits `d02fab3`, `88f53da`, `67e78b0`, `c99afee`.
 - **Session 62 — Feed Quality Phase 6 Pt.A (✅ COMPLETED 2026-07-22)** — Mechanical description quality fix: added gibberish filters to `cleanDescription()` (repeated punctuation, repeated digits, nav boilerplate, non-word runs), default maxLength 3000→800. Card collapsed preview 150→100 chars, expanded 3000→600 chars with "View full details →" link to detail page. Detail page applies `stripHtml()`+`cleanDescription()` to description + requirements. `STRIP_HTML_BUILD=v9`. Commit `281f5a8`.
-- **Session 61 — Feed Quality Phase 5 (✅ COMPLETED 2026-07-22)** — Feed reshuffle with session-based random offset via `useRef` seed in `buildDisplayed()`. Each browser tab/refresh starts at a different position in the ranked pool. Commit `4581af4`.
 - **Session 60 — Feed Quality Phase 4 (✅ COMPLETED 2026-07-22)** — AI cover generation via Pollinations.ai. Created `src/lib/pollinations-cover.ts` with type-specific prompt maps for Styles A (abstract geometric), B (professional photo), D (dramatic scene). Style C (competition/conference/exchange) uses pure CSS (no AI). AI layer added to `getCoverImage()` — returns Pollinations URL which backfill downloads + stores in `opportunity-covers` bucket. `STRIP_HTML_BUILD=v8`. Commit `054ef94`.
 - **Session 59 — Feed Quality Phase 3 (✅ COMPLETED 2026-07-22)** — Wired `cleanDescription(stripHtml(text))` into `OpportunityCard.tsx`, added Instagram-style "less" collapse button, injected `CLEAN_DESC_RULE` into AI enrich prompt. `STRIP_HTML_BUILD=v7`. Commit `cd59057`.
 - **Session 58 — Feed Quality Phase 2 (✅ COMPLETED 2026-07-22)** — Replaced gradient+monogram FallbackTile with 4 art-directed pure-CSS cover styles (A/B/C/D) mapped to 18+ opportunity types via `selectCoverStyle()`. Created `cover-styles/` directory. `STRIP_HTML_BUILD=v6`. Commit `e16da8f`.
@@ -77,6 +77,7 @@
 | 19 | **User to find more sources for underserved types** | ⏳ conference, competition, exchange need more sources. |
 | 20 | **Feed Quality Phase 6 Pt.B — AI quality scoring** | ⏳ Add `description_score` to cards; use AI to rate completeness, readability, gibberish-free, structure |
 | 21 | **Global Football Trials UK missing from DB** | ⏳ Phase 3 SQL was run, 5 of 6 sources are active, but Global Football Trials UK source row is absent. Needs investigation. |
+| 22 | **Feed Ads: configurable frequency/priority + buildDisplayed injection** | ✅ Admin create/list/edit forms, POST payload, feed/route.ts frequency, buildDisplayed()-level ad injection. Commit `c99afee`. |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -2276,4 +2277,25 @@ Column check confirmed: `is_degraded`, `consecutive_errors`, `last_error_at` ALL
 - Use AI to rate description quality on factors: completeness, readability, gibberish-free, structure
 - Optionally filter out items below a threshold
 
-## 20. VERIFICATION SCRIPTS
+## 20. SESSION 63 — FEED ADS: CONFIGURABLE FREQUENCY/PRIORITY + BUILDDISPLAYED INJECTION (2026-07-24)
+
+**Goal:** Make ads appear at precise, configurable positions in the opportunity feed (user wanted every 5th card, not hardcoded 7th). Move frequency/priority into admin UI and fix `sessionSeed` offset bug.
+
+### Root Cause of Mispositioned Ads
+`buildDisplayed()` in `OpportunityFeed.tsx` uses a random `sessionSeed` offset (`posInLoop = (i + sessionSeed) % visible.length`). Ads were baked into the `injected` array at fixed positions in `page.tsx`, but `sessionSeed` shifted the viewing window — first ad could appear at cards 500, 4992, etc.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `src/components/dashboard/opportunities/OpportunityFeed.tsx` | Moved ad injection into `buildDisplayed()` at display level; `sessionSeed` no longer affects ad positions |
+| `src/app/(dashboard)/dashboard/opportunities/page.tsx` | Removed ad injection loop; passes `activeAds` as separate prop to `OpportunityFeed` |
+| `src/app/api/opportunities/feed/route.ts` | Replaced hardcoded `adFrequency = 7` with `activeAds[0].frequency \|\| 5` |
+| `src/app/(admin)/admin/feed-ads/page.tsx` | Added "Every N" and "Priority" columns + Edit link |
+| `src/app/(admin)/admin/feed-ads/new/page.tsx` | Added `advertiser_name`, `frequency` (default 5), `priority` (default 0) fields |
+| `src/app/(admin)/admin/feed-ads/[id]/page.tsx` | New edit page with full PUT-based form for all fields |
+| `src/app/api/admin/feed-ads/route.ts` | POST payload now includes `frequency` (default 5) and `priority` (default 0) |
+
+### Commits
+`d02fab3`, `88f53da`, `67e78b0`, `c99afee`
+
+## 21. VERIFICATION SCRIPTS
