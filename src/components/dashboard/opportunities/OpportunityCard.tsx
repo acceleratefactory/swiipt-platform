@@ -43,6 +43,8 @@ interface Oppty {
   service_cta_type?: string | null;
   service_url?: string | null;
   comment_count?: number;
+  full_description?: string | null;
+  editorial_score?: number | null;
 }
 
 interface Props {

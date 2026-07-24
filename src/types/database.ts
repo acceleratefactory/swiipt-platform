@@ -1112,6 +1112,10 @@ export interface Database {
           review_reason: string | null
           language: string | null
           is_non_english: boolean | null
+          full_description: string | null
+          editorial_score: number | null
+          content_cleaned: boolean | null
+          content_cleaned_at: string | null
           created_at: string
           updated_at: string
         }
