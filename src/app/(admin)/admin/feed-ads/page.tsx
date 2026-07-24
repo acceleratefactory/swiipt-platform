@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
-import Link from "next/link";
-
 interface FeedAd {
   id: string;
   headline: string;
