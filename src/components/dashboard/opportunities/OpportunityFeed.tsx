@@ -119,7 +119,7 @@ export default function OpportunityFeed({ allOpportunities, activeAds, userTier,
       let adIndex = 0;
       const baseFreq = activeAds && activeAds.length > 0 ? (activeAds[0].frequency || 5) : 0;
       for (let i = 0; i < count; i++) {
-        const shouldInjectAd = baseFreq > 0 && items.length > 0 && items.length % baseFreq === 0 && adIndex < activeAds?.length;
+        const shouldInjectAd = baseFreq > 0 && items.length > 0 && items.length % baseFreq === 0 && adIndex < (activeAds?.length ?? 0);
         if (shouldInjectAd) {
           const ad = activeAds[adIndex % activeAds.length];
           const opp: any = {
