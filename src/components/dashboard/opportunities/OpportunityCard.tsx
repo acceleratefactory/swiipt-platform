@@ -336,7 +336,7 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
         </div>
 
         {opp.salary_range && (
-          <div style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.0625rem", fontWeight: 800, color: "var(--teal)", marginTop: "0.25rem" }}>
+          <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "#000000", marginTop: "0.25rem" }}>
             {opp.salary_range}
           </div>
         )}
