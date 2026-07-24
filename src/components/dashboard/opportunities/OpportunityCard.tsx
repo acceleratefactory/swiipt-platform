@@ -335,22 +335,25 @@ export default function OpportunityCard({ opportunity: opp, onApply, onSave }: P
           {cleanedTitle}{opp.location_country ? ` — ${opp.location_country}` : ""}
         </div>
 
-        {(daysLeft || opp.salary_range) && (
-          <div style={{ fontSize: "0.75rem", color: "#8e8e8e", display: "flex", alignItems: "center", gap: "0.375rem", marginTop: "0.125rem" }}>
-            {opp.salary_range && <span style={{ color: "#000000", fontWeight: 600, fontSize: "0.8125rem" }}>{opp.salary_range}</span>}
-            {daysLeft && (
-              <span>{daysLeft.urgent ? "\u23F0" : "\u23F3"} {daysLeft.days}d</span>
-            )}
+        {opp.salary_range && (
+          <div style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.0625rem", fontWeight: 800, color: "var(--teal)", marginTop: "0.25rem" }}>
+            {opp.salary_range}
+          </div>
+        )}
+
+        {daysLeft && (
+          <div style={{ fontSize: "0.75rem", color: "#8e8e8e", marginTop: "0.125rem" }}>
+            {daysLeft.urgent ? "\u23F0" : "\u23F3"} {daysLeft.days}d left
           </div>
         )}
       </div>
 
       <div data-build={STRIP_HTML_BUILD} style={{ fontSize: "0.8125rem", color: "#000000", lineHeight: 1.4, marginTop: "0.25rem", padding: "0 0.75rem" }}>
         <span>
-          {descExpanded ? cleanedDescription.slice(0, 600) : cleanedDescription.slice(0, 100)}
-          {!descExpanded && cleanedDescription.length > 100 && "..."}
+          {descExpanded ? cleanedDescription.slice(0, 600) : cleanedDescription.slice(0, 200)}
+          {!descExpanded && cleanedDescription.length > 200 && "..."}
         </span>
-        {cleanedDescription.length > 100 && (
+        {cleanedDescription.length > 200 && (
           <span
             onClick={(e) => { e.stopPropagation(); if (descExpanded) { setDescExpanded(false); } else { setDescExpanded(true); trackSignal(opp.id, "expand"); } }}
             style={{ color: "#8e8e8e", cursor: "pointer", marginLeft: "0.25rem", fontSize: "0.8125rem" }}

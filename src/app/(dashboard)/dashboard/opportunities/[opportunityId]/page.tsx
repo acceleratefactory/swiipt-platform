@@ -65,6 +65,15 @@ export default async function OpportunityDetailPage({ params }: Props) {
               {"\u2B50"} Featured
             </span>
           )}
+          {opp.editorial_score != null && opp.editorial_score > 0 && (
+            <span style={{
+              fontSize: "0.75rem", fontWeight: 700, padding: "0.25rem 0.75rem", borderRadius: "999px",
+              background: opp.editorial_score >= 85 ? "#E0FAF3" : opp.editorial_score >= 70 ? "#FEF3C7" : "#FEF2F2",
+              color: opp.editorial_score >= 85 ? "#065F46" : opp.editorial_score >= 70 ? "#92400E" : "#991B1B",
+            }}>
+              Quality: {opp.editorial_score}
+            </span>
+          )}
         </div>
 
         <section style={{ marginBottom: "1.25rem" }}>
@@ -72,7 +81,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
             About this opportunity
           </h2>
           <p style={{ fontSize: "0.875rem", color: "#475569", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>
-            {cleanDescription(stripHtml(opp.description || ""))}
+            {opp.full_description || cleanDescription(stripHtml(opp.description || ""))}
           </p>
         </section>
 
