@@ -34,6 +34,7 @@ interface Oppty {
 
 interface Props {
   allOpportunities: Oppty[];
+  activeAds?: any[];
   userTier: string;
   referralLink?: string;
 }
@@ -75,7 +76,7 @@ function AnimatedCard({ children, delay }: { children: React.ReactNode; delay: n
   );
 }
 
-export default function OpportunityFeed({ allOpportunities, userTier, referralLink }: Props) {
+export default function OpportunityFeed({ allOpportunities, activeAds, userTier, referralLink }: Props) {
   const [displayed, setDisplayed] = useState<DisplayItem[]>([]);
   const [page, setPage] = useState(1);
   const [applyCount, setApplyCount] = useState(0);
@@ -115,14 +116,38 @@ export default function OpportunityFeed({ allOpportunities, userTier, referralLi
     (count: number): DisplayItem[] => {
       if (visible.length === 0) return [];
       const items: DisplayItem[] = [];
+      let adIndex = 0;
+      const baseFreq = activeAds && activeAds.length > 0 ? (activeAds[0].frequency || 5) : 0;
       for (let i = 0; i < count; i++) {
+        const shouldInjectAd = baseFreq > 0 && items.length > 0 && items.length % baseFreq === 0 && adIndex < activeAds?.length;
+        if (shouldInjectAd) {
+          const ad = activeAds[adIndex % activeAds.length];
+          const opp: any = {
+            id: `ad-${ad.id}`,
+            title: ad.headline,
+            organisation: ad.advertiser_name || "Sponsored",
+            description: ad.body || "",
+            type: "ad",
+            is_ad: true,
+            ad_data: ad,
+            cta_label: ad.cta_label,
+            application_url: ad.cta_url,
+            cover_image_url: ad.cover_image_url || null,
+            media_type: ad.cover_image_url ? "image" : "none",
+            is_featured: false,
+            relevanceScore: 0,
+            created_at: new Date().toISOString(),
+          };
+          items.push({ opp, loopIndex: 0, posInLoop: 0 });
+          adIndex++;
+        }
         const loopIndex = Math.floor(i / visible.length);
         const posInLoop = (i + sessionSeed.current) % visible.length;
         items.push({ opp: visible[posInLoop], loopIndex, posInLoop });
       }
       return items;
     },
-    [visible]
+    [visible, activeAds]
   );
 
   useEffect(() => {

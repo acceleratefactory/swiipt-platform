@@ -144,11 +144,11 @@ export async function POST(request: NextRequest) {
       .order("priority", { ascending: true });
 
     let adIndex = 0;
-    const adFrequency = 7;
+    const baseFreq = activeAds && activeAds.length > 0 ? (activeAds[0].frequency || 5) : 7;
     const injected: any[] = [];
     for (let i = 0; i < scored.length; i++) {
       injected.push(scored[i]);
-      if ((i + 1) % adFrequency === 0 && activeAds && adIndex < activeAds.length) {
+      if ((i + 1) % baseFreq === 0 && activeAds && adIndex < activeAds.length) {
         const ad = activeAds[adIndex % activeAds.length];
         injected.push({
           id: `ad-${ad.id}`,

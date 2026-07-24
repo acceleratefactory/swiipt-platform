@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
     cta_label: body.cta_label || "Learn more",
     cta_url: body.cta_url,
     status: body.status || "draft",
+    frequency: typeof body.frequency === "number" ? body.frequency : 5,
+    priority: typeof body.priority === "number" ? body.priority : 0,
   }).select().single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
 
-export default function NewFeedAdPage() {
+export default function EditFeedAdPage() {
   const router = useRouter();
+  const params = useParams();
   const [headline, setHeadline] = useState("");
   const [body, setBody] = useState("");
   const [ctaLabel, setCtaLabel] = useState("Learn more");
@@ -16,7 +17,33 @@ export default function NewFeedAdPage() {
   const [adType, setAdType] = useState("internal");
   const [status, setStatus] = useState("draft");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchAd = async () => {
+      try {
+        const res = await fetch(`/api/admin/feed-ads/${params.id}`);
+        if (!res.ok) throw new Error("Not found");
+        const ad = await res.json();
+        setHeadline(ad.headline || "");
+        setBody(ad.body || "");
+        setCtaLabel(ad.cta_label || "Learn more");
+        setCtaUrl(ad.cta_url || "");
+        setCoverImageUrl(ad.cover_image_url || "");
+        setAdvertiserName(ad.advertiser_name || "");
+        setFrequency(typeof ad.frequency === "number" ? ad.frequency : 5);
+        setPriority(typeof ad.priority === "number" ? ad.priority : 0);
+        setAdType(ad.ad_type || "internal");
+        setStatus(ad.status || "draft");
+      } catch {
+        setError("Failed to load ad");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAd();
+  }, [params.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +54,8 @@ export default function NewFeedAdPage() {
     setSaving(true);
     setError("");
     try {
-      const res = await fetch("/api/admin/feed-ads", {
-        method: "POST",
+      const res = await fetch(`/api/admin/feed-ads/${params.id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           headline: headline.trim(),
@@ -45,7 +72,7 @@ export default function NewFeedAdPage() {
       });
       if (!res.ok) {
         const d = await res.json();
-        throw new Error(d.error || "Failed to create");
+        throw new Error(d.error || "Failed to update");
       }
       router.push("/admin/feed-ads");
     } catch (err: any) {
@@ -61,9 +88,11 @@ export default function NewFeedAdPage() {
     boxSizing: "border-box",
   };
 
+  if (loading) return <p style={{ color: "var(--text-muted)" }}>Loading...</p>;
+
   return (
     <div style={{ maxWidth: 600 }}>
-      <h1 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.25rem", fontWeight: 800, marginBottom: "1.5rem" }}>Create Feed Ad</h1>
+      <h1 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.25rem", fontWeight: 800, marginBottom: "1.5rem" }}>Edit Feed Ad</h1>
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         <div>
           <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, marginBottom: "0.25rem" }}>Headline *</label>
@@ -112,13 +141,14 @@ export default function NewFeedAdPage() {
             <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
               <option value="draft">Draft</option>
               <option value="active">Active</option>
+              <option value="paused">Paused</option>
             </select>
           </div>
         </div>
         {error && <p style={{ color: "#ef4444", fontSize: "0.8125rem", margin: 0 }}>{error}</p>}
         <div style={{ display: "flex", gap: "0.75rem" }}>
           <button type="submit" disabled={saving} style={{ padding: "0.5rem 1.5rem", background: "var(--midnight)", color: "white", borderRadius: "var(--radius-md)", border: "none", fontWeight: 600, fontSize: "0.875rem", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
-            {saving ? "Saving..." : "Create ad"}
+            {saving ? "Saving..." : "Save changes"}
           </button>
           <button type="button" onClick={() => router.push("/admin/feed-ads")} style={{ padding: "0.5rem 1.5rem", background: "white", color: "var(--text-muted)", borderRadius: "var(--radius-md)", border: "1px solid #e2e8f0", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}>
             Cancel

@@ -3,11 +3,15 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 
+import Link from "next/link";
+
 interface FeedAd {
   id: string;
   headline: string;
   ad_type: string;
   status: string;
+  frequency: number;
+  priority: number;
   cta_label: string;
   cta_url: string;
   impression_count: number;
@@ -64,6 +68,8 @@ export default function FeedAdsPage() {
           <thead>
             <tr style={{ borderBottom: "2px solid #e2e8f0", textAlign: "left" }}>
               <th style={{ padding: "0.75rem 0.5rem", fontWeight: 700 }}>Headline</th>
+              <th style={{ padding: "0.75rem 0.5rem", fontWeight: 700 }}>Every N</th>
+              <th style={{ padding: "0.75rem 0.5rem", fontWeight: 700 }}>Priority</th>
               <th style={{ padding: "0.75rem 0.5rem", fontWeight: 700 }}>Type</th>
               <th style={{ padding: "0.75rem 0.5rem", fontWeight: 700 }}>Status</th>
               <th style={{ padding: "0.75rem 0.5rem", fontWeight: 700 }}>Impressions</th>
@@ -75,6 +81,8 @@ export default function FeedAdsPage() {
             {ads.map((ad) => (
               <tr key={ad.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
                 <td style={{ padding: "0.75rem 0.5rem", fontWeight: 600 }}>{ad.headline}</td>
+                <td style={{ padding: "0.75rem 0.5rem" }}>{ad.frequency}</td>
+                <td style={{ padding: "0.75rem 0.5rem" }}>{ad.priority}</td>
                 <td style={{ padding: "0.75rem 0.5rem", textTransform: "capitalize" }}>{ad.ad_type}</td>
                 <td style={{ padding: "0.75rem 0.5rem" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", padding: "0.125rem 0.5rem", borderRadius: 9999, fontSize: "0.75rem", fontWeight: 600, background: STATUS_COLORS[ad.status] ? `${STATUS_COLORS[ad.status]}15` : "#f1f5f9", color: STATUS_COLORS[ad.status] || "#64748b" }}>
@@ -84,7 +92,10 @@ export default function FeedAdsPage() {
                 </td>
                 <td style={{ padding: "0.75rem 0.5rem" }}>{ad.impression_count}</td>
                 <td style={{ padding: "0.75rem 0.5rem" }}>{ad.click_count}</td>
-                <td style={{ padding: "0.75rem 0.5rem" }}>
+                <td style={{ padding: "0.75rem 0.5rem", display: "flex", gap: "0.5rem" }}>
+                  <Link href={`/admin/feed-ads/${ad.id}`} style={{ padding: "0.25rem 0.75rem", borderRadius: "var(--radius-sm)", border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600, color: "#0d9488", textDecoration: "none" }}>
+                    Edit
+                  </Link>
                   <button
                     onClick={() => handleToggle(ad.id)}
                     style={{ padding: "0.25rem 0.75rem", borderRadius: "var(--radius-sm)", border: "1px solid #e2e8f0", background: "white", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600, color: ad.status === "active" ? "#d97706" : "#0d9488" }}
