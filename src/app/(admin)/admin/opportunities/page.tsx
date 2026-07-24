@@ -29,6 +29,11 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
 
   const degradedNames = new Set<string>((degradedSources || []).map((s: any) => s.name));
 
+  const { count: uncleanedCount } = await (supabase as any)
+    .from("opportunities")
+    .select("*", { count: "exact", head: true })
+    .eq("content_cleaned", false);
+
   const totalCount = count || 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const safePage = Math.min(Math.max(page, 1), totalPages);
@@ -46,6 +51,14 @@ export default async function OpportunitiesPage({ searchParams }: { searchParams
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {uncleanedCount > 0 && (
+            <form action="/api/admin/opportunities/clean-existing" method="POST">
+              <input type="hidden" name="x-internal-secret" value={process.env.INTERNAL_API_SECRET} />
+              <button type="submit" style={{ padding: '0.625rem 1.25rem', background: 'var(--teal)', color: 'var(--midnight)', fontWeight: 700, fontSize: '0.875rem', borderRadius: 'var(--radius-md)', border: 'none', cursor: 'pointer' }}>
+                Clean {uncleanedCount} descriptions
+              </button>
+            </form>
+          )}
           <a href="/admin/opportunities/queue" style={{ padding: '0.625rem 1.25rem', background: 'transparent', color: 'var(--midnight)', fontWeight: 700, fontSize: '0.875rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', textDecoration: 'none' }}>
             Review Queue
           </a>

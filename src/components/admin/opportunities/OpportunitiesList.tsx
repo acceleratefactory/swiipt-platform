@@ -59,6 +59,7 @@ export default function OpportunitiesList({
               <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}>Type</th>
               <th style={{ textAlign: 'center', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}>Views</th>
               <th style={{ textAlign: 'center', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}>Applies</th>
+              <th style={{ textAlign: 'center', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}>Quality</th>
               <th style={{ textAlign: 'center', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}>Status</th>
               <th style={{ textAlign: 'right', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}>Actions</th>
             </tr>
@@ -80,6 +81,15 @@ export default function OpportunitiesList({
                   <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', background: `${typeColors[o.type] || 'var(--text-muted)'}18`, color: typeColors[o.type] || 'var(--text-muted)' }}>
                     {o.type.replace(/_/g, " ")}
                   </span>
+                </td>
+                <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                  {o.editorial_score != null ? (
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '3px 10px', borderRadius: '20px', background: o.editorial_score >= 70 ? '#D1FAE5' : o.editorial_score >= 40 ? '#FEF3C7' : '#FEE2E2', color: o.editorial_score >= 70 ? '#059669' : o.editorial_score >= 40 ? '#D97706' : '#DC2626' }}>
+                      {o.editorial_score}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>—</span>
+                  )}
                 </td>
                 <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>{o.view_count || 0}</td>
                 <td style={{ padding: '0.75rem 1rem', textAlign: 'center', color: 'var(--text-muted)' }}>{o.apply_click_count || 0}</td>
