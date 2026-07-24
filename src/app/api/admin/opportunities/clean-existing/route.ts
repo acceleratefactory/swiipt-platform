@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     .from("opportunities")
     .select("*")
     .eq("content_cleaned", false)
-    .limit(10);
+    .limit(4);
 
   if (!opps || opps.length === 0) {
     return NextResponse.json({ cleaned: 0, failed: 0, remaining: 0, message: "All opportunities cleaned." });
