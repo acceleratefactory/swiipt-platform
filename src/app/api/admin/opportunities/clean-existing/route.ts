@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { cleanOpportunityContent } from "@/lib/opportunities/content-cleaner";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   if (request.headers.get("x-internal-secret") !== process.env.INTERNAL_API_SECRET) {
