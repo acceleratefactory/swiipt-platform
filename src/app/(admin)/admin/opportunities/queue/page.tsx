@@ -2,6 +2,7 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import OpportunityQueueList from "@/components/admin/opportunities/OpportunityQueueList";
+import FailedCleanupList from "@/components/admin/opportunities/FailedCleanupList";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -35,6 +36,13 @@ export default async function OpportunityQueuePage() {
     .select("*", { count: "exact", head: true })
     .in("status", ["approved", "rejected"]);
 
+  const { data: failedCleanup } = await adminSupabase
+    .from("opportunities")
+    .select("id, title, review_reason")
+    .eq("needs_review", true)
+    .eq("content_cleaned", true)
+    .order("content_cleaned_at", { ascending: false });
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
@@ -43,7 +51,7 @@ export default async function OpportunityQueuePage() {
             Review Queue
           </h1>
           <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-            {items?.length || 0} pending review &middot; {processed || 0} processed
+            {items?.length || 0} pending review &middot; {processed || 0} processed &middot; {failedCleanup?.length || 0} cleanup issues
           </p>
         </div>
         <a href="/admin/opportunities" style={{ padding: "0.5rem 1rem", background: "transparent", color: "var(--midnight)", fontWeight: 600, fontSize: "0.875rem", borderRadius: "var(--radius-md)", border: "1px solid var(--border)", textDecoration: "none" }}>
@@ -51,6 +59,7 @@ export default async function OpportunityQueuePage() {
         </a>
       </div>
       <OpportunityQueueList items={items || []} />
+      <FailedCleanupList items={failedCleanup || []} />
     </div>
   );
 }
