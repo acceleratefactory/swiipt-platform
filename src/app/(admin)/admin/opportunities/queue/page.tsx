@@ -40,8 +40,7 @@ export default async function OpportunityQueuePage() {
     .from("opportunities")
     .select("id, segment_slug, title, organisation, location_country, location_city, type, description, full_description, requirements, salary_range, funding_amount, deadline, application_url, is_featured, review_reason")
     .eq("needs_review", true)
-    .eq("content_cleaned", true)
-    .order("content_cleaned_at", { ascending: false });
+    .order("content_cleaned_at", { ascending: false, nulls: "last" });
 
   return (
     <div>
@@ -51,7 +50,7 @@ export default async function OpportunityQueuePage() {
             Review Queue
           </h1>
           <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
-            {items?.length || 0} pending review &middot; {processed || 0} processed &middot; {failedCleanup?.length || 0} cleanup issues
+            {items?.length || 0} pending review &middot; {processed || 0} processed &middot; {failedCleanup?.length || 0} needs review
           </p>
         </div>
         <a href="/admin/opportunities" style={{ padding: "0.5rem 1rem", background: "transparent", color: "var(--midnight)", fontWeight: 600, fontSize: "0.875rem", borderRadius: "var(--radius-md)", border: "1px solid var(--border)", textDecoration: "none" }}>

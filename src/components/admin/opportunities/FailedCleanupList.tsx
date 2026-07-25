@@ -131,10 +131,10 @@ export default function FailedCleanupList({ items }: { items: FailedItem[] }) {
   return (
     <div style={{ marginTop: "2rem" }}>
       <h2 style={{ fontFamily: "Cabinet Grotesk, Plus Jakarta Sans, sans-serif", fontSize: "1.125rem", fontWeight: 700, color: "var(--midnight)", marginBottom: "0.25rem" }}>
-        Content Cleanup Issues
+        Needs Review
       </h2>
       <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "1rem" }}>
-        {items.length} opportunities where automatic content cleaning failed. Click to expand, edit the fields, then approve to show in feed or keep hidden.
+        {items.length} opportunities needing review. Click to expand, edit the fields, then approve to show in feed or keep hidden.
       </p>
 
       {items.map((item) => {
