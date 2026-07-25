@@ -38,7 +38,7 @@ export default async function OpportunityQueuePage() {
 
   const { data: failedCleanup } = await adminSupabase
     .from("opportunities")
-    .select("id, title, description, full_description, requirements, salary_range, deadline, review_reason")
+    .select("id, segment_slug, title, organisation, location_country, location_city, type, description, full_description, requirements, salary_range, funding_amount, deadline, application_url, is_featured, review_reason")
     .eq("needs_review", true)
     .eq("content_cleaned", true)
     .order("content_cleaned_at", { ascending: false });
