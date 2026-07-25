@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
-  const { id, action } = await req.json();
+  const { id, action, fields } = await req.json();
 
   if (!id || !action) {
     return NextResponse.json({ error: "id and action are required" }, { status: 400 });
@@ -16,9 +16,22 @@ export async function POST(req: NextRequest) {
   );
 
   if (action === "approve") {
+    const updateData: Record<string, unknown> = {
+      needs_review: false,
+      is_active: true,
+    };
+
+    if (fields && typeof fields === "object") {
+      for (const [key, value] of Object.entries(fields)) {
+        if (typeof value === "string" || value === null) {
+          updateData[key] = value;
+        }
+      }
+    }
+
     const { error } = await supabase
       .from("opportunities")
-      .update({ needs_review: false, is_active: true })
+      .update(updateData)
       .eq("id", id);
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
