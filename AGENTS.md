@@ -2,9 +2,10 @@
 
 ## 🚀 START HERE — For New Agent Onboarding
 
-- **You are joining after Session 62 (Feed Quality Phase 6 Pt.A — description quality mechanical fix).** Do not start from scratch. Read this first. See Session 62 below for the most recent work. The single most important operational rule is in §11 note: **after ANY code change, you MUST redeploy on Vercel with "Clear build cache" checked** — a plain redeploy serves stale code.
+- **You are joining after Session 65 (AI Content Cleaner + admin review queue).** Do not start from scratch. Read this first. See Session 65 below for the most recent work. The single most important operational rule is in §11 note: **after ANY code change, you MUST redeploy on Vercel with "Clear build cache" checked** — a plain redeploy serves stale code.
 
 ### Current State
+- **Session 65 — AI Content Cleaner + Admin Review Queue (✅ IN PROGRESS 2026-07-31)** — Local Python cleaner (`C:\Users\User\Desktop\swiipt-opportunity-cleaner\`) cleans AI-generated opportunity content via 9router (`AI-cleaning` model, key `sk-d51ced693d37513b-vxyblz-68d69dce`). Admin queue page (`/admin/opportunities/queue`) now shows ALL needs-review items (181) with full inline editing. **ALL 161 scrapers paused** so the cleaner can catch up. See Session 65 below.
 - **Session 63 — Feed Ads: configurable frequency/priority + buildDisplayed injection (✅ COMPLETED 2026-07-24)** — Moved ad injection from `page.tsx`/`feed/route.ts` into `OpportunityFeed.tsx`'s `buildDisplayed()` so `sessionSeed` random offset no longer mispositions ads. Admin UI now exposes `frequency` (default 5) and `priority` (default 0) on create, list, and edit forms; `POST /api/admin/feed-ads` payload includes both. Server-rendered `page.tsx` passes `activeAds` as separate prop. Commits `d02fab3`, `88f53da`, `67e78b0`, `c99afee`.
 - **Session 62 — Feed Quality Phase 6 Pt.A (✅ COMPLETED 2026-07-22)** — Mechanical description quality fix: added gibberish filters to `cleanDescription()` (repeated punctuation, repeated digits, nav boilerplate, non-word runs), default maxLength 3000→800. Card collapsed preview 150→100 chars, expanded 3000→600 chars with "View full details →" link to detail page. Detail page applies `stripHtml()`+`cleanDescription()` to description + requirements. `STRIP_HTML_BUILD=v9`. Commit `281f5a8`.
 - **Session 60 — Feed Quality Phase 4 (✅ COMPLETED 2026-07-22)** — AI cover generation via Pollinations.ai. Created `src/lib/pollinations-cover.ts` with type-specific prompt maps for Styles A (abstract geometric), B (professional photo), D (dramatic scene). Style C (competition/conference/exchange) uses pure CSS (no AI). AI layer added to `getCoverImage()` — returns Pollinations URL which backfill downloads + stores in `opportunity-covers` bucket. `STRIP_HTML_BUILD=v8`. Commit `054ef94`.
@@ -80,6 +81,9 @@
 | 22 | **Feed Ads: configurable frequency/priority + buildDisplayed injection** | ✅ Admin create/list/edit forms, POST payload, feed/route.ts frequency, buildDisplayed()-level ad injection. Commit `c99afee`. |
 | 23 | **Sprint 19 Content Cleaning Phase 5 — clean-existing + admin UI** | ✅ `POST /api/admin/opportunities/clean-existing`, admin "Clean N descriptions" button, editorial_score column. SQL: `swiipt/sprint_19_content_cleaning.sql` (needs run). |
 | 24 | **AI-generated opportunities hidden from feed** | ✅ `swiipt/hide_ai_opportunities.sql` — sets `is_active=false` for all `ai_generated=true` rows. Seed data remains visible. Reversible. |
+| 25 | **AI Content Cleaner running on ~4,219 items** | ⏳ `C:\Users\User\Desktop\swiipt-opportunity-cleaner\clean_all.py` running in a separate PowerShell window (batch 50, 2s delay). **All 161 scrapers PAUSED** (`is_active=false`) so it can catch up. Restore with: `UPDATE opportunity_sources SET is_active = true WHERE is_active = false;` |
+| 26 | **Build Supabase Edge Function for at-ingestion cleaning** | ⏳ Plan: intercept at ingest so new opportunities are cleaned before they hit the feed (post-scraper, pre-insert trigger). |
+| 27 | **Monitor admin Needs Review queue (181 items)** | ⏳ Review via `/admin/opportunities/queue` after cleaner completes; approve/reject/rewrite inline. |
 
 ## 1. PLATFORM OVERVIEW
 
@@ -2321,4 +2325,30 @@ Column check confirmed: `is_degraded`, `consecutive_errors`, `last_error_at` ALL
 ### Commits
 `c99fe5f`, `1be6405`, `12cd96d`, `61eae7b`, `2657332`, `32291c9`
 
-## 22. VERIFICATION SCRIPTS
+## 22. SESSION 65 — AI CONTENT CLEANER + ADMIN REVIEW QUEUE + PIPELINE PAUSE (2026-07-31)
+
+**Goal:** Clean all AI-generated opportunity content via a local 9router-backed cleaner, route results to an admin review queue, and pause the pipeline so the cleaner can catch up.
+
+### Part A — Local cleaner (`C:\Users\User\Desktop\swiipt-opportunity-cleaner\`)
+- **9router endpoint:** `http://localhost:20128/v1`, key `sk-d51ced693d37513b-vxyblz-68d69dce`, model `AI-cleaning` (runs locally, confirmed working).
+- **aiand.com keys removed** (model `Qwen3.6-27B` invalid, key had insufficient credits) — 9router is the sole provider.
+- **`cleaner.py` core logic:** reads `msg.content or getattr(msg, "reasoning", None)` (fixes crash on `content=None` from reasoning models), `max_tokens` raised to `4000`, strips markdown fences, extracts the last `{...}` block before `json.loads`.
+- **`clean_all.py`:** batch of 50, 2s delay. Failure path sets `is_active: false` (failed cleanups stay hidden from feed). Success path sets `needs_review: true` when cleaned result is poor (`editorial_score < 60`).
+
+### Part B — Admin review queue (feed-hiding until human approval)
+- **`src/app/(admin)/admin/opportunities/queue/page.tsx`** — now queries `opportunities WHERE needs_review = true` (removed the `.eq("content_cleaned", true)` filter) so ALL 181 needs-review rows appear (previously only 92). Heading changed to "Needs Review". Ordering uses `order("content_cleaned_at", { nullsFirst: false })`.
+- **`src/components/admin/opportunities/FailedCleanupList.tsx`** — rewritten as full inline editor matching the Create/Edit opportunity form: Segment, Organisation, Country, City, Type, Description, Full Description, Requirements, Salary, Funding, Deadline, Application URL, Featured.
+- **`src/app/api/admin/opportunities/approve-cleanup/route.ts`** — accepts optional `fields` object; merges edits when approving; reject path supported.
+- **Vercel build fix:** `nulls: "last"` isn't in the Supabase JS types and broke the build — switched to `nullsFirst: false`. Commits `114f6d1` → `7e60398` → `0f3eea0`.
+
+### Part C — Pipeline pause (so cleaner can catch up)
+- **Executed:** `UPDATE opportunity_sources SET is_active = false WHERE is_active = true;` → **161 sources paused, 0 active remaining** (verified via REST).
+- **Effect:** no new opportunities/evidence from ingest; 850 pending evidence items drain in ~2-3 process-queue cron runs then stop.
+- **Restore command (run in Supabase Editor later):** `UPDATE opportunity_sources SET is_active = true WHERE is_active = false;`
+
+### Next Steps
+1. Let cleaner finish (~4,219 items), then re-enable scrapers via the restore SQL.
+2. Build the Supabase Edge Function so future opportunities are cleaned at ingestion time (before they hit the feed).
+3. Review the 181-item Needs Review queue in `/admin/opportunities/queue`.
+
+## 23. VERIFICATION SCRIPTS

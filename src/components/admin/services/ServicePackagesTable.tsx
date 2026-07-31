@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface ServicePackage {
   id: string;
@@ -17,6 +18,9 @@ interface ServicePackage {
 
 export default function ServicePackagesTable({ packages: initial }: { packages: ServicePackage[] }) {
   const [packages, setPackages] = useState(initial);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
+  const router = useRouter();
 
   async function toggleActive(id: string, current: boolean) {
     const res = await fetch("/api/admin/services/toggle", {
@@ -29,8 +33,32 @@ export default function ServicePackagesTable({ packages: initial }: { packages: 
     }
   }
 
+  async function handleDelete(id: string, name: string) {
+    if (!window.confirm(`Delete service package "${name}"? This cannot be undone.`)) return;
+    setDeletingId(id);
+    setDeleteError("");
+    const res = await fetch("/api/admin/services/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setDeletingId(null);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setDeleteError(err.error || "Failed to delete package");
+      return;
+    }
+    setPackages((prev) => prev.filter((p) => p.id !== id));
+    router.refresh();
+  }
+
   return (
     <div style={{ overflowX: "auto" }}>
+      {deleteError && (
+        <div style={{ padding: "0.625rem 0.875rem", background: "#FEF2F2", border: "1px solid #FCA5A5", borderRadius: "var(--radius-sm)", color: "#B91C1C", fontSize: "0.8125rem", marginBottom: "0.75rem" }}>
+          {deleteError}
+        </div>
+      )}
       <table style={{ width: "100%", minWidth: 400, borderCollapse: "collapse", background: "white", borderRadius: "var(--radius-lg)", overflow: "hidden", border: "1px solid var(--border)" }}>
         <thead>
           <tr style={{ background: "var(--off-white)", textAlign: "left" }}>
@@ -69,10 +97,17 @@ export default function ServicePackagesTable({ packages: initial }: { packages: 
                   </span>
                 )}
               </td>
-              <td style={{ padding: "0.75rem 1rem" }}>
+              <td style={{ padding: "0.75rem 1rem", whiteSpace: "nowrap" }}>
                 <Link href={`/admin/services/${pkg.id}`} style={{ fontSize: "0.8125rem", color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}>
                   Edit
                 </Link>
+                <button
+                  onClick={() => handleDelete(pkg.id, pkg.name)}
+                  disabled={deletingId === pkg.id}
+                  style={{ marginLeft: "0.75rem", background: "none", border: "none", color: "var(--danger)", fontSize: "0.8125rem", fontWeight: 600, cursor: deletingId === pkg.id ? "not-allowed" : "pointer", textDecoration: "underline" }}
+                >
+                  {deletingId === pkg.id ? "Deleting..." : "Delete"}
+                </button>
               </td>
             </tr>
           ))}

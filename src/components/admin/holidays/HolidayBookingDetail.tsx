@@ -44,7 +44,28 @@ export default function HolidayBookingDetail({ booking, documents, adminId: _adm
 
   const [docs, _setDocs] = useState(documents);
 
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
   const sc = statusColors[booking.status] || { bg: '#F3F4F6', color: '#6B7280' };
+
+  async function handleDelete() {
+    if (!window.confirm(`Delete booking "${booking.reference}" for ${booking.user?.full_name || "this user"}? This cannot be undone.`)) return;
+    setDeleting(true);
+    setDeleteError("");
+    const res = await fetch("/api/admin/holidays/delete-booking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingId: booking.id }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setDeleteError(err.error || "Failed to delete booking");
+      setDeleting(false);
+      return;
+    }
+    window.location.href = "/admin/holidays";
+  }
 
   async function handleUpdateStatus() {
     if (!newStatus) return;
@@ -135,6 +156,18 @@ export default function HolidayBookingDetail({ booking, documents, adminId: _adm
               <div><span style={{ color: 'var(--text-muted)' }}>Created:</span> <span style={{ fontWeight: 600, color: 'var(--midnight)' }}>{new Date(booking.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
             </div>
             <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.75rem' }}>User mobility score: <strong>{booking.user?.mobility_score || 0}</strong></p>
+            {deleteError && (
+              <div style={{ padding: '0.625rem 0.875rem', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 'var(--radius-sm)', color: '#B91C1C', fontSize: '0.8125rem', marginTop: '0.75rem' }}>
+                {deleteError}
+              </div>
+            )}
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: 'none', border: '1px solid var(--danger)', borderRadius: 'var(--radius-sm)', fontSize: '0.8125rem', fontWeight: 700, color: 'var(--danger)', cursor: deleting ? 'not-allowed' : 'pointer' }}
+            >
+              {deleting ? "Deleting..." : "Delete booking"}
+            </button>
           </div>
 
           {/* STATUS UPDATE PANEL */}

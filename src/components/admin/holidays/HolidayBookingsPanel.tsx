@@ -15,10 +15,30 @@ const statusColors: Record<string, { bg: string; color: string }> = {
 export default function HolidayBookingsPanel({ bookings }: { bookings: any[] }) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState("all");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState("");
 
   const filtered = statusFilter === "all" ? bookings : bookings.filter((b: any) => b.status === statusFilter);
   const uniqueStatuses = ["all"] as string[];
   bookings.forEach((b: any) => { if (!uniqueStatuses.includes(b.status)) uniqueStatuses.push(b.status); });
+
+  async function handleDelete(booking: any) {
+    if (!window.confirm(`Delete booking "${booking.reference}" for ${booking.user?.full_name || "user"}? This cannot be undone.`)) return;
+    setDeletingId(booking.id);
+    setDeleteError("");
+    const res = await fetch("/api/admin/holidays/delete-booking", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bookingId: booking.id }),
+    });
+    setDeletingId(null);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      setDeleteError(err.error || "Failed to delete booking");
+      return;
+    }
+    router.refresh();
+  }
 
   return (
     <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -42,6 +62,11 @@ export default function HolidayBookingsPanel({ bookings }: { bookings: any[] }) 
           </button>
         ))}
       </div>
+      {deleteError && (
+        <div style={{ padding: '0.625rem 0.875rem', background: '#FEF2F2', border: '1px solid #FCA5A5', borderRadius: 'var(--radius-sm)', color: '#B91C1C', fontSize: '0.8125rem', margin: '0 1.25rem 0.75rem' }}>
+          {deleteError}
+        </div>
+      )}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
           <thead>
@@ -53,6 +78,7 @@ export default function HolidayBookingsPanel({ bookings }: { bookings: any[] }) 
               <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}>Total</th>
               <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}>Status</th>
               <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}>Created</th>
+              <th style={{ textAlign: 'left', padding: '0.75rem 1rem', fontWeight: 700, color: 'var(--midnight)' }}></th>
             </tr>
           </thead>
           <tbody>
@@ -76,12 +102,22 @@ export default function HolidayBookingsPanel({ bookings }: { bookings: any[] }) 
                   <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>
                     {new Date(booking.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </td>
+                  <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDelete(booking); }}
+                      disabled={deletingId === booking.id}
+                      title="Delete this booking"
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '0.75rem', fontWeight: 600, cursor: deletingId === booking.id ? 'not-allowed' : 'pointer', textDecoration: 'underline' }}
+                    >
+                      {deletingId === booking.id ? "Deleting..." : "Delete"}
+                    </button>
+                  </td>
                 </tr>
               );
             })}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                <td colSpan={8} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   No bookings found for this filter.
                 </td>
               </tr>
