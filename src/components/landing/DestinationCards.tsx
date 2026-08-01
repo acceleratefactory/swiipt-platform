@@ -6,7 +6,7 @@ const destinations = [
   { name: "Doha", country: "Qatar", flag: "🇶🇦", savers: "870", topGoal: "Work Visa", gradient: "linear-gradient(135deg, #8B4513, #D4A017)", image: "https://images.unsplash.com/photo-1578895101408-1a36b834405b?w=400&h=220&fit=crop" },
   { name: "Lisbon", country: "Portugal", flag: "🇵🇹", savers: "720", topGoal: "Remote Work Visa", gradient: "linear-gradient(135deg, #e74c3c, #f39c12)", image: "https://images.unsplash.com/photo-1585208798174-6cedd86e019a?w=400&h=220&fit=crop" },
   { name: "Cape Town", country: "South Africa", flag: "🇿🇦", savers: "540", topGoal: "Holiday", gradient: "linear-gradient(135deg, #27ae60, #2980b9)", image: "https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=400&h=220&fit=crop" },
-  { name: "Tbilisi", country: "Georgia", flag: "🇬🇪", savers: "430", topGoal: "Remote Work Visa", gradient: "linear-gradient(135deg, #e67e22, #d35400)", image: "https://picsum.photos/seed/tbilisi-georgia/400/220" },
+  { name: "Tbilisi", country: "Georgia", flag: "🇬🇪", savers: "430", topGoal: "Remote Work Visa", gradient: "linear-gradient(135deg, #e67e22, #d35400)", image: "https://images.unsplash.com/photo-1695018128519-bced2bac1b71?w=400&h=220&fit=crop" },
   { name: "St Kitts", country: "Caribbean", flag: "🇰🇳", savers: "210", topGoal: "2nd Citizenship", gradient: "linear-gradient(135deg, #1abc9c, #16a085)", image: "https://images.unsplash.com/photo-1548574505-5e239809ee19?w=400&h=220&fit=crop" },
 ];
 
